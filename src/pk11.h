@@ -1,5 +1,6 @@
 /*
  * This file is part of tpm2-pk11.
+ * Copyright (C) 2017 Jernej Turnsek
  * Copyright (C) 2017 Iwan Timmer
  *
  * This library is free software; you can redistribute it and/or
@@ -28,10 +29,12 @@
 
 #define TPM2_PK11_LABEL ""
 #define TPM2_PK11_SLOT_DESCRIPTION "TPM2 PKCS11 slot"
-#define TPM2_PK11_MANUFACTURER "Iwan Timmer"
+#define TPM2_PK11_MANUFACTURER "Iskraemeco,d.d."
 #define TPM2_PK11_LIBRARY_DESCRIPTION "TPM2 PKCS11 Library"
 #define TPM2_PK11_MODEL "TPM2"
 #define TPM2_PK11_SERIAL "123456789"
+#define LIBRARY_VERSION_MAJOR   1
+#define LIBRARY_VERSION_MINOR   1
 
 typedef struct pkcs_object_t {
   void* id;

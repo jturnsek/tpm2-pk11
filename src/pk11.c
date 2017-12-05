@@ -1,5 +1,6 @@
 /*
  * This file is part of tpm2-pk11.
+ * Copyright (C) 2017 Jernej Turnsek
  * Copyright (C) 2017 Iwan Timmer
  *
  * This library is free software; you can redistribute it and/or
@@ -40,21 +41,23 @@ CK_RV C_GetInfo(CK_INFO_PTR pInfo) {
   pInfo->cryptokiVersion.minor = CRYPTOKI_VERSION_MINOR;
   strncpy_pad(pInfo->manufacturerID, TPM2_PK11_MANUFACTURER, sizeof(pInfo->manufacturerID));
   strncpy_pad(pInfo->libraryDescription, TPM2_PK11_LIBRARY_DESCRIPTION, sizeof(pInfo->libraryDescription));
+  pInfo->libraryVersion.major = LIBRARY_VERSION_MAJOR;
+  pInfo->libraryVersion.minor = LIBRARY_VERSION_MINOR;
   pInfo->flags = 0;
 
   return CKR_OK;
 }
 
-CK_RV C_GetSlotList(CK_BBOOL tokenPresent, CK_SLOT_ID_PTR pSlotList, CK_ULONG_PTR pusCount) {
-  if (*pusCount && pSlotList)
+CK_RV C_GetSlotList(CK_BBOOL tokenPresent, CK_SLOT_ID_PTR pSlotList, CK_ULONG_PTR pulCount) {
+  if (*pulCount && pSlotList)
     *pSlotList = SLOT_ID;
 
-  *pusCount = 1;
+  *pulCount = 1;
 
   return CKR_OK;
 }
 
-CK_RV C_OpenSession(CK_SLOT_ID slotID, CK_FLAGS flags, CK_VOID_PTR pApplication, CK_RV  (*Notify) (CK_SESSION_HANDLE hSession, CK_NOTIFICATION event, CK_VOID_PTR pApplication), CK_SESSION_HANDLE_PTR phSession) {
+CK_RV C_OpenSession(CK_SLOT_ID slotID, CK_FLAGS flags, CK_VOID_PTR pApplication, CK_NOTIFY Notify, CK_SESSION_HANDLE_PTR phSession) {
   *phSession = (unsigned long) malloc(sizeof(struct session));
   if ((void*) *phSession == NULL)
     return CKR_GENERAL_ERROR;
@@ -120,21 +123,21 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved) {
   return CKR_OK;
 }
 
-CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR filters, CK_ULONG nfilters) {
+CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount) {
   struct session *session = get_session(hSession);
   session->find_cursor = session->objects;
-  session->filters = filters;
-  session->num_filters = nfilters;
+  session->filters = pTemplate;
+  session->num_filters = ulCount;
   return CKR_OK;
 }
 
-CK_RV C_FindObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, CK_ULONG usMaxObjectCount, CK_ULONG_PTR nfound) {
+CK_RV C_FindObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, CK_ULONG ulMaxObjectCount, CK_ULONG_PTR pulObjectCount) {
   TPMS_CAPABILITY_DATA persistent;
   tpm_list(get_session(hSession)->context, &persistent);
   struct session* session = get_session(hSession);
-  *nfound = 0;
+  *pulObjectCount = 0;
 
-  while (session->find_cursor != NULL && *nfound < usMaxObjectCount) {
+  while (session->find_cursor != NULL && *pulObjectCount < ulMaxObjectCount) {
     pObject object = session->find_cursor->object;
     bool filtered = false;
     for (int j = 0; j < session->num_filters; j++) {
@@ -146,8 +149,8 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, C
       }
     }
     if (!filtered) {
-      phObject[*nfound] = (CK_OBJECT_HANDLE) session->find_cursor->object;
-      (*nfound)++;
+      phObject[*pulObjectCount] = (CK_OBJECT_HANDLE) session->find_cursor->object;
+      (*pulObjectCount)++;
     }
     session->find_cursor = session->find_cursor->next;
   }
@@ -159,10 +162,10 @@ CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession) {
   return CKR_OK;
 }
 
-CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG usCount) {
+CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount) {
   pObject object = (pObject) hObject;
 
-  for (int i = 0; i < usCount; i++) {
+  for (int i = 0; i < ulCount; i++) {
     for (int j = 0; j < object->num_entries; j++) {
       void *obj = object->entries[j].object;
       pAttrIndex index = object->entries[j].indexes;
@@ -187,7 +190,7 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJ
   return CKR_OK;
 }
 
-CK_RV C_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG usDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pusSignatureLen) {
+CK_RV C_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen) {
   struct session* session = get_session(hSession);
   TPM_RC ret;
 
@@ -195,12 +198,12 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG usDataLen, 
     TPM2B_PUBLIC_KEY_RSA message = { .t.size = MAX_RSA_KEY_BYTES };
     pObject object = session->current_object->opposite;
     CK_ULONG_PTR key_size = (CK_ULONG_PTR) attr_get(object, CKA_MODULUS_BITS, NULL);
-    ret = tpm_sign_encrypt(session->context, session->keyHandle, *key_size / 8, pData, usDataLen, &message);
-    retmem(pSignature, pusSignatureLen, message.t.buffer, message.t.size);
+    ret = tpm_sign_encrypt(session->context, session->keyHandle, *key_size / 8, pData, ulDataLen, &message);
+    retmem(pSignature, pulSignatureLen, message.t.buffer, message.t.size);
   } else {
     TPMT_SIGNATURE signature = {0};
-    ret = tpm_sign(session->context, session->keyHandle, pData, usDataLen, &signature);
-    retmem(pSignature, pusSignatureLen, signature.signature.rsassa.sig.t.buffer, signature.signature.rsassa.sig.t.size);
+    ret = tpm_sign(session->context, session->keyHandle, pData, ulDataLen, &signature);
+    retmem(pSignature, pulSignatureLen, signature.signature.rsassa.sig.t.buffer, signature.signature.rsassa.sig.t.size);
   }
 
   return ret == TPM_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
