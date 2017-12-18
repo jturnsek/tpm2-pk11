@@ -212,7 +212,7 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, 
     ret = tpm_rsa_sign(session->context, session->keyHandle, pData, ulDataLen, &signature);
     retmem(pSignature, pulSignatureLen, signature.signature.rsassa.sig.t.buffer, signature.signature.rsassa.sig.t.size);  
   }
-  else if {
+  else if (session->mechanism.type == ECDSA) {
     ret = tpm_ecc_sign(session->context, session->keyHandle, pData, ulDataLen, &signature);
     retmem(pSignature, pulSignatureLen, signature.signature.ecdsa.sig.t.buffer, signature.signature.ecdsa.sig.t.size);
   }
