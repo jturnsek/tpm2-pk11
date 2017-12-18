@@ -31,7 +31,6 @@ struct config {
   char* hostname;
   char* certificates;
   unsigned int port;
-  bool sign_using_encrypt;
 };
 
 int config_load(char* filename, struct config *config);

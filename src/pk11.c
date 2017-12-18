@@ -84,7 +84,6 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession, CK_SESSION_INFO_PTR pInfo) {
 CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo) {
   strncpy_pad(pInfo->manufacturerID, TPM2_PK11_MANUFACTURER, sizeof(pInfo->manufacturerID));
   strncpy_pad(pInfo->slotDescription, TPM2_PK11_SLOT_DESCRIPTION, sizeof(pInfo->slotDescription));
-
   pInfo->flags = CKF_TOKEN_PRESENT | CKF_HW_SLOT;
   pInfo->hardwareVersion.major = 0;
   pInfo->hardwareVersion.minor = 0;
@@ -99,7 +98,6 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
   strncpy_pad(pInfo->model, TPM2_PK11_MODEL, sizeof(pInfo->label));
   strncpy_pad(pInfo->serialNumber, TPM2_PK11_SERIAL, sizeof(pInfo->serialNumber));
   strncpy_pad(pInfo->utcTime, "", sizeof(pInfo->utcTime));
-
   pInfo->flags = CKF_TOKEN_INITIALIZED;
   pInfo->ulMaxSessionCount = 1;
   pInfo->ulSessionCount = 0;
@@ -107,10 +105,10 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
   pInfo->ulRwSessionCount = 0;
   pInfo->ulMaxPinLen = 64;
   pInfo->ulMinPinLen = 8;
-  pInfo->ulTotalPublicMemory = 8;
-  pInfo->ulFreePublicMemory = 8;
-  pInfo->ulTotalPrivateMemory = 8;
-  pInfo->ulFreePrivateMemory = 8;
+  pInfo->ulTotalPublicMemory = CK_UNAVAILABLE_INFORMATION;
+  pInfo->ulFreePublicMemory = CK_UNAVAILABLE_INFORMATION;
+  pInfo->ulTotalPrivateMemory = CK_UNAVAILABLE_INFORMATION;
+  pInfo->ulFreePrivateMemory = CK_UNAVAILABLE_INFORMATION;
   pInfo->hardwareVersion.major = 0;
   pInfo->hardwareVersion.minor = 0;
   pInfo->firmwareVersion.major = 0;
@@ -187,26 +185,69 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJ
   pObject object = (pObject) hKey;
   get_session(hSession)->keyHandle = object->tpm_handle;
   get_session(hSession)->current_object = object;
+
+  switch(pMechanism->mechanism) {
+    case CKM_RSA_X_509:
+      get_session(hSession)->mechanism.type = RSA;
+      break;
+    case CKM_RSA_PKCS:
+      get_session(hSession)->mechanism.type = RSA_PKCS;
+      break;
+    case CKM_ECDSA:
+      get_session(hSession)->mechanism.type = ECDSA;
+      break;
+    default:
+      get_session(hSession)->mechanism.type = Unknown;
+      return CKR_MECHANISM_INVALID;
+  }
+
   return CKR_OK;
 }
 
 CK_RV C_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen) {
   struct session* session = get_session(hSession);
-  TPM_RC ret;
+  TPM_RC ret = CKR_GENERAL_ERROR;
+  TPMT_SIGNATURE signature = {0};
+  if (session->mechanism.type == RSA_PKCS) {
+    ret = tpm_rsa_sign(session->context, session->keyHandle, pData, ulDataLen, &signature);
+    retmem(pSignature, pulSignatureLen, signature.signature.rsassa.sig.t.buffer, signature.signature.rsassa.sig.t.size);  
+  }
+  else if {
+    ret = tpm_ecc_sign(session->context, session->keyHandle, pData, ulDataLen, &signature);
+    retmem(pSignature, pulSignatureLen, signature.signature.ecdsa.sig.t.buffer, signature.signature.ecdsa.sig.t.size);
+  }
+  
+  return ret == TPM_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
+}
 
-  if (pk11_config.sign_using_encrypt) {
-    TPM2B_PUBLIC_KEY_RSA message = { .t.size = MAX_RSA_KEY_BYTES };
-    pObject object = session->current_object->opposite;
-    CK_ULONG_PTR key_size = (CK_ULONG_PTR) attr_get(object, CKA_MODULUS_BITS, NULL);
-    ret = tpm_sign_encrypt(session->context, session->keyHandle, *key_size / 8, pData, ulDataLen, &message);
-    retmem(pSignature, pulSignatureLen, message.t.buffer, message.t.size);
-  } else {
-    TPMT_SIGNATURE signature = {0};
-    ret = tpm_sign(session->context, session->keyHandle, pData, ulDataLen, &signature);
-    retmem(pSignature, pulSignatureLen, signature.signature.rsassa.sig.t.buffer, signature.signature.rsassa.sig.t.size);
+CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey) {
+  pObject object = (pObject) hKey;
+  get_session(hSession)->keyHandle = object->tpm_handle;
+  get_session(hSession)->current_object = object;
+
+  switch(pMechanism->mechanism) {
+    case CKM_RSA_X_509:
+      get_session(hSession)->mechanism.type = RSA;
+      break;
+    case CKM_RSA_PKCS:
+      get_session(hSession)->mechanism.type = RSA_PKCS;
+      break;
+    case CKM_ECDSA:
+      get_session(hSession)->mechanism.type = ECDSA;
+      break;
+    default:
+      get_session(hSession)->mechanism.type = Unknown;
+      return CKR_MECHANISM_INVALID;
   }
 
-  return ret == TPM_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
+  return CKR_OK;
+}
+
+CK_RV C_Verify(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG ulSignatureLen) {
+  struct session* session = get_session(hSession);
+  TPM_RC ret = CKR_GENERAL_ERROR;
+
+  return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey) {
@@ -218,7 +259,7 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_
 CK_RV C_Decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen) {
   TPM2B_PUBLIC_KEY_RSA message = { .t.size = MAX_RSA_KEY_BYTES };
   struct session* session = get_session(hSession);
-  TPM_RC ret = tpm_decrypt(session->context, session->keyHandle, pEncryptedData, ulEncryptedDataLen, &message);
+  TPM_RC ret = tpm_rsa_decrypt(session->context, session->keyHandle, pEncryptedData, ulEncryptedDataLen, &message);
   retmem(pData, pulDataLen, message.t.buffer, message.t.size);
 
   return ret == TPM_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
@@ -235,7 +276,46 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
 
 /* Stubs for not yet supported functions*/
 CK_RV C_GetMechanismList(CK_SLOT_ID slotID, CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
+  CK_ULONG nrSupportedMechanisms = 10;
+
+  CK_MECHANISM_TYPE supportedMechanisms[] =
+  {
+    CKM_SHA_1,
+    CKM_SHA256,
+    CKM_SHA_1_HMAC,
+    CKM_SHA256_HMAC,
+    CKM_RSA_PKCS_KEY_PAIR_GEN,
+    CKM_RSA_PKCS,
+    CKM_RSA_X_509,
+    CKM_EC_KEY_PAIR_GEN,
+    CKM_ECDSA,
+    CKM_ECDH1_DERIVE
+  };
+
+  if (pulCount == NULL_PTR) return CKR_ARGUMENTS_BAD;
+
+  if (pMechanismList == NULL_PTR)
+  {
+    *pulCount = nrSupportedMechanisms;
+
+    return CKR_OK;
+  }
+
+  if (*pulCount < nrSupportedMechanisms)
+  {
+    *pulCount = nrSupportedMechanisms;
+
+    return CKR_BUFFER_TOO_SMALL;
+  }
+
+  *pulCount = nrSupportedMechanisms;
+
+  for (CK_ULONG i = 0; i < nrSupportedMechanisms; i ++)
+  {
+    pMechanismList[i] = supportedMechanisms[i];
+  }
+
+  return CKR_OK;
 }
 
 CK_RV C_GetMechanismInfo (CK_SLOT_ID slotID, CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo) {
@@ -355,14 +435,6 @@ CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
 }
 
 CK_RV C_SignRecover(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
-}
-
-CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
-}
-
-CK_RV C_Verify(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG ulSignatureLen) {
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 

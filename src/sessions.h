@@ -24,6 +24,18 @@
 #include <sapi/tpm20.h>
 #include <p11-kit/pkcs11.h>
 
+struct mechanism
+{
+	enum type
+	{
+		Unknown,
+		RSA,
+		RSA_PKCS,
+		ECDSA
+	};
+};
+
+
 struct session {
   TSS2_SYS_CONTEXT *context;
   pObjectList objects;
@@ -32,6 +44,7 @@ struct session {
   CK_ATTRIBUTE_PTR filters;
   size_t num_filters;
   pObject current_object;
+  int mechanism;
 };
 
 int session_init(struct session* session, struct config *config);
