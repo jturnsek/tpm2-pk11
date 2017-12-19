@@ -204,26 +204,27 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJ
 
 CK_RV C_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen) {
   struct session* session = get_session(hSession);
-  TPM_RC ret = CKR_GENERAL_ERROR;
+  TPM_RC rc = CKR_GENERAL_ERROR;
   TPMT_SIGNATURE signature = {0};
   size_t offset = 0;
   unsigned char buffer[sizeof(signature)];
-  TSS2_RC rc; 
 
   if (session->m.type == RSA_PKCS) {
-    ret = tpm_rsa_sign(session->context, session->keyHandle, pData, ulDataLen, &signature); 
+    rc = tpm_rsa_sign(session->context, session->keyHandle, pData, ulDataLen, &signature); 
   }
   else if (session->m.type == ECDSA) {
-    ret = tpm_ecc_sign(session->context, session->keyHandle, pData, ulDataLen, &signature);
+    rc = tpm_ecc_sign(session->context, session->keyHandle, pData, ulDataLen, &signature);
   }
   
-  rc = Tss2_MU_TPMT_SIGNATURE_Marshal(&signature, buffer, sizeof(buffer), &offset); 
-  if (rc != TSS2_RC_SUCCESS) { 
-    return CKR_GENERAL_ERROR; 
-  } 
-  retmem(pSignature, pulSignatureLen, buffer, sizeof(buffer));
-
-  return ret == TPM_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
+  if (rc == TPM_RC_SUCCESS) {
+    rc = Tss2_MU_TPMT_SIGNATURE_Marshal(&signature, buffer, sizeof(buffer), &offset); //jturnsek: should be in tpm file
+    if (rc != TPM_RC_SUCCESS) { 
+      return CKR_GENERAL_ERROR; 
+    }  
+    retmem(pSignature, pulSignatureLen, buffer, sizeof(buffer));
+  }
+  
+  return rc == TPM_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
 }
 
 CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey) {
@@ -231,32 +232,23 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_O
   get_session(hSession)->keyHandle = object->tpm_handle;
   get_session(hSession)->current_object = object;
 
-  switch(pMechanism->mechanism) {
-    case CKM_RSA_X_509:
-      get_session(hSession)->m.type = RSA;
-      break;
-    case CKM_RSA_PKCS:
-      get_session(hSession)->m.type = RSA_PKCS;
-      break;
-    case CKM_ECDSA:
-      get_session(hSession)->m.type = ECDSA;
-      break;
-    default:
-      get_session(hSession)->m.type = Unknown;
-      return CKR_MECHANISM_INVALID;
-  }
-
   return CKR_OK;
 }
 
 CK_RV C_Verify(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG ulSignatureLen) {
   struct session* session = get_session(hSession);
-  TPM_RC ret = CKR_GENERAL_ERROR;
   TPMT_SIGNATURE signature = {0};
+  TPM_RC rc;
+  size_t offset = 0;
+        
+  rc = Tss2_MU_TPMT_SIGNATURE_Unmarshal(pSignature, ulSignatureLen, &offset, &signature); //jturnsek: should be in tpm file
+  if (rc != TPM_RC_SUCCESS) {
+      return CKR_GENERAL_ERROR;
+  }
 
+  rc = tpm_verify(session->context, session->keyHandle, &signature, pData, ulDataLen);
 
-
-  return CKR_FUNCTION_NOT_SUPPORTED;
+  return rc == TPM_RC_SUCCESS ? CKR_OK : CKR_SIGNATURE_INVALID;
 }
 
 CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey) {

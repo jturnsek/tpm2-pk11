@@ -117,6 +117,24 @@ TPM_RC tpm_ecc_sign(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned c
   return Tss2_Sys_Sign(context, handle, &sessionsData, &digest, &scheme, &validation, signature, &sessionsDataOut);
 }
 
+TPM_RC tpm_verify(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, TPMT_SIGNATURE *signature, unsigned char *hash, unsigned long hashLength) {
+  TPM2B_DIGEST digest = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
+  TPMT_TK_VERIFIED validation;
+
+  TPMS_AUTH_RESPONSE sessionDataOut;
+  TSS2_SYS_RSP_AUTHS sessionsDataOut;
+  TPMS_AUTH_RESPONSE *sessionDataOutArray[1];
+
+  sessionDataOutArray[0] = &sessionDataOut;
+  sessionsDataOut.rspAuths = &sessionDataOutArray[0];
+  sessionsDataOut.rspAuthsCount = 1;
+
+  memcpy(digest.t.buffer, hash, hashLength);
+  digest.t.size = hashLength;
+
+  return Tss2_Sys_VerifySignature(context, handle, NULL, &digest, signature, &validation, &sessionsDataOut);
+}
+
 TPM_RC tpm_rsa_decrypt(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned char *cipherText, unsigned long cipherLength, TPM2B_PUBLIC_KEY_RSA *message) {
   TPMS_AUTH_COMMAND sessionData = {0};
   sessionData.sessionHandle = TPM_RS_PW;
