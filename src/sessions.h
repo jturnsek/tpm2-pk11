@@ -35,7 +35,6 @@ struct mechanism
 	};
 };
 
-
 struct session {
   TSS2_SYS_CONTEXT *context;
   pObjectList objects;
@@ -44,7 +43,7 @@ struct session {
   CK_ATTRIBUTE_PTR filters;
   size_t num_filters;
   pObject current_object;
-  int mechanism;
+  struct mechanism m;
 };
 
 int session_init(struct session* session, struct config *config);
