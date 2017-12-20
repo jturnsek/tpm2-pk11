@@ -24,15 +24,13 @@
 #include <sapi/tpm20.h>
 #include <p11-kit/pkcs11.h>
 
-struct mechanism
+
+enum mechanism_type
 {
-	enum type
-	{
-		Unknown,
-		RSA,
-		RSA_PKCS,
-		ECDSA
-	};
+	Unknown = 0,
+	RSA,
+	RSA_PKCS,
+	ECDSA
 };
 
 struct session {
@@ -43,7 +41,7 @@ struct session {
   CK_ATTRIBUTE_PTR filters;
   size_t num_filters;
   pObject current_object;
-  struct mechanism m;
+  mechanism_type m;
 };
 
 int session_init(struct session* session, struct config *config);

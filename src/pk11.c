@@ -186,16 +186,16 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJ
 
   switch(pMechanism->mechanism) {
     case CKM_RSA_X_509:
-      get_session(hSession)->m.type = RSA;
+      get_session(hSession)->m = RSA;
       break;
     case CKM_RSA_PKCS:
-      get_session(hSession)->m.type = RSA_PKCS;
+      get_session(hSession)->m = RSA_PKCS;
       break;
     case CKM_ECDSA:
-      get_session(hSession)->m.type = ECDSA;
+      get_session(hSession)->m = ECDSA;
       break;
     default:
-      get_session(hSession)->m.type = Unknown;
+      get_session(hSession)->m = Unknown;
       return CKR_MECHANISM_INVALID;
   }
 
@@ -209,10 +209,10 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, 
   size_t offset = 0;
   unsigned char buffer[sizeof(signature)];
 
-  if (session->m.type == RSA_PKCS) {
+  if (session->m == RSA_PKCS) {
     rc = tpm_rsa_sign(session->context, session->keyHandle, pData, ulDataLen, &signature); 
   }
-  else if (session->m.type == ECDSA) {
+  else if (session->m == ECDSA) {
     rc = tpm_ecc_sign(session->context, session->keyHandle, pData, ulDataLen, &signature);
   }
   
@@ -257,13 +257,13 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_
 
   switch(pMechanism->mechanism) {
     case CKM_RSA_X_509:
-      get_session(hSession)->m.type = RSA;
+      get_session(hSession)->m = RSA;
       break;
     case CKM_RSA_PKCS:
-      get_session(hSession)->m.type = RSA_PKCS;
+      get_session(hSession)->m = RSA_PKCS;
       break;
     default:
-      get_session(hSession)->m.type = Unknown;
+      get_session(hSession)->m = Unknown;
       return CKR_MECHANISM_INVALID;
   }
 
@@ -286,13 +286,13 @@ CK_RV C_EncryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_
 
   switch(pMechanism->mechanism) {
     case CKM_RSA_X_509:
-      get_session(hSession)->m.type = RSA;
+      get_session(hSession)->m = RSA;
       break;
     case CKM_RSA_PKCS:
-      get_session(hSession)->m.type = RSA_PKCS;
+      get_session(hSession)->m = RSA_PKCS;
       break;
     default:
-      get_session(hSession)->m.type = Unknown;
+      get_session(hSession)->m = Unknown;
       return CKR_MECHANISM_INVALID;
   }
 
