@@ -25,13 +25,13 @@
 #include <p11-kit/pkcs11.h>
 
 
-enum mechanism_type
+typedef enum mechanism_type
 {
 	Unknown = 0,
 	RSA,
 	RSA_PKCS,
 	ECDSA
-};
+} mechanism;
 
 struct session {
   TSS2_SYS_CONTEXT *context;
@@ -41,7 +41,7 @@ struct session {
   CK_ATTRIBUTE_PTR filters;
   size_t num_filters;
   pObject current_object;
-  mechanism_type m;
+  mechanism m;
 };
 
 int session_init(struct session* session, struct config *config);
