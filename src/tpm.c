@@ -98,7 +98,7 @@ TPM_RC tpm_ecc_sign(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned c
   validation.hierarchy = TPM_RH_NULL;
 
   TPMT_SIG_SCHEME scheme;
-  scheme.scheme = TPM2_ALG_ECDSA;
+  scheme.scheme = TPM_ALG_ECDSA;
 
   int digestSize;
   if (memcmp(hash, oid_sha1, sizeof(oid_sha1)) == 0) {
@@ -118,7 +118,7 @@ TPM_RC tpm_ecc_sign(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned c
 }
 
 TPM_RC tpm_verify(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, TPMT_SIGNATURE *signature, unsigned char *hash, unsigned long hashLength) {
-  TPM2B_DIGEST digest = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
+  TPM2B_DIGEST digest  = { .t.size = hashLength };
   TPMT_TK_VERIFIED validation;
 
   TPMS_AUTH_RESPONSE sessionDataOut;
@@ -130,7 +130,6 @@ TPM_RC tpm_verify(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, TPMT_SIGNATU
   sessionsDataOut.rspAuthsCount = 1;
 
   memcpy(digest.t.buffer, hash, hashLength);
-  digest.t.size = hashLength;
 
   return Tss2_Sys_VerifySignature(context, handle, NULL, &digest, signature, &validation, &sessionsDataOut);
 }
