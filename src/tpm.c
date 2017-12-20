@@ -176,7 +176,7 @@ TPM_RC tpm_rsa_encrypt(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigne
   out_sessions_data.rspAuths = &out_session_data_array[0];
   out_sessions_data.rspAuthsCount = 1;
 
-  scheme.scheme = TPM2_ALG_RSAES;
+  scheme.scheme = TPM_ALG_RSAES;
 
   memcpy(in_data.t.buffer, data, dataLength);
 
