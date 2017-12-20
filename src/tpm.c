@@ -164,7 +164,7 @@ TPM_RC tpm_rsa_decrypt(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigne
 
 TPM_RC tpm_rsa_encrypt(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned char *data, unsigned long dataLength, TPM2B_PUBLIC_KEY_RSA *message) {
   TPMT_RSA_DECRYPT scheme;
-  TPM2B_DATA label;
+  TPM2B_DATA label = {0};
 
   TPM2B_PUBLIC_KEY_RSA in_data =  { .t.size = dataLength };
 
@@ -177,7 +177,6 @@ TPM_RC tpm_rsa_encrypt(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigne
   out_sessions_data.rspAuthsCount = 1;
 
   scheme.scheme = TPM2_ALG_RSAES;
-  label.size = 0;
 
   memcpy(in_data.t.buffer, data, dataLength);
 
