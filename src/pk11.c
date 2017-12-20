@@ -300,7 +300,14 @@ CK_RV C_EncryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_
 }
 
 CK_RV C_Encrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
+  TPM2B_PUBLIC_KEY_RSA message = { .t.size = MAX_RSA_KEY_BYTES };
+  struct session* session = get_session(hSession);
+
+  TPM_RC ret = tpm_rsa_encrypt(session->context, session->keyHandle, pData, ulDataLen, &message);
+  
+  retmem(pEncryptedData, pulEncryptedDataLen, message.t.buffer, message.t.size);
+
+  return ret == TPM_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
 }
 
 CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {

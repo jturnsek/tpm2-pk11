@@ -2,9 +2,13 @@ TPM2 PK11
 ==========
 
 TPM2 PK11 provide a PKCS#11 backend for a TPM 2.0 chip.
-This can be used to secure your SSH keys.
+This can be used for NSS PKCS#11 token.
 
-NOTICE: Currently only the OpenSSH client is supported
+WARNING: Work in progress!!!
+
+## NSS Usage
+
+tbd
 
 ## SSH Usage
 

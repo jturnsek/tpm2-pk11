@@ -1,5 +1,6 @@
 /*
  * This file is part of tpm2-pk11.
+ * Copyright (C) 2017 Jernej Turnsek
  * Copyright (C) 2017 Iwan Timmer
  *
  * This library is free software; you can redistribute it and/or
@@ -159,6 +160,28 @@ TPM_RC tpm_rsa_decrypt(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigne
   memcpy(cipher.t.buffer, cipherText, cipherLength);
 
   return Tss2_Sys_RSA_Decrypt(context, handle, &sessionsData, &cipher, &scheme, &label, message, &sessionsDataOut);
+}
+
+TPM_RC tpm_rsa_encrypt(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned char *data, unsigned long dataLength, TPM2B_PUBLIC_KEY_RSA *message) {
+  TPMT_RSA_DECRYPT scheme;
+  TPM2B_DATA label;
+
+  TPM2B_PUBLIC_KEY_RSA in_data =  { .t.size = dataLength };
+
+  TPMS_AUTH_RESPONSE out_session_data;
+  TSS2_SYS_RSP_AUTHS out_sessions_data;
+  TPMS_AUTH_RESPONSE *out_session_data_array[1];
+
+  out_session_data_array[0] = &out_session_data;
+  out_sessions_data.rspAuths = &out_session_data_array[0];
+  out_sessions_data.rspAuthsCount = 1;
+
+  scheme.scheme = TPM2_ALG_RSAES;
+  label.size = 0;
+
+  memcpy(in_data.t.buffer, data, dataLength);
+
+  return Tss2_Sys_RSA_Encrypt(context, handle, NULL, &in_data, &scheme, &label, &message, &out_sessions_data);
 }
 
 TPM_RC tpm_list(TSS2_SYS_CONTEXT *context, TPMS_CAPABILITY_DATA* capabilityData) {
