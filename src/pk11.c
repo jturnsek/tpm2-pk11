@@ -262,9 +262,6 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_
     case CKM_RSA_PKCS:
       get_session(hSession)->m.type = RSA_PKCS;
       break;
-    case CKM_ECDSA:
-      get_session(hSession)->m.type = ECDSA;
-      break;
     default:
       get_session(hSession)->m.type = Unknown;
       return CKR_MECHANISM_INVALID;
@@ -277,9 +274,33 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pEncryptedData, CK_ULONG
   TPM2B_PUBLIC_KEY_RSA message = { .t.size = MAX_RSA_KEY_BYTES };
   struct session* session = get_session(hSession);
   TPM_RC ret = tpm_rsa_decrypt(session->context, session->keyHandle, pEncryptedData, ulEncryptedDataLen, &message);
+  
   retmem(pData, pulDataLen, message.t.buffer, message.t.size);
 
   return ret == TPM_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
+}
+
+CK_RV C_EncryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hObject) {
+  pObject object = (pObject) hObject;
+  get_session(hSession)->keyHandle = object->tpm_handle;
+
+  switch(pMechanism->mechanism) {
+    case CKM_RSA_X_509:
+      get_session(hSession)->m.type = RSA;
+      break;
+    case CKM_RSA_PKCS:
+      get_session(hSession)->m.type = RSA_PKCS;
+      break;
+    default:
+      get_session(hSession)->m.type = Unknown;
+      return CKR_MECHANISM_INVALID;
+  }
+
+  return CKR_OK;
+}
+
+CK_RV C_Encrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen) {
+  return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
@@ -339,6 +360,25 @@ CK_RV C_GetMechanismInfo (CK_SLOT_ID slotID, CK_MECHANISM_TYPE type, CK_MECHANIS
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
+CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pSeed, CK_ULONG ulSeedLen) {
+  // jturnsek: nothing
+  return CKR_OK;
+}
+
+CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pRandomData, CK_ULONG ulRandomLen) {
+  struct session* session = get_session(hSession);
+  TPM2B_DIGEST random_bytes = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
+
+  TPM_RC rval = Tss2_Sys_GetRandom(session->context, NULL, ulRandomLen, &random_bytes, NULL);
+  if (rval != TPM_RC_SUCCESS) {
+    return CKR_GENERAL_ERROR;
+  }
+
+  retmem(pRandomData, ulRandomLen, random_bytes.t.buffer, random_bytes.t.size);
+
+  return CKR_OK;
+}
+
 CK_RV C_InitToken (CK_SLOT_ID slotID, CK_CHAR_PTR pPin, CK_ULONG usPinLen, CK_CHAR_PTR pLabel) {
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -390,14 +430,6 @@ CK_RV C_GetObjectSize(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_U
 
 
 CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
-}
-
-CK_RV C_EncryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hObject) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
-}
-
-CK_RV C_Encrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen) {
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
@@ -504,14 +536,6 @@ CK_RV C_UnwrapKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OB
 }
 
 CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hBaseKey, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_OBJECT_HANDLE_PTR phKey) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
-}
-
-CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pSeed, CK_ULONG ulSeedLen) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
-}
-
-CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pRandomData, CK_ULONG ulRandomLen) {
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
