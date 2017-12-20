@@ -367,7 +367,7 @@ CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pSeed, CK_ULONG ulSee
 
 CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pRandomData, CK_ULONG ulRandomLen) {
   struct session* session = get_session(hSession);
-  TPM2B_DIGEST random_bytes = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
+  TPM2B_DIGEST random_bytes;
 
   TPM_RC rval = Tss2_Sys_GetRandom(session->context, NULL, ulRandomLen, &random_bytes, NULL);
   if (rval != TPM_RC_SUCCESS) {
