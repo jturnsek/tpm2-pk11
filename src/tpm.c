@@ -78,7 +78,7 @@ TPM2_RC tpm_ecc_sign(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned 
   validation.hierarchy = TPM2_RH_NULL;
 
   TPMT_SIG_SCHEME scheme;
-  scheme.scheme = TPM_ALG_ECDSA;
+  scheme.scheme = TPM2_ALG_ECDSA;
 
   int digestSize;
   if (memcmp(hash, oid_sha1, sizeof(oid_sha1)) == 0) {
@@ -127,18 +127,18 @@ TPM2_RC tpm_rsa_decrypt(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsign
   return Tss2_Sys_RSA_Decrypt(context, handle, &sessions_data, &cipher, &scheme, &label, message, &sessions_data_out);
 }
 
-TPM2_RC tpm_rsa_encrypt(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned char *data, unsigned long dataLength, TPM2B_PUBLIC_KEY_RSA *message) {
+TPM2_RC tpm_rsa_encrypt(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned char *data, unsigned long data_length, TPM2B_PUBLIC_KEY_RSA *message) {
   TPMT_RSA_DECRYPT scheme;
   TPM2B_DATA label;
 
-  TPM2B_PUBLIC_KEY_RSA in_data =  { .size = dataLength };
+  TPM2B_PUBLIC_KEY_RSA in_data =  { .size = data_length };
 
   TSS2L_SYS_AUTH_RESPONSE out_sessions_data;
 
-  scheme.scheme = TPM_ALG_RSAES;
+  scheme.scheme = TPM2_ALG_RSAES;
   label.size = 0;
 
-  memcpy(in_data.buffer, data, dataLength);
+  memcpy(in_data.buffer, data, data_length);
 
   return Tss2_Sys_RSA_Encrypt(context, handle, NULL, &in_data, &scheme, &label, &message, &out_sessions_data);
 }
