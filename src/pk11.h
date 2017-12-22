@@ -44,7 +44,9 @@ typedef struct pkcs_object_t {
 
 typedef struct pkcs_key_t {
   CK_BBOOL sign;
+  CK_BBOOL verify;
   CK_BBOOL decrypt;
+  CK_BBOOL encrypt;
   CK_KEY_TYPE key_type;
 } PkcsKey, *pPkcsKey;
 

@@ -204,7 +204,7 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJ
 
 CK_RV C_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen) {
   struct session* session = get_session(hSession);
-  TPM_RC rc = CKR_GENERAL_ERROR;
+  TPM2_RC rc = CKR_GENERAL_ERROR;
   TPMT_SIGNATURE signature = {0};
   size_t offset = 0;
   unsigned char buffer[sizeof(signature)];
@@ -216,15 +216,15 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, 
     rc = tpm_ecc_sign(session->context, session->keyHandle, pData, ulDataLen, &signature);
   }
   
-  if (rc == TPM_RC_SUCCESS) {
+  if (rc == TPM2_RC_SUCCESS) {
     rc = Tss2_MU_TPMT_SIGNATURE_Marshal(&signature, buffer, sizeof(buffer), &offset); //jturnsek: should be in tpm file
-    if (rc != TPM_RC_SUCCESS) { 
+    if (rc != TPM2_RC_SUCCESS) { 
       return CKR_GENERAL_ERROR; 
     }  
     retmem(pSignature, pulSignatureLen, buffer, sizeof(buffer));
   }
   
-  return rc == TPM_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
+  return rc == TPM2_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
 }
 
 CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey) {
@@ -238,17 +238,17 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_O
 CK_RV C_Verify(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG ulSignatureLen) {
   struct session* session = get_session(hSession);
   TPMT_SIGNATURE signature = {0};
-  TPM_RC rc;
+  TPM2_RC rc;
   size_t offset = 0;
         
   rc = Tss2_MU_TPMT_SIGNATURE_Unmarshal(pSignature, ulSignatureLen, &offset, &signature); //jturnsek: should be in tpm file
-  if (rc != TPM_RC_SUCCESS) {
+  if (rc != TPM2_RC_SUCCESS) {
       return CKR_GENERAL_ERROR;
   }
 
   rc = tpm_verify(session->context, session->keyHandle, &signature, pData, ulDataLen);
 
-  return rc == TPM_RC_SUCCESS ? CKR_OK : CKR_SIGNATURE_INVALID;
+  return rc == TPM2_RC_SUCCESS ? CKR_OK : CKR_SIGNATURE_INVALID;
 }
 
 CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey) {
@@ -273,11 +273,11 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_
 CK_RV C_Decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen) {
   TPM2B_PUBLIC_KEY_RSA message = { .t.size = MAX_RSA_KEY_BYTES };
   struct session* session = get_session(hSession);
-  TPM_RC ret = tpm_rsa_decrypt(session->context, session->keyHandle, pEncryptedData, ulEncryptedDataLen, &message);
+  TPM2_RC ret = tpm_rsa_decrypt(session->context, session->keyHandle, pEncryptedData, ulEncryptedDataLen, &message);
   
   retmem(pData, pulDataLen, message.t.buffer, message.t.size);
 
-  return ret == TPM_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
+  return ret == TPM2_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
 }
 
 CK_RV C_EncryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hObject) {
@@ -303,11 +303,19 @@ CK_RV C_Encrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLe
   TPM2B_PUBLIC_KEY_RSA message = { .t.size = MAX_RSA_KEY_BYTES };
   struct session* session = get_session(hSession);
 
-  TPM_RC ret = tpm_rsa_encrypt(session->context, session->keyHandle, pData, ulDataLen, &message);
+  TPM2_RC ret = tpm_rsa_encrypt(session->context, session->keyHandle, pData, ulDataLen, &message);
   
   retmem(pEncryptedData, pulEncryptedDataLen, message.t.buffer, message.t.size);
 
-  return ret == TPM_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
+  return ret == TPM2_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
+}
+
+CK_RV C_GenerateKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_OBJECT_HANDLE_PTR phKey) {
+  return CKR_FUNCTION_NOT_SUPPORTED;
+}
+
+CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_PTR pPublicKeyTemplate, CK_ULONG ulPublicKeyAttributeCount, CK_ATTRIBUTE_PTR pPrivateKeyTemplate, CK_ULONG ulPrivateKeyAttributeCount, CK_OBJECT_HANDLE_PTR phPublicKey, CK_OBJECT_HANDLE_PTR phPrivateKey) {
+  return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
@@ -376,8 +384,8 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pRandomData, CK_U
   struct session* session = get_session(hSession);
   TPM2B_DIGEST random_bytes;
 
-  TPM_RC rval = Tss2_Sys_GetRandom(session->context, NULL, ulRandomLen, &random_bytes, NULL);
-  if (rval != TPM_RC_SUCCESS) {
+  TPM2_RC rval = Tss2_Sys_GetRandom(session->context, NULL, ulRandomLen, &random_bytes, NULL);
+  if (rval != TPM2_RC_SUCCESS) {
     return CKR_GENERAL_ERROR;
   }
 
@@ -523,14 +531,6 @@ CK_RV C_SignEncryptUpdate(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pPart, CK_ULON
 }
 
 CK_RV C_DecryptVerifyUpdate(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pEncryptedPart, CK_ULONG ulEncryptedPartLen, CK_BYTE_PTR pPart, CK_ULONG_PTR pulPartLen) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
-}
-
-CK_RV C_GenerateKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_OBJECT_HANDLE_PTR phKey) {
-  return CKR_FUNCTION_NOT_SUPPORTED;
-}
-
-CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_PTR pPublicKeyTemplate, CK_ULONG ulPublicKeyAttributeCount, CK_ATTRIBUTE_PTR pPrivateKeyTemplate, CK_ULONG ulPrivateKeyAttributeCount, CK_OBJECT_HANDLE_PTR phPublicKey, CK_OBJECT_HANDLE_PTR phPrivateKey) {
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 

@@ -44,7 +44,9 @@ static AttrIndex OBJECT_INDEX[] = {
 
 static AttrIndex KEY_INDEX[] = {
   attr_index_of(CKA_SIGN, PkcsKey, sign),
+  attr_index_of(CKA_VERIFY, PkcsKey, verify),
   attr_index_of(CKA_DECRYPT, PkcsKey, decrypt),
+  attr_index_of(CKA_ENCRYPT, PkcsKey, encrypt),
   attr_index_of(CKA_KEY_TYPE, PkcsKey, key_type)
 };
 
@@ -99,8 +101,8 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
     goto error;
   
   TPMS_CAPABILITY_DATA persistent;
-  TPM_RC rc = tpm_list(ctx, &persistent);
-  if (rc != TPM_RC_SUCCESS)
+  TPM2_RC rc = tpm_list(ctx, &persistent);
+  if (rc != TPM2_RC_SUCCESS)
     goto error;
 
   for (int i = 0; i < persistent.data.handles.count; i++) {
@@ -111,10 +113,11 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
     memset(userdata, 0, sizeof(UserdataTpm));
     userdata->name.t.size = sizeof(TPMU_NAME);
     rc = tpm_readpublic(ctx, persistent.data.handles.handle[i], &userdata->tpm_key, &userdata->name);
-    if (rc != TPM_RC_SUCCESS) {
+    if (rc != TPM2_RC_SUCCESS) {
       free(userdata);
       goto error;
     }
+    
     TPM2B_PUBLIC_KEY_RSA *rsa_key = &userdata->tpm_key.t.publicArea.unique.rsa;
     TPMS_RSA_PARMS *rsa_key_parms = &userdata->tpm_key.t.publicArea.parameters.rsaDetail;
 
@@ -125,7 +128,9 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
     userdata->private_object.id_size = userdata->name.t.size;
     userdata->private_object.class = CKO_PRIVATE_KEY;
     userdata->key.sign = CK_TRUE;
+    userdata->key.verify = CK_TRUE;
     userdata->key.decrypt = CK_TRUE;
+    userdata->key.encrypt = CK_TRUE;
     userdata->key.key_type = CKK_RSA;
     userdata->public_key.modulus = rsa_key->b.buffer;
     userdata->public_key.modulus_size = rsa_key_parms->keyBits / 8;
@@ -164,14 +169,16 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
     object->opposite = public_object;
   }
 
-  glob_t results;
-  char search_path[PATH_MAX];
-  snprintf(search_path, PATH_MAX, "%s/*.der", config->certificates);
-  if (glob(search_path, GLOB_TILDE, NULL, &results) == 0) {
-    for (int i = 0; i < results.gl_pathc; i++) {
-      pObject object = certificate_read(results.gl_pathv[i]);
-      if (object)
-        object_add(list, object);
+  if (config->certificates) {
+    glob_t results;
+    char search_path[PATH_MAX];
+    snprintf(search_path, PATH_MAX, "%s/*.der", config->certificates);
+    if (glob(search_path, GLOB_TILDE, NULL, &results) == 0) {
+      for (int i = 0; i < results.gl_pathc; i++) {
+        pObject object = certificate_read(results.gl_pathv[i]);
+        if (object)
+          object_add(list, object);
+      }
     }
   }
 
