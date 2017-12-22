@@ -132,7 +132,7 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
     userdata->key.decrypt = CK_TRUE;
     userdata->key.encrypt = CK_TRUE;
     userdata->key.key_type = CKK_RSA;
-    userdata->public_key.modulus = rsa_key->b.buffer;
+    userdata->public_key.modulus = rsa_key->buffer;
     userdata->public_key.modulus_size = rsa_key_parms->keyBits / 8;
     userdata->public_key.bits = rsa_key_parms->keyBits;
     userdata->public_key.exponent = htobe32(rsa_key_parms->exponent == 0 ? 65537 : rsa_key_parms->exponent);
