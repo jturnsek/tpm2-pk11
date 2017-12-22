@@ -33,7 +33,7 @@ TPM2_RC tpm_readpublic(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, TPM2B_P
   return Tss2_Sys_ReadPublic(context, handle, 0, public, name, &qualified_name, &sessions_data_out);
 }
 
-TPM2_RC tpm_rsa_sign(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned char *hash, unsigned long hashLength, TPMT_SIGNATURE *signature) {
+TPM2_RC tpm_rsa_sign(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned char *hash, unsigned long hash_length, TPMT_SIGNATURE *signature) {
   TSS2L_SYS_AUTH_COMMAND sessions_data = {
     .count = 1,
     .auths[0] = { .sessionHandle = TPM2_RS_PW },
@@ -65,7 +65,7 @@ TPM2_RC tpm_rsa_sign(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned 
   return Tss2_Sys_Sign(context, handle, &sessions_data, &digest, &scheme, &validation, signature, &sessions_data_out);
 }
 
-TPM2_RC tpm_ecc_sign(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned char *hash, unsigned long hashLength, TPMT_SIGNATURE *signature) {
+TPM2_RC tpm_ecc_sign(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned char *hash, unsigned long hash_length, TPMT_SIGNATURE *signature) {
   TSS2L_SYS_AUTH_COMMAND sessions_data = {
     .count = 1,
     .auths[0] = { .sessionHandle = TPM2_RS_PW },
@@ -97,18 +97,18 @@ TPM2_RC tpm_ecc_sign(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned 
   return Tss2_Sys_Sign(context, handle, &sessions_data, &digest, &scheme, &validation, signature, &sessions_data_out);
 }
 
-TPM2_RC tpm_verify(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, TPMT_SIGNATURE *signature, unsigned char *hash, unsigned long hashLength) {
-  TPM2B_DIGEST digest  = { .size = hashLength };
+TPM2_RC tpm_verify(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, TPMT_SIGNATURE *signature, unsigned char *hash, unsigned long hash_length) {
+  TPM2B_DIGEST digest  = { .size = hash_length };
   TPMT_TK_VERIFIED validation;
 
-  TSS2L_SYS_AUTH_RESPONSE sessionsDataOut;
+  TSS2L_SYS_AUTH_RESPONSE sessions_data_out;
 
-  memcpy(digest.buffer, hash, hashLength);
+  memcpy(digest.buffer, hash, hash_length);
 
-  return Tss2_Sys_VerifySignature(context, handle, NULL, &digest, signature, &validation, &sessionsDataOut);
+  return Tss2_Sys_VerifySignature(context, handle, NULL, &digest, signature, &validation, &sessions_data_out);
 }
 
-TPM2_RC tpm_rsa_decrypt(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned char *cipherText, unsigned long cipherLength, TPM2B_PUBLIC_KEY_RSA *message) {
+TPM2_RC tpm_rsa_decrypt(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned char *cipher_text, unsigned long cipher_length, TPM2B_PUBLIC_KEY_RSA *message) {
   TSS2L_SYS_AUTH_COMMAND sessions_data = {
     .count = 1,
     .auths[0] = { .sessionHandle = TPM2_RS_PW },
@@ -143,7 +143,7 @@ TPM2_RC tpm_rsa_encrypt(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsign
   return Tss2_Sys_RSA_Encrypt(context, handle, NULL, &in_data, &scheme, &label, &message, &out_sessions_data);
 }
 
-TPM2_RC tpm_list(TSS2_SYS_CONTEXT *context, TPMS_CAPABILITY_DATA* capabilityData) {
+TPM2_RC tpm_list(TSS2_SYS_CONTEXT *context, TPMS_CAPABILITY_DATA* capability_data) {
   TPMI_YES_NO more_data;
 
   return Tss2_Sys_GetCapability(context, 0, TPM2_CAP_HANDLES, htobe32(TPM2_HT_PERSISTENT), TPM2_PT_TPM2_HR_PERSISTENT, &more_data, capability_data, 0);
