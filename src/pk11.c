@@ -271,11 +271,11 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_
 }
 
 CK_RV C_Decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen) {
-  TPM2B_PUBLIC_KEY_RSA message = { .t.size = MAX_RSA_KEY_BYTES };
+  TPM2B_PUBLIC_KEY_RSA message = { .size = MAX_RSA_KEY_BYTES };
   struct session* session = get_session(hSession);
   TPM2_RC ret = tpm_rsa_decrypt(session->context, session->keyHandle, pEncryptedData, ulEncryptedDataLen, &message);
   
-  retmem(pData, pulDataLen, message.t.buffer, message.t.size);
+  retmem(pData, pulDataLen, message.buffer, message.size);
 
   return ret == TPM2_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
 }
@@ -300,12 +300,12 @@ CK_RV C_EncryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_
 }
 
 CK_RV C_Encrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen) {
-  TPM2B_PUBLIC_KEY_RSA message = { .t.size = MAX_RSA_KEY_BYTES };
+  TPM2B_PUBLIC_KEY_RSA message = { .size = MAX_RSA_KEY_BYTES };
   struct session* session = get_session(hSession);
 
   TPM2_RC ret = tpm_rsa_encrypt(session->context, session->keyHandle, pData, ulDataLen, &message);
   
-  retmem(pEncryptedData, pulEncryptedDataLen, message.t.buffer, message.t.size);
+  retmem(pEncryptedData, pulEncryptedDataLen, message.buffer, message.size);
 
   return ret == TPM2_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
 }
@@ -389,7 +389,7 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pRandomData, CK_U
     return CKR_GENERAL_ERROR;
   }
 
-  retmem(pRandomData, ulRandomLen, random_bytes.t.buffer, random_bytes.t.size);
+  retmem(pRandomData, ulRandomLen, random_bytes.buffer, random_bytes.size);
 
   return CKR_OK;
 }
