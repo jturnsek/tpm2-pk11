@@ -24,7 +24,7 @@
 #define ASN1_H_
 
 #include <stdarg.h>
-#include <library.h>
+//#include <library.h>
 #include <asn1/asn1.h>
 
 /**
