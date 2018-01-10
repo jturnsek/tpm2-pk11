@@ -1,23 +1,27 @@
 /*
+ * Copyright (C) 2018 Jernej Turnsek
  * Copyright (C) 2006 Martin Will
  * Copyright (C) 2000-2016 Andreas Steffen
  *
  * Hochschule fuer Technik Rapperswil
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.  See <http://www.fsf.org/copyleft/gpl.txt>.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * for more details.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 #include <stdio.h>
 #include <string.h>
-#include <time.h>
 
 #include "oid.h"
 #include "asn1.h"
@@ -139,7 +143,7 @@ chunk_t asn1_build_known_oid(int n)
 /**
  * Returns the number of bytes required to encode the given OID node
  */
-static int bytes_required(u_int val)
+static int bytes_required(uint32_t val)
 {
 	int shift, required = 1;
 
@@ -154,6 +158,214 @@ static int bytes_required(u_int val)
 	return required;
 }
 
+/**
+ * Enumerator interface, allows enumeration over collections.
+ */
+struct enumerator_t {
+
+	/**
+	 * Enumerate collection.
+	 *
+	 * The enumerate() method takes a variable number of pointer arguments
+	 * where the enumerated values get written to.
+	 *
+	 * @note Just assigning the generic enumerator_enumerate_default() function
+	 * that calls the enumerator's venumerate() method is usually enough.
+	 *
+	 * @param ...	variable list of enumerated items, implementation dependent
+	 * @return		TRUE if pointers returned
+	 */
+	bool (*enumerate)(enumerator_t *this, ...);
+
+	/**
+	 * Enumerate collection.
+	 *
+	 * The venumerate() method takes a variable argument list containing
+	 * pointers where the enumerated values get written to.
+	 *
+	 * To simplify the implementation the VA_ARGS_VGET() macro may be used.
+	 *
+	 * @param args	variable list of enumerated items, implementation dependent
+	 * @return		TRUE if pointers returned
+	 */
+	bool (*venumerate)(enumerator_t *this, va_list args);
+
+	/**
+	 * Destroy an enumerator_t instance.
+	 */
+	void (*destroy)(enumerator_t *this);
+};
+
+bool enumerator_enumerate_default(enumerator_t *enumerator, ...)
+{
+	va_list args;
+	bool result;
+
+	if (!enumerator->venumerate)
+	{
+		return FALSE;
+	}
+	va_start(args, enumerator);
+	result = enumerator->venumerate(enumerator, args);
+	va_end(args);
+	return result;
+}
+
+/**
+ * Enumerator implementation for token enumerator
+ */
+typedef struct {
+	/** implements enumerator_t */
+	enumerator_t public;
+	/** string to parse */
+	char *string;
+	/** current position */
+	char *pos;
+	/** separater chars */
+	const char *sep;
+	/** trim chars */
+	const char *trim;
+} token_enum_t;
+
+METHOD(enumerator_t, destroy_token_enum, void,
+	token_enum_t *this)
+{
+	free(this->string);
+	free(this);
+}
+
+METHOD(enumerator_t, enumerate_token_enum, bool,
+	token_enum_t *this, va_list args)
+{
+	const char *sep, *trim;
+	char *pos = NULL, *tmp, **token;
+	bool last = FALSE;
+
+	VA_ARGS_VGET(args, token);
+
+	/* trim leading characters/separators */
+	while (*this->pos)
+	{
+		trim = this->trim;
+		while (*trim)
+		{
+			if (*trim == *this->pos)
+			{
+				this->pos++;
+				break;
+			}
+			trim++;
+		}
+		sep = this->sep;
+		while (*sep)
+		{
+			if (*sep == *this->pos)
+			{
+				this->pos++;
+				break;
+			}
+			sep++;
+		}
+		if (!*trim && !*sep)
+		{
+			break;
+		}
+	}
+
+	switch (*this->pos)
+	{
+		case '"':
+		case '\'':
+		{
+			/* read quoted token */
+			tmp = strchr(this->pos + 1, *this->pos);
+			if (tmp)
+			{
+				*token = this->pos + 1;
+				*tmp = '\0';
+				this->pos = tmp + 1;
+				return TRUE;
+			}
+			/* unterminated string, FALL-THROUGH */
+		}
+		default:
+		{
+			/* find nearest separator */
+			sep = this->sep;
+			while (*sep)
+			{
+				tmp = strchr(this->pos, *sep);
+				if (tmp && (pos == NULL || tmp < pos))
+				{
+					pos = tmp;
+				}
+				sep++;
+			}
+			*token = this->pos;
+			if (pos)
+			{
+				*pos = '\0';
+				this->pos = pos + 1;
+			}
+			else
+			{
+				last = TRUE;
+				pos = this->pos = strchr(this->pos, '\0');
+			}
+			break;
+		}
+	}
+
+	/* trim trailing characters */
+	pos--;
+	while (pos >= *token)
+	{
+		trim = this->trim;
+		while (*trim)
+		{
+			if (*trim == *pos)
+			{
+				*(pos--) = '\0';
+				break;
+			}
+			trim++;
+		}
+		if (!*trim)
+		{
+			break;
+		}
+	}
+
+	if (!last || pos >= *token)
+	{
+		return TRUE;
+	}
+	return FALSE;
+}
+
+/*
+ * Described in header
+ */
+enumerator_t* enumerator_create_token(const char *string, const char *sep,
+									  const char *trim)
+{
+	token_enum_t *this;
+
+	INIT(this,
+		.public = {
+			.enumerate = enumerator_enumerate_default,
+			.venumerate = _enumerate_token_enum,
+			.destroy = _destroy_token_enum,
+		},
+		.string = strdup(string),
+		.sep = sep,
+		.trim = trim,
+	);
+	this->pos = this->string;
+
+	return &this->public;
+}
+
 /*
  * Defined in header.
  */
@@ -161,10 +373,10 @@ chunk_t asn1_oid_from_string(char *str)
 {
 	enumerator_t *enumerator;
 	size_t buf_len = 64;
-	u_char buf[buf_len];
+	unsigned char buf[buf_len];
 	char *end;
 	int i = 0, pos = 0, req, shift;
-	u_int val, first = 0;
+	uint32_t val, first = 0;
 
 	enumerator = enumerator_create_token(str, ".", "");
 	while (enumerator->enumerate(enumerator, &str))
@@ -205,7 +417,7 @@ char *asn1_oid_to_string(chunk_t oid)
 	size_t len = 64;
 	char buf[len], *pos = buf;
 	int written;
-	u_int val;
+	uint32_t val;
 
 	if (!oid.len)
 	{
@@ -224,7 +436,7 @@ char *asn1_oid_to_string(chunk_t oid)
 
 	while (oid.len)
 	{
-		val = (val << 7) + (u_int)(oid.ptr[0] & 0x7f);
+		val = (val << 7) + (uint32_t)(oid.ptr[0] & 0x7f);
 
 		if (oid.ptr[0] < 128)
 		{
@@ -247,7 +459,7 @@ char *asn1_oid_to_string(chunk_t oid)
  */
 size_t asn1_length(chunk_t *blob)
 {
-	u_char n;
+	unsigned char n;
 	size_t len;
 
 	if (blob->len < 2)
@@ -282,8 +494,7 @@ size_t asn1_length(chunk_t *blob)
 
 	if (n > sizeof(len))
 	{
-		//DBG2(DBG_ASN, "number of length octets is larger than limit of"
-			 " %d octets", (int)sizeof(len));
+		//DBG2(DBG_ASN, "number of length octets is larger than limit of"" %d octets", (int)sizeof(len));
 		return ASN1_INVALID_LENGTH;
 	}
 
@@ -308,7 +519,7 @@ size_t asn1_length(chunk_t *blob)
 int asn1_unwrap(chunk_t *blob, chunk_t *inner)
 {
 	chunk_t res;
-	u_char len;
+	unsigned char len;
 	int type;
 
 	if (blob->len < 2)
@@ -535,10 +746,6 @@ void asn1_debug_simple_object(chunk_t object, asn1_t type, bool private)
 				//DBG2(DBG_ASN, "  %s", oid_str);
 				free(oid_str);
 			}
-			else
-			{
-				//DBG2(DBG_ASN, "  '%s'", oid_names[oid].name);
-			}
 			return;
 		case ASN1_UTF8STRING:
 		case ASN1_IA5STRING:
@@ -558,35 +765,25 @@ void asn1_debug_simple_object(chunk_t object, asn1_t type, bool private)
 		default:
 			break;
 	}
-	if (private)
-	{
-		//DBG4(DBG_ASN, "%B", &object);
-	}
-	else
-	{
-		//DBG3(DBG_ASN, "%B", &object);
-	}
 }
 
 /**
  * parse an ASN.1 simple type
  */
-bool asn1_parse_simple_object(chunk_t *object, asn1_t type, u_int level, const char* name)
+bool asn1_parse_simple_object(chunk_t *object, asn1_t type, uint32_t level, const char* name)
 {
 	size_t len;
 
 	/* an ASN.1 object must possess at least a tag and length field */
 	if (object->len < 2)
 	{
-		//DBG2(DBG_ASN, "L%d - %s:  ASN.1 object smaller than 2 octets", level,
-			 name);
+		//DBG2(DBG_ASN, "L%d - %s:  ASN.1 object smaller than 2 octets", level, name);
 		return FALSE;
 	}
 
 	if (*object->ptr != type)
 	{
-		//DBG2(DBG_ASN, "L%d - %s: ASN1 tag 0x%02x expected, but is 0x%02x",
-			 level, name, type, *object->ptr);
+		//DBG2(DBG_ASN, "L%d - %s: ASN1 tag 0x%02x expected, but is 0x%02x",level, name, type, *object->ptr);
 		return FALSE;
 	}
 
@@ -594,8 +791,7 @@ bool asn1_parse_simple_object(chunk_t *object, asn1_t type, u_int level, const c
 
 	if (len == ASN1_INVALID_LENGTH)
 	{
-		//DBG2(DBG_ASN, "L%d - %s:  length of ASN.1 object invalid or too large",
-			 level, name);
+		//DBG2(DBG_ASN, "L%d - %s:  length of ASN.1 object invalid or too large",level, name);
 		return FALSE;
 	}
 
@@ -625,12 +821,12 @@ uint64_t asn1_parse_integer_uint64(chunk_t blob)
  */
 chunk_t asn1_integer_from_uint64(uint64_t val)
 {
-	u_char buf[sizeof(val)];
+	unsigned char buf[sizeof(val)];
 	chunk_t enc = chunk_empty;
 
 	if (val < 0x100)
 	{
-		buf[0] = (u_char)val;
+		buf[0] = (unsigned char)val;
 		return chunk_clone(chunk_create(buf, 1));
 	}
 	for (enc.ptr = buf + sizeof(val); val; enc.len++, val >>= 8)
@@ -700,8 +896,8 @@ int asn1_parse_algorithmIdentifier(chunk_t blob, int level0, chunk_t *parameters
  */
 bool is_asn1(chunk_t blob)
 {
-	u_int len;
-	u_char tag;
+	uint32_t len;
+	unsigned char tag;
 
 	if (!blob.len || !blob.ptr)
 	{
@@ -745,7 +941,7 @@ bool asn1_is_printablestring(chunk_t str)
 {
 	const char printablestring_charset[] =
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 '()+,-./:=?";
-	u_int i;
+	uint32_t i;
 
 	for (i = 0; i < str.len; i++)
 	{
@@ -770,7 +966,7 @@ static void asn1_code_length(size_t length, chunk_t *code)
 	else if (length < 256)
 	{
 		code->ptr[0] = 0x81;
-		code->ptr[1] = (u_char) length;
+		code->ptr[1] = (unsigned char) length;
 		code->len = 2;
 	}
 	else if (length < 65536)
@@ -793,11 +989,11 @@ static void asn1_code_length(size_t length, chunk_t *code)
 /**
  * build an empty asn.1 object with tag and length fields already filled in
  */
-u_char* asn1_build_object(chunk_t *object, asn1_t type, size_t datalen)
+unsigned char* asn1_build_object(chunk_t *object, asn1_t type, size_t datalen)
 {
-	u_char length_buf[4];
+	unsigned char length_buf[4];
 	chunk_t length = { length_buf, 0 };
-	u_char *pos;
+	unsigned char *pos;
 
 	/* code the asn.1 length field */
 	asn1_code_length(datalen, &length);
@@ -826,7 +1022,7 @@ chunk_t asn1_simple_object(asn1_t tag, chunk_t content)
 {
 	chunk_t object;
 
-	u_char *pos = asn1_build_object(&object, tag, content.len);
+	unsigned char *pos = asn1_build_object(&object, tag, content.len);
 	memcpy(pos, content.ptr, content.len);
 	pos += content.len;
 
@@ -839,7 +1035,7 @@ chunk_t asn1_simple_object(asn1_t tag, chunk_t content)
 chunk_t asn1_bitstring(const char *mode, chunk_t content)
 {
 	chunk_t object;
-	u_char *pos = asn1_build_object(&object, ASN1_BIT_STRING, 1 + content.len);
+	unsigned char *pos = asn1_build_object(&object, ASN1_BIT_STRING, 1 + content.len);
 
 	*pos++ = 0x00;
 	memcpy(pos, content.ptr, content.len);
@@ -857,7 +1053,7 @@ chunk_t asn1_integer(const char *mode, chunk_t content)
 {
 	chunk_t object;
 	size_t len;
-	u_char *pos;
+	unsigned char *pos;
 	bool move;
 
 
@@ -895,7 +1091,7 @@ chunk_t asn1_wrap(asn1_t type, const char *mode, ...)
 {
 	chunk_t construct;
 	va_list chunks;
-	u_char *pos;
+	unsigned char *pos;
 	int i;
 	int count = strlen(mode);
 

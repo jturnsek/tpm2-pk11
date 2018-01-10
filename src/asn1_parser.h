@@ -1,17 +1,22 @@
 /*
+ * Copyright (C) 2018 Jernej Turnsek
  * Copyright (C) 2006 Martin Will
  * Copyright (C) 2000-2017 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.  See <http://www.fsf.org/copyleft/gpl.txt>.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * for more details.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 /**
@@ -23,10 +28,8 @@
 #define ASN1_PARSER_H_
 
 #include <stdarg.h>
-
-//#include <library.h>
-
 #include "asn1.h"
+#include "utils.h"
 
 /**
  * Definition of ASN.1 flags
@@ -49,8 +52,8 @@ typedef struct asn1Object_t asn1Object_t;
  * Syntax definition of an ASN.1 object
  */
 struct asn1Object_t{
-	u_int level;
-	const u_char *name;
+	uint32_t level;
+	const unsigned char *name;
 	asn1_t type;
 	uint16_t flags;
 };
@@ -78,14 +81,14 @@ struct asn1_parser_t {
 	 *
 	 * @return 			current level
 	 */
-	u_int (*get_level)(asn1_parser_t *this);
+	uint32_t (*get_level)(asn1_parser_t *this);
 
 	/**
 	 * Set the top-most level
 	 *
 	 * @param level		top-most level
 	 */
-	void (*set_top_level)(asn1_parser_t *this, u_int level0);
+	void (*set_top_level)(asn1_parser_t *this, uint32_t level0);
 
 	/**
 	 * Set implicit and private flags

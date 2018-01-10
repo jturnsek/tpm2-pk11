@@ -1,18 +1,23 @@
 /*
+ * Copyright (C) 2018 Jernej Turnsek
  * Copyright (C) 2008-2013 Tobias Brunner
  * Copyright (C) 2005-2008 Martin Willi
  * Copyright (C) 2005 Jan Hutter
  * Hochschule fuer Technik Rapperswil
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.  See <http://www.fsf.org/copyleft/gpl.txt>.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * for more details.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 /**
@@ -23,14 +28,11 @@
 #ifndef CHUNK_H_
 #define CHUNK_H_
 
+#include <stdint.h>
 #include <string.h>
 #include <stdarg.h>
 #include <sys/types.h>
-#ifdef HAVE_ALLOCA_H
 #include <alloca.h>
-#endif
-
-#include "oid.h"
 
 typedef struct chunk_t chunk_t;
 
@@ -39,7 +41,7 @@ typedef struct chunk_t chunk_t;
  */
 struct chunk_t {
 	/** Pointer to start of data */
-	u_char *ptr;
+	unsigned char *ptr;
 	/** Length of data in bytes */
 	size_t len;
 };
@@ -54,7 +56,7 @@ extern chunk_t chunk_empty;
 /**
  * Create a new chunk pointing to "ptr" with length "len"
  */
-static inline chunk_t chunk_create(u_char *ptr, size_t len)
+static inline chunk_t chunk_create(unsigned char *ptr, size_t len)
 {
 	chunk_t chunk = {ptr, len};
 	return chunk;
@@ -63,7 +65,7 @@ static inline chunk_t chunk_create(u_char *ptr, size_t len)
 /**
  * Create a clone of a chunk pointing to "ptr"
  */
-chunk_t chunk_create_clone(u_char *ptr, chunk_t chunk);
+chunk_t chunk_create_clone(unsigned char *ptr, chunk_t chunk);
 
 /**
  * Calculate length of multiple chunks
@@ -77,7 +79,7 @@ size_t chunk_length(const char *mode, ...);
  * them with a single character: 'c' for copy (allocate new chunk), 'm' for move
  * (free given chunk) or 's' for sensitive-move (clear given chunk, then free).
  */
-chunk_t chunk_create_cat(u_char *ptr, const char* mode, ...);
+chunk_t chunk_create_cat(unsigned char *ptr, const char* mode, ...);
 
 /**
  * Split up a chunk into parts, "mode" is a string of "a" (alloc),
@@ -223,17 +225,17 @@ static inline void chunk_clear(chunk_t *chunk)
 /**
  * Initialize a chunk using a char array
  */
-#define chunk_from_chars(...) ((chunk_t){(u_char[]){__VA_ARGS__}, sizeof((u_char[]){__VA_ARGS__})})
+#define chunk_from_chars(...) ((chunk_t){(unsigned char[]){__VA_ARGS__}, sizeof((unsigned char[]){__VA_ARGS__})})
 
 /**
  * Initialize a chunk to point to a thing
  */
-#define chunk_from_thing(thing) chunk_create((u_char*)&(thing), sizeof(thing))
+#define chunk_from_thing(thing) chunk_create((unsigned char*)&(thing), sizeof(thing))
 
 /**
  * Initialize a chunk from a string, not containing 0-terminator
  */
-#define chunk_from_str(str) ({char *x = (str); chunk_create((u_char*)x, strlen(x));})
+#define chunk_from_str(str) ({char *x = (str); chunk_create((unsigned char*)x, strlen(x));})
 
 /**
  * Allocate a chunk on the heap
@@ -422,7 +424,7 @@ uint32_t chunk_hash_static_inc(chunk_t chunk, uint32_t hash);
  * @param key			key to use
  * @return				MAC for given input and key
  */
-uint64_t chunk_mac(chunk_t chunk, u_char *key);
+uint64_t chunk_mac(chunk_t chunk, unsigned char *key);
 
 /**
  * Calculate the Internet Checksum according to RFC 1071 for the given chunk.

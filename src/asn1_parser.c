@@ -1,17 +1,22 @@
 /*
+ * Copyright (C) 2018 Jernej Turnsek
  * Copyright (C) 2006 Martin Will
  * Copyright (C) 2000-2017 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.  See <http://www.fsf.org/copyleft/gpl.txt>.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * for more details.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 #include <stdio.h>
@@ -62,7 +67,7 @@ struct private_asn1_parser_t {
 	/**
 	 * Top-most parsing level - defaults to 0
 	 */
-	u_int level0;
+	uint32_t level0;
 
 	/**
 	 * Jump back address for loops for each level
@@ -85,8 +90,8 @@ METHOD(asn1_parser_t, iterate, bool,
 	private_asn1_parser_t *this, int *objectID, chunk_t *object)
 {
 	chunk_t *blob, *blob1, blob_ori;
-	u_char *start_ptr;
-	u_int level;
+	unsigned char *start_ptr;
+	uint32_t level;
 	asn1Object_t obj;
 
 	*object = chunk_empty;
@@ -219,7 +224,7 @@ METHOD(asn1_parser_t, iterate, bool,
 	{
 		//DBG2(DBG_ASN, "L%d - %s: ASN1 tag 0x%02x expected, but is 0x%02x",
 					level, obj.name, obj.type, *start_ptr);
-		//DBG3(DBG_ASN, "%b", start_ptr, (u_int)(blob->ptr - start_ptr));
+		//DBG3(DBG_ASN, "%b", start_ptr, (uint32_t)(blob->ptr - start_ptr));
 		this->success = FALSE;
 		goto end;
 	}
@@ -283,14 +288,14 @@ end:
 	return this->success;
 }
 
-METHOD(asn1_parser_t, get_level, u_int,
+METHOD(asn1_parser_t, get_level, uint32_t,
 private_asn1_parser_t *this)
 {
 	return this->level0 + this->objects[this->line].level;
 }
 
 METHOD(asn1_parser_t, set_top_level, void,
-	private_asn1_parser_t *this, u_int level0)
+	private_asn1_parser_t *this, uint32_t level0)
 {
 	this->level0 = level0;
 }

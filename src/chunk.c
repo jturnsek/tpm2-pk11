@@ -1,26 +1,29 @@
 /*
+ * Copyright (C) 2018 Jernej Turnsek
  * Copyright (C) 2008-2013 Tobias Brunner
  * Copyright (C) 2005-2006 Martin Willi
  * Copyright (C) 2005 Jan Hutter
  * Hochschule fuer Technik Rapperswil
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.  See <http://www.fsf.org/copyleft/gpl.txt>.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * for more details.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 #include <stdio.h>
 #include <sys/types.h>
 #include <sys/stat.h>
-#ifdef HAVE_MMAP
-# include <sys/mman.h>
-#endif
+#include <sys/mman.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <errno.h>
@@ -28,6 +31,8 @@
 #include <time.h>
 
 #include "chunk.h"
+
+#define HAVE_MMAP
 
 /**
  * Empty chunk.
@@ -37,7 +42,7 @@ chunk_t chunk_empty = { NULL, 0 };
 /**
  * Described in header.
  */
-chunk_t chunk_create_clone(u_char *ptr, chunk_t chunk)
+chunk_t chunk_create_clone(unsigned char *ptr, chunk_t chunk)
 {
 	chunk_t clone = chunk_empty;
 
@@ -84,7 +89,7 @@ size_t chunk_length(const char* mode, ...)
 /**
  * Described in header.
  */
-chunk_t chunk_create_cat(u_char *ptr, const char* mode, ...)
+chunk_t chunk_create_cat(unsigned char *ptr, const char* mode, ...)
 {
 	va_list chunks;
 	chunk_t construct = chunk_create(ptr, 0);
@@ -133,7 +138,7 @@ chunk_t chunk_create_cat(u_char *ptr, const char* mode, ...)
 void chunk_split(chunk_t chunk, const char *mode, ...)
 {
 	va_list chunks;
-	u_int len;
+	uint32_t len;
 	chunk_t *ch;
 
 	va_start(chunks, mode);
@@ -143,7 +148,7 @@ void chunk_split(chunk_t chunk, const char *mode, ...)
 		{
 			break;
 		}
-		len = va_arg(chunks, u_int);
+		len = va_arg(chunks, uint32_t);
 		ch = va_arg(chunks, chunk_t*);
 		/* a null chunk means skip len bytes */
 		if (ch == NULL)
@@ -222,16 +227,12 @@ bool chunk_write(chunk_t chunk, char *path, mode_t mask, bool force)
 	}
 	oldmask = umask(mask);
 	fd = fopen(path,
-#ifdef WIN32
-				"wb"
-#else
 				"w"
-#endif
 	);
 
 	if (fd)
 	{
-		if (fwrite(chunk.ptr, sizeof(u_char), chunk.len, fd) == chunk.len)
+		if (fwrite(chunk.ptr, sizeof(unsigned char), chunk.len, fd) == chunk.len)
 		{
 			good = TRUE;
 		}
@@ -276,12 +277,6 @@ bool chunk_from_fd(int fd, chunk_t *out)
 	while (TRUE)
 	{
 		len = read(fd, buf + total, bufsize - total);
-#ifdef WIN32
-		if (len == -1 && errno == EBADF)
-		{	/* operating on a Winsock socket? */
-			len = recv(fd, buf + total, bufsize - total, 0);
-		}
-#endif
 		if (len < 0)
 		{
 			free(buf);
@@ -343,9 +338,6 @@ chunk_t *chunk_map(char *path, bool wr)
 	int tmp, flags;
 
 	flags = wr ? O_RDWR : O_RDONLY;
-#ifdef WIN32
-	flags |= O_BINARY;
-#endif
 
 	INIT(chunk,
 		.fd = open(path, flags),
@@ -501,7 +493,7 @@ static char hex2bin(char hex)
 chunk_t chunk_from_hex(chunk_t hex, char *buf)
 {
 	int i, len;
-	u_char *ptr;
+	unsigned char *ptr;
 	bool odd = FALSE;
 
 	/* skip an optional 0x prefix */
@@ -628,7 +620,7 @@ static int b642bin(char b64)
  */
 chunk_t chunk_from_base64(chunk_t base64, char *buf)
 {
-	u_char *pos, byte[4];
+	unsigned char *pos, byte[4];
 	int i, j, len, outlen;
 
 	len = base64.len / 4 * 3;
@@ -781,7 +773,7 @@ bool chunk_printable(chunk_t chunk, chunk_t *sane, char replace)
 /**
  * Helper functions for chunk_mac()
  */
-static inline uint64_t sipget(u_char *in)
+static inline uint64_t sipget(unsigned char *in)
 {
 	uint64_t v = 0;
 	int i;
@@ -829,7 +821,7 @@ static inline void sipcompress(uint64_t *v0, uint64_t *v1, uint64_t *v2,
 	*v0 ^= m;
 }
 
-static inline uint64_t siplast(size_t len, u_char *pos)
+static inline uint64_t siplast(size_t len, unsigned char *pos)
 {
 	uint64_t b;
 	int rem = len & 7;
@@ -861,11 +853,11 @@ static inline uint64_t siplast(size_t len, u_char *pos)
 /**
  * Caculate SipHash-2-4 with an optional first block given as argument.
  */
-static uint64_t chunk_mac_inc(chunk_t chunk, u_char *key, uint64_t m)
+static uint64_t chunk_mac_inc(chunk_t chunk, unsigned char *key, uint64_t m)
 {
 	uint64_t v0, v1, v2, v3, k0, k1;
 	size_t len = chunk.len;
-	u_char *pos = chunk.ptr, *end;
+	unsigned char *pos = chunk.ptr, *end;
 
 	end = chunk.ptr + len - (len % 8);
 
@@ -902,7 +894,7 @@ static uint64_t chunk_mac_inc(chunk_t chunk, u_char *key, uint64_t m)
 /**
  * Described in header.
  */
-uint64_t chunk_mac(chunk_t chunk, u_char *key)
+uint64_t chunk_mac(chunk_t chunk, unsigned char *key)
 {
 	return chunk_mac_inc(chunk, key, 0);
 }
@@ -910,12 +902,12 @@ uint64_t chunk_mac(chunk_t chunk, u_char *key)
 /**
  * Secret key allocated randomly with chunk_hash_seed().
  */
-static u_char key[16] = {};
+static unsigned char key[16] = {};
 
 /**
  * Static key used in case predictable hash values are required.
  */
-static u_char static_key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+static unsigned char static_key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
 							  0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
 
 /**
@@ -954,7 +946,7 @@ void chunk_hash_seed()
 		srandom(time(NULL) + getpid());
 		for (; done < sizeof(key); done++)
 		{
-			key[done] = (u_char)random();
+			key[done] = (unsigned char)random();
 		}
 	}
 	seeded = TRUE;
@@ -1022,38 +1014,4 @@ uint16_t chunk_internet_checksum_inc(chunk_t data, uint16_t checksum)
 uint16_t chunk_internet_checksum(chunk_t data)
 {
 	return chunk_internet_checksum_inc(data, 0xffff);
-}
-
-/**
- * Described in header.
- */
-int chunk_printf_hook(printf_hook_data_t *data, printf_hook_spec_t *spec,
-					  const void *const *args)
-{
-	chunk_t *chunk = *((chunk_t**)(args[0]));
-	bool first = TRUE;
-	chunk_t copy = *chunk;
-	int written = 0;
-
-	if (!spec->hash && !spec->plus)
-	{
-		u_int chunk_len = chunk->len;
-		const void *new_args[] = {&chunk->ptr, &chunk_len};
-		return mem_printf_hook(data, spec, new_args);
-	}
-
-	while (copy.len > 0)
-	{
-		if (first)
-		{
-			first = FALSE;
-		}
-		else if (!spec->plus)
-		{
-			written += print_in_hook(data, ":");
-		}
-		written += print_in_hook(data, "%02x", *copy.ptr++);
-		copy.len--;
-	}
-	return written;
 }

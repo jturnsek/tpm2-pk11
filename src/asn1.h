@@ -1,18 +1,23 @@
 /*
+ * Copyright (C) 2018 Jernej Turnsek
  * Copyright (C) 2011-2017 Tobias Brunner
  * Copyright (C) 2006 Martin Will
  * Copyright (C) 2000-2008 Andreas Steffen
  * HSR Hochschule fuer Technik Rapperswil
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU General Public License as published by the
- * Free Software Foundation; either version 2 of the License, or (at your
- * option) any later version.  See <http://www.fsf.org/copyleft/gpl.txt>.
+ * This library is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU Lesser General Public
+ * License as published by the Free Software Foundation; either
+ * version 2.1 of the License, or (at your option) any later version.
  *
- * This program is distributed in the hope that it will be useful, but
- * WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY
- * or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
- * for more details.
+ * This library is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+ * Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public
+ * License along with this library; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
 /**
@@ -24,9 +29,9 @@
 #define ASN1_H_
 
 #include <stdarg.h>
-//#include <library.h>
-//#include <asn1.h>
+#include <time.h>
 #include "chunk.h"
+#include "utils.h"
 
 /**
  * Definition of some primitive ASN1 types
@@ -177,7 +182,7 @@ int asn1_parse_algorithmIdentifier(chunk_t blob, int level0, chunk_t *params);
  * @param name		descriptive name of object
  * @return			TRUE if parsing successful
  */
-bool asn1_parse_simple_object(chunk_t *object, asn1_t type, u_int level0,
+bool asn1_parse_simple_object(chunk_t *object, asn1_t type, uint32_t level0,
 							  const char* name);
 
 /**
@@ -269,7 +274,7 @@ bool asn1_is_printablestring(chunk_t str);
  * @param datalen	size of the body to be created
  * @return			points to the first position in the body
  */
-u_char* asn1_build_object(chunk_t *object, asn1_t type, size_t datalen);
+unsigned char* asn1_build_object(chunk_t *object, asn1_t type, size_t datalen);
 
 /**
  * Build a simple ASN.1 object
