@@ -32,6 +32,8 @@
 #endif
 #include <glob.h>
 
+const unsigned char prime256v1[] = "\x06\x08\x2a\x86\x48\xce\x3d\x03\x01\x07";
+
 typedef struct userdata_tpm_t {
   TPM2B_PUBLIC tpm_key;
   TPM2B_NAME name;
@@ -53,10 +55,15 @@ static AttrIndex KEY_INDEX[] = {
   attr_index_of(CKA_KEY_TYPE, PkcsKey, key_type)
 };
 
-static AttrIndex PUBLIC_KEY_INDEX[] = {
-  attr_dynamic_index_of(CKA_MODULUS, PkcsPublicKey, modulus, modulus_size),
-  attr_index_of(CKA_MODULUS_BITS, PkcsPublicKey, bits),
-  attr_index_of(CKA_PUBLIC_EXPONENT, PkcsPublicKey, exponent)
+static AttrIndex PUBLIC_KEY_RSA_INDEX[] = {
+  attr_dynamic_index_of(CKA_MODULUS, PkcsRSAPublicKey, modulus, modulus_size),
+  attr_index_of(CKA_MODULUS_BITS, PkcsRSAPublicKey, bits),
+  attr_index_of(CKA_PUBLIC_EXPONENT, PkcsRSAPublicKey, exponent)
+};
+
+static AttrIndex PUBLIC_KEY_EC_INDEX[] = {
+  attr_dynamic_index_of(CKA_EC_PARAMS, PkcsECPublicKey, params, params_size),
+  attr_dynamic_index_of(CKA_EC_POINT, PkcsECPublicKey, point, point_size)  
 };
 
 pObject object_get(pObjectList list, int id) {
@@ -120,56 +127,110 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
       free(userdata);
       goto error;
     }
-    
-    TPM2B_PUBLIC_KEY_RSA *rsa_key = &userdata->tpm_key.publicArea.unique.rsa;
-    TPMS_RSA_PARMS *rsa_key_parms = &userdata->tpm_key.publicArea.parameters.rsaDetail;
 
-    userdata->public_object.id = userdata->name.name;
-    userdata->public_object.id_size = userdata->name.size;
-    userdata->public_object.class = CKO_PUBLIC_KEY;
-    userdata->private_object.id = userdata->name.name;
-    userdata->private_object.id_size = userdata->name.size;
-    userdata->private_object.class = CKO_PRIVATE_KEY;
-    userdata->key.sign = CK_TRUE;
-    userdata->key.verify = CK_TRUE;
-    userdata->key.decrypt = CK_TRUE;
-    userdata->key.encrypt = CK_TRUE;
-    userdata->key.key_type = CKK_RSA;
-    userdata->public_key.modulus = rsa_key->buffer;
-    userdata->public_key.modulus_size = rsa_key_parms->keyBits / 8;
-    userdata->public_key.bits = rsa_key_parms->keyBits;
-    userdata->public_key.exponent = htobe32(rsa_key_parms->exponent == 0 ? 65537 : rsa_key_parms->exponent);
+    if (userdata->tpm_key.publicArea.type == TPM_ALG_RSASSA) {
+      TPM2B_PUBLIC_KEY_RSA *rsa_key = &userdata->tpm_key.publicArea.unique.rsa;
+      TPMS_RSA_PARMS *rsa_key_parms = &userdata->tpm_key.publicArea.parameters.rsaDetail;
 
-    pObject object = malloc(sizeof(Object));
-    if (object == NULL) {
-      free(userdata);
-      goto error;
+      userdata->public_object.id = userdata->name.name;
+      userdata->public_object.id_size = userdata->name.size;
+      userdata->public_object.class = CKO_PUBLIC_KEY;
+      userdata->private_object.id = userdata->name.name;
+      userdata->private_object.id_size = userdata->name.size;
+      userdata->private_object.class = CKO_PRIVATE_KEY;
+      userdata->key.sign = CK_TRUE;
+      userdata->key.verify = CK_TRUE;
+      userdata->key.decrypt = CK_TRUE;
+      userdata->key.encrypt = CK_TRUE;
+      userdata->key.key_type = CKK_RSA;
+      userdata->public_key.rsa.modulus = rsa_key->buffer;
+      userdata->public_key.rsa.modulus_size = rsa_key_parms->keyBits / 8;
+      userdata->public_key.rsa.bits = rsa_key_parms->keyBits;
+      userdata->public_key.rsa.exponent = htobe32(rsa_key_parms->exponent == 0 ? 65537 : rsa_key_parms->exponent);
+
+      pObject object = malloc(sizeof(Object));
+      if (object == NULL) {
+        free(userdata);
+        goto error;
+      }
+
+      object->tpm_handle = 0;
+      object->userdata = userdata;
+      object->num_entries = 3;
+      object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
+      object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->public_object, OBJECT_INDEX);
+      object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
+      object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.rsa, PUBLIC_KEY_RSA_INDEX);
+      object_add(list, object);
+      pObject public_object = object;
+
+      object = malloc(sizeof(Object));
+      if (object == NULL)
+        goto error;
+
+      object->tpm_handle = persistent.data.handles.handle[i];
+      object->userdata = NULL;
+      object->num_entries = 2;
+      object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
+      object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
+      object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
+      object_add(list, object);
+
+      public_object->opposite = object;
+      object->opposite = public_object;
     }
+    else if (userdata->tpm_key.publicArea.type == TPM_ALG_ECDSA) {
+      TPMS_ECC_POINT *ecc_key = &userdata->tpm_key.publicArea.unique.ecc; 
+      TPMS_ECC_PARMS *ecc_key_parms = &userdata->tpm_key.publicArea.parameters.eccDetail;
 
-    object->tpm_handle = 0;
-    object->userdata = userdata;
-    object->num_entries = 3;
-    object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
-    object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->public_object, OBJECT_INDEX);
-    object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
-    object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key, PUBLIC_KEY_INDEX);
-    object_add(list, object);
-    pObject public_object = object;
+      userdata->public_object.id = userdata->name.name;
+      userdata->public_object.id_size = userdata->name.size;
+      userdata->public_object.class = CKO_PUBLIC_KEY;
+      userdata->private_object.id = userdata->name.name;
+      userdata->private_object.id_size = userdata->name.size;
+      userdata->private_object.class = CKO_PRIVATE_KEY;
+      userdata->key.sign = CK_TRUE;
+      userdata->key.verify = CK_TRUE;
+      userdata->key.decrypt = CK_FALSE;
+      userdata->key.encrypt = CK_FALSE;
+      userdata->key.key_type = CKK_EC;
+      userdata->public_key.ec.params = prime256v1; /* only ecc curve supported for now */
+      userdata->public_key.ec.params_size = sizeof(prime256v1);
+      userdata->public_key.ec.point =
+      userdata->public_key.ec.point_size =
 
-    object = malloc(sizeof(Object));
-    if (object == NULL)
-      goto error;
 
-    object->tpm_handle = persistent.data.handles.handle[i];
-    object->userdata = NULL;
-    object->num_entries = 2;
-    object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
-    object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
-    object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
-    object_add(list, object);
+      pObject object = malloc(sizeof(Object));
+      if (object == NULL) {
+        free(userdata);
+        goto error;
+      }
 
-    public_object->opposite = object;
-    object->opposite = public_object;
+      object->tpm_handle = 0;
+      object->userdata = userdata;
+      object->num_entries = 3;
+      object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
+      object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->public_object, OBJECT_INDEX);
+      object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
+      object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.ec, PUBLIC_KEY_EC_INDEX);
+      object_add(list, object);
+      pObject public_object = object;
+
+      object = malloc(sizeof(Object));
+      if (object == NULL)
+        goto error;
+
+      object->tpm_handle = persistent.data.handles.handle[i];
+      object->userdata = NULL;
+      object->num_entries = 2;
+      object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
+      object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
+      object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
+      object_add(list, object);
+
+      public_object->opposite = object;
+      object->opposite = public_object;
+    }
   }
 
   if (config->certificates) {

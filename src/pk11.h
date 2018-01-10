@@ -27,7 +27,7 @@
 #define TPM2_PK11_CONFIG_DIR ".tpm2"
 #define TPM2_PK11_CONFIG_FILE "config"
 
-#define TPM2_PK11_LABEL ""
+#define TPM2_PK11_LABEL "TPM2"
 #define TPM2_PK11_SLOT_DESCRIPTION "TPM2 PKCS11 slot"
 #define TPM2_PK11_MANUFACTURER "Iskraemeco,d.d."
 #define TPM2_PK11_LIBRARY_DESCRIPTION "TPM2 PKCS11 Library"
@@ -50,11 +50,23 @@ typedef struct pkcs_key_t {
   CK_KEY_TYPE key_type;
 } PkcsKey, *pPkcsKey;
 
-typedef struct pkcs_public_key_t {
+typedef struct pkcs_rsa_public_key_t {
   void* modulus;
   size_t modulus_size;
   CK_ULONG bits;
   uint32_t exponent;
+} PkcsRSAPublicKey, *pPkcsRSAPublicKey;
+
+typedef struct pkcs_ec_public_key_t {
+  void* params;
+  size_t params_size;
+  void* point;
+  size_t point_size;
+} PkcsECPublicKey, *pPkcsECPublicKey;
+
+typedef union pkcs_public_key_t {
+  PkcsRSAPublicKey rsa; 
+  PkcsECPublicKey ec;
 } PkcsPublicKey, *pPkcsPublicKey;
 
 typedef struct pkcs_x509_t {

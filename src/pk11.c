@@ -376,7 +376,7 @@ CK_RV C_GetMechanismInfo (CK_SLOT_ID slotID, CK_MECHANISM_TYPE type, CK_MECHANIS
 }
 
 CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pSeed, CK_ULONG ulSeedLen) {
-  // jturnsek: nothing
+  // jturnsek: N/A
   return CKR_OK;
 }
 
