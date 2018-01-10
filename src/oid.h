@@ -8,6 +8,9 @@
 #ifndef OID_H_
 #define OID_H_
 
+typedef unsigned char u_char; 
+typedef unsigned int u_int; 
+
 typedef struct {
     u_char octet;
     u_int  next;
