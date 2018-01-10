@@ -24,6 +24,11 @@
 #include "asn1_parser.h"
 
 /**
+ * Empty chunk.
+ */
+chunk_t chunk_empty = { NULL, 0 };
+
+/**
  * Commonly used ASN1 values.
  */
 const chunk_t ASN1_INTEGER_0 = chunk_from_chars(0x02, 0x01, 0x00);

@@ -25,7 +25,24 @@
 
 #include <stdarg.h>
 //#include <library.h>
-#include <asn1/asn1.h>
+#include <asn1.h>
+
+typedef struct chunk_t chunk_t;
+
+/**
+ * General purpose pointer/length abstraction.
+ */
+struct chunk_t {
+	/** Pointer to start of data */
+	unsigned char *ptr;
+	/** Length of data in bytes */
+	size_t len;
+};
+
+/**
+ * A { NULL, 0 }-chunk handy for initialization.
+ */
+extern chunk_t chunk_empty;
 
 /**
  * Definition of some primitive ASN1 types
