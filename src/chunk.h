@@ -30,7 +30,7 @@
 #include <alloca.h>
 #endif
 
-//#include <utils/utils.h>
+#include "oid.h"
 
 typedef struct chunk_t chunk_t;
 
