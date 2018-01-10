@@ -120,8 +120,7 @@ METHOD(asn1_parser_t, iterate, bool,
 			{
 				if (this->choice[obj.level+1])
 				{
-					//DBG1(DBG_ASN, "L%d - %s:  incorrect choice encoding",
-						this->level0 + obj.level, obj.name);
+					//DBG1(DBG_ASN, "L%d - %s:  incorrect choice encoding",this->level0 + obj.level, obj.name);
 					this->success = FALSE;
 					goto end;
 				}
@@ -182,8 +181,7 @@ METHOD(asn1_parser_t, iterate, bool,
 	/* an ASN.1 object must possess at least a tag and length field */
 	if (blob->len < 2)
 	{
-		//DBG1(DBG_ASN, "L%d - %s:  ASN.1 object smaller than 2 octets",
-					level, obj.name);
+		//DBG1(DBG_ASN, "L%d - %s:  ASN.1 object smaller than 2 octets",level, obj.name);
 		this->success = FALSE;
 		goto end;
 	}
@@ -192,8 +190,7 @@ METHOD(asn1_parser_t, iterate, bool,
 
 	if (blob1->len == ASN1_INVALID_LENGTH)
 	{
-		//DBG1(DBG_ASN, "L%d - %s:  length of ASN.1 object invalid or too large",
-					level, obj.name);
+		//DBG1(DBG_ASN, "L%d - %s:  length of ASN.1 object invalid or too large",level, obj.name);
 		this->success = FALSE;
 		goto end;
 	}
@@ -222,8 +219,7 @@ METHOD(asn1_parser_t, iterate, bool,
 
 	if (*start_ptr != obj.type && !(this->implicit && this->line == 0))
 	{
-		//DBG2(DBG_ASN, "L%d - %s: ASN1 tag 0x%02x expected, but is 0x%02x",
-					level, obj.name, obj.type, *start_ptr);
+		//DBG2(DBG_ASN, "L%d - %s: ASN1 tag 0x%02x expected, but is 0x%02x",level, obj.name, obj.type, *start_ptr);
 		//DBG3(DBG_ASN, "%b", start_ptr, (uint32_t)(blob->ptr - start_ptr));
 		this->success = FALSE;
 		goto end;
