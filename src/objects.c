@@ -196,8 +196,8 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
       userdata->key.key_type = CKK_EC;
       userdata->public_key.ec.params = prime256v1; /* only ecc curve supported for now */
       userdata->public_key.ec.params_size = sizeof(prime256v1);
-      userdata->public_key.ec.point =
-      userdata->public_key.ec.point_size =
+      //userdata->public_key.ec.point =
+      //userdata->public_key.ec.point_size =
 
 
       pObject object = malloc(sizeof(Object));
