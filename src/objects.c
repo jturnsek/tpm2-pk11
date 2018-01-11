@@ -17,12 +17,11 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#define _GNU_SOURCE
-
 #include "objects.h"
 #include "certificate.h"
 #include "tpm.h"
 #include "pk11.h"
+#include "oid.h"
 
 #include <stdio.h>
 #include <endian.h>
@@ -156,7 +155,7 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
       object->tpm_handle = 0;
       object->userdata = userdata;
       object->num_entries = 3;
-      object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry))
+      object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
       object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->public_object, OBJECT_INDEX);
       object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
       object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.rsa, PUBLIC_KEY_RSA_INDEX);
@@ -210,7 +209,7 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
                                             asn1_wrap(ASN1_SEQUENCE, "mm",
                                               asn1_build_known_oid(OID_EC_PUBLICKEY),
                                               asn1_build_known_oid(OID_PRIME256V1)));
-      
+
       pObject object = malloc(sizeof(Object));
       if (object == NULL) {
         free(userdata);
