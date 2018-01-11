@@ -17,7 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#pragma once
+#ifndef OBJECT_H_
+#define OBJECT_H_
 
 #include <stddef.h>
 
@@ -60,3 +61,5 @@ typedef struct object_t {
 } Object, *pObject;
 
 void* attr_get(pObject object, CK_ATTRIBUTE_TYPE type, size_t *size);
+
+#endif /** OBJECT_H_ */

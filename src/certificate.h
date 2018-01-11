@@ -17,8 +17,11 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#pragma once
+#ifndef CERTIFICATE_H_
+#define CERTIFICATE_H_
 
 #include "object.h"
 
 pObject certificate_read(const char* pathname);
+
+#endif /** CERTIFICATE_H_ */

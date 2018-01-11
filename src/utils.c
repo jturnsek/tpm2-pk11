@@ -25,6 +25,99 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+#include "utils.h"
+
+/**
+ * Described in header.
+ */
+void memxor(uint8_t dst[], const uint8_t src[], size_t n)
+{
+  int m, i;
+
+  /* byte wise XOR until dst aligned */
+  for (i = 0; (uintptr_t)&dst[i] % sizeof(long) && i < n; i++)
+  {
+    dst[i] ^= src[i];
+  }
+  /* try to use words if src shares an aligment with dst */
+  switch (((uintptr_t)&src[i] % sizeof(long)))
+  {
+    case 0:
+      for (m = n - sizeof(long); i <= m; i += sizeof(long))
+      {
+        *(long*)&dst[i] ^= *(long*)&src[i];
+      }
+      break;
+    case sizeof(int):
+      for (m = n - sizeof(int); i <= m; i += sizeof(int))
+      {
+        *(int*)&dst[i] ^= *(int*)&src[i];
+      }
+      break;
+    case sizeof(short):
+      for (m = n - sizeof(short); i <= m; i += sizeof(short))
+      {
+        *(short*)&dst[i] ^= *(short*)&src[i];
+      }
+      break;
+    default:
+      break;
+  }
+  /* byte wise XOR of the rest */
+  for (; i < n; i++)
+  {
+    dst[i] ^= src[i];
+  }
+}
+
+/**
+ * Described in header.
+ */
+void memwipe_noinline(void *ptr, size_t n)
+{
+  memwipe_inline(ptr, n);
+}
+
+/**
+ * Described in header.
+ */
+bool memeq_const(const void *x, const void *y, size_t len)
+{
+  const u_char *a, *b;
+  uint8_t bad = 0;
+  size_t i;
+
+  a = (const u_char*)x;
+  b = (const u_char*)y;
+
+  for (i = 0; i < len; i++)
+  {
+    bad |= a[i] != b[i];
+  }
+  return !bad;
+}
+
+/**
+ * Described in header.
+ */
+void *memstr(const void *haystack, const char *needle, size_t n)
+{
+  const unsigned char *pos = haystack;
+  size_t l;
+
+  if (!haystack || !needle || (l = strlen(needle)) == 0)
+  {
+    return NULL;
+  }
+  for (; n >= l; ++pos, --n)
+  {
+    if (memeq(pos, needle, l))
+    {
+      return (void*)pos;
+    }
+  }
+  return NULL;
+}
 
 void strncpy_pad(char *dest, const char *src, size_t n) {
   size_t len = strlen(src);

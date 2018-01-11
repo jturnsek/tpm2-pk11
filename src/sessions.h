@@ -18,6 +18,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#ifndef SESSIONS_H_
+#define SESSIONS_H_
+
 #include "config.h"
 #include "objects.h"
 
@@ -47,3 +50,5 @@ struct session {
 
 int session_init(struct session* session, struct config *config);
 void session_close(struct session* session);
+
+#endif /** SESSIONS_H_ */

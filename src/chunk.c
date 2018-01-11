@@ -984,34 +984,3 @@ uint32_t chunk_hash_static(chunk_t chunk)
 {
 	return chunk_mac(chunk, static_key);
 }
-
-/**
- * Described in header.
- */
-uint16_t chunk_internet_checksum_inc(chunk_t data, uint16_t checksum)
-{
-	uint32_t sum = ntohs((uint16_t)~checksum);
-
-	while (data.len > 1)
-	{
-		sum += untoh16(data.ptr);
-		data = chunk_skip(data, 2);
-	}
-	if (data.len)
-	{
-		sum += (uint16_t)*data.ptr << 8;
-	}
-	while (sum >> 16)
-	{
-		sum = (sum & 0xffff) + (sum >> 16);
-	}
-	return htons(~sum);
-}
-
-/**
- * Described in header.
- */
-uint16_t chunk_internet_checksum(chunk_t data)
-{
-	return chunk_internet_checksum_inc(data, 0xffff);
-}

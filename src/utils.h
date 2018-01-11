@@ -18,6 +18,9 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
+#ifndef UTILS_H_
+#define UTILS_H_
+
 #include <stddef.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -229,7 +232,138 @@
 	static typeof(_cb_##name) *name = (typeof(_cb_##name)*)_cb_##name; \
 	static ret _cb_##name(param1, ##__VA_ARGS__)
 
+/**
+ * time_t not defined
+ */
+#define UNDEFINED_TIME 0
+
+/**
+ * Maximum time since epoch causing wrap-around on Jan 19 03:14:07 UTC 2038
+ */
+#define TIME_32_BIT_SIGNED_MAX	0x7fffffff
+
+
+/**
+ * Helper function that compares two binary blobs for equality
+ */
+static inline bool memeq(const void *x, const void *y, size_t len)
+{
+	return memcmp(x, y, len) == 0;
+}
+
+/**
+ * Same as memeq(), but with a constant runtime, safe for cryptographic use.
+ */
+bool memeq_const(const void *x, const void *y, size_t len);
+
+/**
+ * Calling memcpy() with NULL pointers, even with n == 0, results in undefined
+ * behavior according to the C standard.  This version is guaranteed to not
+ * access the pointers if n is 0.
+ */
+static inline void *memcpy_noop(void *dst, const void *src, size_t n)
+{
+	return n ? memcpy(dst, src, n) : dst;
+}
+#ifdef memcpy
+# undef memcpy
+#endif
+#define memcpy(d,s,n) memcpy_noop(d,s,n)
+
+/**
+ * Calling memmove() with NULL pointers, even with n == 0, results in undefined
+ * behavior according to the C standard.  This version is guaranteed to not
+ * access the pointers if n is 0.
+ */
+static inline void *memmove_noop(void *dst, const void *src, size_t n)
+{
+	return n ? memmove(dst, src, n) : dst;
+}
+#ifdef memmove
+# undef memmove
+#endif
+#define memmove(d,s,n) memmove_noop(d,s,n)
+
+/**
+ * Calling memset() with a NULL pointer, even with n == 0, results in undefined
+ * behavior according to the C standard.  This version is guaranteed to not
+ * access the pointer if n is 0.
+ */
+static inline void *memset_noop(void *s, int c, size_t n)
+{
+	return n ? memset(s, c, n) : s;
+}
+#ifdef memset
+# undef memset
+#endif
+#define memset(s,c,n) memset_noop(s,c,n)
+
+/**
+ * Same as memcpy, but XORs src into dst instead of copy
+ */
+void memxor(uint8_t dest[], const uint8_t src[], size_t n);
+
+/**
+ * Safely overwrite n bytes of memory at ptr with zero, non-inlining variant.
+ */
+void memwipe_noinline(void *ptr, size_t n);
+
+/**
+ * Safely overwrite n bytes of memory at ptr with zero, inlining variant.
+ */
+static inline void memwipe_inline(void *ptr, size_t n)
+{
+	volatile char *c = (volatile char*)ptr;
+	size_t m, i;
+
+	/* byte wise until long aligned */
+	for (i = 0; (uintptr_t)&c[i] % sizeof(long) && i < n; i++)
+	{
+		c[i] = 0;
+	}
+	/* word wise */
+	if (n >= sizeof(long))
+	{
+		for (m = n - sizeof(long); i <= m; i += sizeof(long))
+		{
+			*(volatile long*)&c[i] = 0;
+		}
+	}
+	/* byte wise of the rest */
+	for (; i < n; i++)
+	{
+		c[i] = 0;
+	}
+}
+
+/**
+ * Safely overwrite n bytes of memory at ptr with zero, auto-inlining variant.
+ */
+static inline void memwipe(void *ptr, size_t n)
+{
+	if (!ptr)
+	{
+		return;
+	}
+	if (__builtin_constant_p(n))
+	{
+		memwipe_inline(ptr, n);
+	}
+	else
+	{
+		memwipe_noinline(ptr, n);
+	}
+}
+
+/**
+ * A variant of strstr with the characteristics of memchr, where haystack is not
+ * a null-terminated string but simply a memory area of length n.
+ */
+void *memstr(const void *haystack, const char *needle, size_t n);
+
 
 void strncpy_pad(char *dest, const char *src, size_t n);
 void retmem(void* dest, size_t* size, const void* src, size_t n);
 void* read_file(const char* filename, size_t* length);
+
+#endif /** UTILS_H_ */

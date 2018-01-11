@@ -18,7 +18,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#pragma once
+#ifndef PK11_H_
+#define PK11_H_
 
 #include <stdint.h>
 
@@ -73,3 +74,5 @@ typedef struct pkcs_x509_t {
   char* value;
   size_t value_size;
 } PkcsX509, *pPkcsX509;
+
+#endif /** PK11_H_ */

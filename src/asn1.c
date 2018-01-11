@@ -21,6 +21,7 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "oid.h"
@@ -157,6 +158,8 @@ static int bytes_required(uint32_t val)
 	}
 	return required;
 }
+
+typedef struct enumerator_t enumerator_t;
 
 /**
  * Enumerator interface, allows enumeration over collections.

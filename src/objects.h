@@ -17,7 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#pragma once
+#ifndef OBJECTS_H_
+#define OBJECTS_H_
 
 #include "config.h"
 #include "object.h"
@@ -34,3 +35,5 @@ void object_add(pObjectList list, pObject object);
 void object_free(pObjectList list);
 
 pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config);
+
+#endif /** OBJECTS_H_ */

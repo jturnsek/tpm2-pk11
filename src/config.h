@@ -17,7 +17,8 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#pragma once
+#ifndef CONFIG_H_
+#define CONFIG_H_
 
 #include <stdbool.h>
 
@@ -35,3 +36,5 @@ struct config {
 };
 
 int config_load(char* filename, struct config *config);
+
+#endif /** CONFIG_H_ */

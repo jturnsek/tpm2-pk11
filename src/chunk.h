@@ -31,6 +31,7 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdlib.h>
 #include <sys/types.h>
 #include <alloca.h>
 
@@ -426,40 +427,5 @@ uint32_t chunk_hash_static_inc(chunk_t chunk, uint32_t hash);
  */
 uint64_t chunk_mac(chunk_t chunk, unsigned char *key);
 
-/**
- * Calculate the Internet Checksum according to RFC 1071 for the given chunk.
- *
- * If the result is used with chunk_internet_checksum_inc() and the data length
- * is not a multiple of 16 bit the checksum bytes have to be swapped to
- * compensate the even/odd alignment.
- *
- * @param data			data to process
- * @return				checksum (one's complement, network order)
- */
-uint16_t chunk_internet_checksum(chunk_t data);
-
-/**
- * Extend the given Internet Checksum (one's complement, in network byte order)
- * with the given data.
- *
- * If data is not a multiple of 16 bits the checksum may have to be swapped to
- * compensate even/odd alignment (see chunk_internet_checksum()).
- *
- * @param data			data to process
- * @param checksum		previous checksum (one's complement, network order)
- * @return				checksum (one's complement, network order)
- */
-uint16_t chunk_internet_checksum_inc(chunk_t data, uint16_t checksum);
-
-/**
- * printf hook function for chunk_t.
- *
- * Arguments are:
- *	chunk_t *chunk
- * Use #-modifier to print a compact version
- * Use +-modifier to print a compact version without separator
- */
-int chunk_printf_hook(printf_hook_data_t *data, printf_hook_spec_t *spec,
-					  const void *const *args);
 
 #endif /** CHUNK_H_ @}*/
