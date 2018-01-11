@@ -32,7 +32,6 @@
 #endif
 #include <glob.h>
 
-const unsigned char prime256v1[] = "\x06\x08\x2a\x86\x48\xce\x3d\x03\x01\x07";
 
 typedef struct userdata_tpm_t {
   TPM2B_PUBLIC tpm_key;
@@ -62,8 +61,8 @@ static AttrIndex PUBLIC_KEY_RSA_INDEX[] = {
 };
 
 static AttrIndex PUBLIC_KEY_EC_INDEX[] = {
-  attr_dynamic_index_of(CKA_EC_PARAMS, PkcsECPublicKey, params, params_size),
-  attr_dynamic_index_of(CKA_EC_POINT, PkcsECPublicKey, point, point_size)  
+  attr_dynamic_index_of(CKA_EC_PARAMS, PkcsECPublicKey, ec_params.ptr, ec_params.len),
+  attr_dynamic_index_of(CKA_EC_POINT, PkcsECPublicKey, ec_point.ptr, ec_point.len)  
 };
 
 pObject object_get(pObjectList list, int id) {
@@ -157,7 +156,7 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
       object->tpm_handle = 0;
       object->userdata = userdata;
       object->num_entries = 3;
-      object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
+      object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry))
       object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->public_object, OBJECT_INDEX);
       object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
       object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.rsa, PUBLIC_KEY_RSA_INDEX);
@@ -180,8 +179,8 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
       object->opposite = public_object;
     }
     else if (userdata->tpm_key.publicArea.type == TPM2_ALG_ECDSA) {
-      TPMS_ECC_POINT *ecc_key = &userdata->tpm_key.publicArea.unique.ecc; 
-      TPMS_ECC_PARMS *ecc_key_parms = &userdata->tpm_key.publicArea.parameters.eccDetail;
+      TPMS_ECC_POINT *ecc = &userdata->tpm_key.publicArea.unique.ecc;
+      uint8_t *pos;
 
       userdata->public_object.id = userdata->name.name;
       userdata->public_object.id_size = userdata->name.size;
@@ -194,12 +193,24 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
       userdata->key.decrypt = CK_FALSE;
       userdata->key.encrypt = CK_FALSE;
       userdata->key.key_type = CKK_EC;
-      userdata->public_key.ec.params = prime256v1; /* only ecc curve supported for now */
-      userdata->public_key.ec.params_size = sizeof(prime256v1);
-      //userdata->public_key.ec.point =
-      //userdata->public_key.ec.point_size =
 
-
+      /* allocate space for bit string */
+      pos = asn1_build_object(&userdata->public_key.ec.ec_point, ASN1_BIT_STRING, 2 + ecc->x.size + ecc->y.size);
+      /* bit string length is a multiple of octets */
+      *pos++ = 0x00;
+      /* uncompressed ECC point format */
+      *pos++ = 0x04;
+      /* copy x coordinate of ECC point */
+      memcpy(pos, ecc->x.buffer, ecc->x.size);
+      pos += ecc->x.size;
+      /* copy y coordinate of ECC point */
+      memcpy(pos, ecc->y.buffer, ecc->y.size);
+      /* encoding of AIK ECC params */
+      userdata->public_key.ec.ec_params = asn1_wrap(ASN1_SEQUENCE, "mm",
+                                            asn1_wrap(ASN1_SEQUENCE, "mm",
+                                              asn1_build_known_oid(OID_EC_PUBLICKEY),
+                                              asn1_build_known_oid(OID_PRIME256V1)));
+      
       pObject object = malloc(sizeof(Object));
       if (object == NULL) {
         free(userdata);

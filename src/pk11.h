@@ -22,8 +22,8 @@
 #define PK11_H_
 
 #include <stdint.h>
-
 #include <p11-kit/pkcs11.h>
+#include "asn1.h"
 
 #define TPM2_PK11_CONFIG_DIR ".tpm2"
 #define TPM2_PK11_CONFIG_FILE "config"
@@ -59,10 +59,8 @@ typedef struct pkcs_rsa_public_key_t {
 } PkcsRSAPublicKey, *pPkcsRSAPublicKey;
 
 typedef struct pkcs_ec_public_key_t {
-  void* params;
-  size_t params_size;
-  void* point;
-  size_t point_size;
+  chunk_t ec_params;
+  chunk_t ec_point;
 } PkcsECPublicKey, *pPkcsECPublicKey;
 
 typedef union pkcs_public_key_t {

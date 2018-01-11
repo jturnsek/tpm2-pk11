@@ -55,7 +55,7 @@
  * to the array type.
  */
 #define BUILD_ASSERT_ARRAY(a) \
-		BUILD_ASSERT(!__builtin_types_compatible_p(typeof(a), typeof(&(a)[0])))
+    BUILD_ASSERT(!__builtin_types_compatible_p(typeof(a), typeof(&(a)[0])))
 
 /**
  * Debug macro to follow control flow
@@ -94,14 +94,14 @@
  * @note The order and types of the variables are significant and must match the
  * variadic arguments passed to the function that calls this macro exactly.
  *
- * @param last		the last argument before ... in the function that calls this
- * @param ...		variable names
+ * @param last    the last argument before ... in the function that calls this
+ * @param ...    variable names
  */
 #define VA_ARGS_GET(last, ...) ({ \
-	va_list _va_args_get_ap; \
-	va_start(_va_args_get_ap, last); \
-	_VA_ARGS_GET_ASGN(__VA_ARGS__) \
-	va_end(_va_args_get_ap); \
+  va_list _va_args_get_ap; \
+  va_start(_va_args_get_ap, last); \
+  _VA_ARGS_GET_ASGN(__VA_ARGS__) \
+  va_end(_va_args_get_ap); \
 })
 
 /**
@@ -110,25 +110,25 @@
  * @note The order and types of the variables are significant and must match the
  * variadic arguments passed to the function that calls this macro exactly.
  *
- * @param list		the va_list variable in the function that calls this
- * @param ...		variable names
+ * @param list    the va_list variable in the function that calls this
+ * @param ...    variable names
  */
 #define VA_ARGS_VGET(list, ...) ({ \
-	va_list _va_args_get_ap; \
-	va_copy(_va_args_get_ap, list); \
-	_VA_ARGS_GET_ASGN(__VA_ARGS__) \
-	va_end(_va_args_get_ap); \
+  va_list _va_args_get_ap; \
+  va_copy(_va_args_get_ap, list); \
+  _VA_ARGS_GET_ASGN(__VA_ARGS__) \
+  va_end(_va_args_get_ap); \
 })
 
 #define _VA_ARGS_GET_ASGN(...) VA_ARGS_DISPATCH(_VA_ARGS_GET_ASGN, __VA_ARGS__)(__VA_ARGS__)
 #define _VA_ARGS_GET_ASGN1(v1) __VA_ARGS_GET_ASGN(v1)
 #define _VA_ARGS_GET_ASGN2(v1,v2) __VA_ARGS_GET_ASGN(v1) __VA_ARGS_GET_ASGN(v2)
 #define _VA_ARGS_GET_ASGN3(v1,v2,v3) __VA_ARGS_GET_ASGN(v1) __VA_ARGS_GET_ASGN(v2) \
-	__VA_ARGS_GET_ASGN(v3)
+  __VA_ARGS_GET_ASGN(v3)
 #define _VA_ARGS_GET_ASGN4(v1,v2,v3,v4) __VA_ARGS_GET_ASGN(v1) __VA_ARGS_GET_ASGN(v2) \
-	__VA_ARGS_GET_ASGN(v3) __VA_ARGS_GET_ASGN(v4)
+  __VA_ARGS_GET_ASGN(v3) __VA_ARGS_GET_ASGN(v4)
 #define _VA_ARGS_GET_ASGN5(v1,v2,v3,v4,v5) __VA_ARGS_GET_ASGN(v1) __VA_ARGS_GET_ASGN(v2) \
-	__VA_ARGS_GET_ASGN(v3) __VA_ARGS_GET_ASGN(v4) __VA_ARGS_GET_ASGN(v5)
+  __VA_ARGS_GET_ASGN(v3) __VA_ARGS_GET_ASGN(v4) __VA_ARGS_GET_ASGN(v5)
 #define __VA_ARGS_GET_ASGN(v) v = va_arg(_va_args_get_ap, typeof(v));
 
 
@@ -151,51 +151,51 @@
  * Object allocation/initialization macro, using designated initializer.
  */
 #define INIT(this, ...) { (this) = malloc(sizeof(*(this))); \
-						   *(this) = (typeof(*(this))){ __VA_ARGS__ }; }
+               *(this) = (typeof(*(this))){ __VA_ARGS__ }; }
 
 /**
  * Aligning version of INIT().
  *
  * The returned pointer must be freed using free_align(), not free().
  *
- * @param this		object to allocate/initialize
- * @param align		alignment for allocation, in bytes
- * @param ...		initializer
+ * @param this    object to allocate/initialize
+ * @param align    alignment for allocation, in bytes
+ * @param ...    initializer
  */
 #define INIT_ALIGN(this, align, ...) { \
-						(this) = malloc_align(sizeof(*(this)), align); \
-						*(this) = (typeof(*(this))){ __VA_ARGS__ }; }
+            (this) = malloc_align(sizeof(*(this)), align); \
+            *(this) = (typeof(*(this))){ __VA_ARGS__ }; }
 
 /**
  * Object allocation/initialization macro, with extra allocated bytes at tail.
  *
  * The extra space gets zero-initialized.
  *
- * @param this		pointer to object to allocate memory for
- * @param extra		number of bytes to allocate at end of this
- * @param ...		initializer
+ * @param this    pointer to object to allocate memory for
+ * @param extra    number of bytes to allocate at end of this
+ * @param ...    initializer
  */
 #define INIT_EXTRA(this, extra, ...) { \
-						typeof(extra) _extra = (extra); \
-						(this) = malloc(sizeof(*(this)) + _extra); \
-						*(this) = (typeof(*(this))){ __VA_ARGS__ }; \
-						memset((this) + 1, 0, _extra); }
+            typeof(extra) _extra = (extra); \
+            (this) = malloc(sizeof(*(this)) + _extra); \
+            *(this) = (typeof(*(this))){ __VA_ARGS__ }; \
+            memset((this) + 1, 0, _extra); }
 
 /**
  * Aligning version of INIT_EXTRA().
  *
  * The returned pointer must be freed using free_align(), not free().
  *
- * @param this		object to allocate/initialize
- * @param extra		number of bytes to allocate at end of this
- * @param align		alignment for allocation, in bytes
- * @param ...		initializer
+ * @param this    object to allocate/initialize
+ * @param extra    number of bytes to allocate at end of this
+ * @param align    alignment for allocation, in bytes
+ * @param ...    initializer
  */
 #define INIT_EXTRA_ALIGN(this, extra, align, ...) { \
-						typeof(extra) _extra = (extra); \
-						(this) = malloc_align(sizeof(*(this)) + _extra, align); \
-						*(this) = (typeof(*(this))){ __VA_ARGS__ }; \
-						memset((this) + 1, 0, _extra); }
+            typeof(extra) _extra = (extra); \
+            (this) = malloc_align(sizeof(*(this)) + _extra, align); \
+            *(this) = (typeof(*(this))){ __VA_ARGS__ }; \
+            memset((this) + 1, 0, _extra); }
 
 /**
  * Method declaration/definition macro, providing private and public interface.
@@ -206,19 +206,19 @@
  * _name is provided a function pointer, but will get optimized out by GCC.
  */
 #define METHOD(iface, name, ret, this, ...) \
-	static ret name(union {iface *_public; this;} \
-	__attribute__((transparent_union)), ##__VA_ARGS__); \
-	static typeof(name) *_##name = (typeof(name)*)name; \
-	static ret name(this, ##__VA_ARGS__)
+  static ret name(union {iface *_public; this;} \
+  __attribute__((transparent_union)), ##__VA_ARGS__); \
+  static typeof(name) *_##name = (typeof(name)*)name; \
+  static ret name(this, ##__VA_ARGS__)
 
 /**
  * Same as METHOD(), but is defined for two public interfaces.
  */
 #define METHOD2(iface1, iface2, name, ret, this, ...) \
-	static ret name(union {iface1 *_public1; iface2 *_public2; this;} \
-	__attribute__((transparent_union)), ##__VA_ARGS__); \
-	static typeof(name) *_##name = (typeof(name)*)name; \
-	static ret name(this, ##__VA_ARGS__)
+  static ret name(union {iface1 *_public1; iface2 *_public2; this;} \
+  __attribute__((transparent_union)), ##__VA_ARGS__); \
+  static typeof(name) *_##name = (typeof(name)*)name; \
+  static ret name(this, ##__VA_ARGS__)
 
 /**
  * Callback declaration/definition macro, allowing casted first parameter.
@@ -228,10 +228,10 @@
  * of a callback function, while using the real type for the first parameter.
  */
 #define CALLBACK(name, ret, param1, ...) \
-	static ret _cb_##name(union {void *_generic; param1;} \
-	__attribute__((transparent_union)), ##__VA_ARGS__); \
-	static typeof(_cb_##name) *name = (typeof(_cb_##name)*)_cb_##name; \
-	static ret _cb_##name(param1, ##__VA_ARGS__)
+  static ret _cb_##name(union {void *_generic; param1;} \
+  __attribute__((transparent_union)), ##__VA_ARGS__); \
+  static typeof(_cb_##name) *name = (typeof(_cb_##name)*)_cb_##name; \
+  static ret _cb_##name(param1, ##__VA_ARGS__)
 
 /**
  * time_t not defined
@@ -241,7 +241,7 @@
 /**
  * Maximum time since epoch causing wrap-around on Jan 19 03:14:07 UTC 2038
  */
-#define TIME_32_BIT_SIGNED_MAX	0x7fffffff
+#define TIME_32_BIT_SIGNED_MAX  0x7fffffff
 
 
 /**
@@ -249,7 +249,7 @@
  */
 static inline bool memeq(const void *x, const void *y, size_t len)
 {
-	return memcmp(x, y, len) == 0;
+  return memcmp(x, y, len) == 0;
 }
 
 /**
@@ -264,7 +264,7 @@ bool memeq_const(const void *x, const void *y, size_t len);
  */
 static inline void *memcpy_noop(void *dst, const void *src, size_t n)
 {
-	return n ? memcpy(dst, src, n) : dst;
+  return n ? memcpy(dst, src, n) : dst;
 }
 #ifdef memcpy
 # undef memcpy
@@ -278,7 +278,7 @@ static inline void *memcpy_noop(void *dst, const void *src, size_t n)
  */
 static inline void *memmove_noop(void *dst, const void *src, size_t n)
 {
-	return n ? memmove(dst, src, n) : dst;
+  return n ? memmove(dst, src, n) : dst;
 }
 #ifdef memmove
 # undef memmove
@@ -292,7 +292,7 @@ static inline void *memmove_noop(void *dst, const void *src, size_t n)
  */
 static inline void *memset_noop(void *s, int c, size_t n)
 {
-	return n ? memset(s, c, n) : s;
+  return n ? memset(s, c, n) : s;
 }
 #ifdef memset
 # undef memset
@@ -314,27 +314,27 @@ void memwipe_noinline(void *ptr, size_t n);
  */
 static inline void memwipe_inline(void *ptr, size_t n)
 {
-	volatile char *c = (volatile char*)ptr;
-	size_t m, i;
+  volatile char *c = (volatile char*)ptr;
+  size_t m, i;
 
-	/* byte wise until long aligned */
-	for (i = 0; (uintptr_t)&c[i] % sizeof(long) && i < n; i++)
-	{
-		c[i] = 0;
-	}
-	/* word wise */
-	if (n >= sizeof(long))
-	{
-		for (m = n - sizeof(long); i <= m; i += sizeof(long))
-		{
-			*(volatile long*)&c[i] = 0;
-		}
-	}
-	/* byte wise of the rest */
-	for (; i < n; i++)
-	{
-		c[i] = 0;
-	}
+  /* byte wise until long aligned */
+  for (i = 0; (uintptr_t)&c[i] % sizeof(long) && i < n; i++)
+  {
+    c[i] = 0;
+  }
+  /* word wise */
+  if (n >= sizeof(long))
+  {
+    for (m = n - sizeof(long); i <= m; i += sizeof(long))
+    {
+      *(volatile long*)&c[i] = 0;
+    }
+  }
+  /* byte wise of the rest */
+  for (; i < n; i++)
+  {
+    c[i] = 0;
+  }
 }
 
 /**
@@ -342,18 +342,18 @@ static inline void memwipe_inline(void *ptr, size_t n)
  */
 static inline void memwipe(void *ptr, size_t n)
 {
-	if (!ptr)
-	{
-		return;
-	}
-	if (__builtin_constant_p(n))
-	{
-		memwipe_inline(ptr, n);
-	}
-	else
-	{
-		memwipe_noinline(ptr, n);
-	}
+  if (!ptr)
+  {
+    return;
+  }
+  if (__builtin_constant_p(n))
+  {
+    memwipe_inline(ptr, n);
+  }
+  else
+  {
+    memwipe_noinline(ptr, n);
+  }
 }
 
 /**
@@ -366,27 +366,27 @@ void *memstr(const void *haystack, const char *needle, size_t n);
  * Macro gives back larger of two values.
  */
 #define max(x,y) ({ \
-	typeof(x) _x = (x); \
-	typeof(y) _y = (y); \
-	_x > _y ? _x : _y; })
+  typeof(x) _x = (x); \
+  typeof(y) _y = (y); \
+  _x > _y ? _x : _y; })
 
 /**
  * Macro gives back smaller of two values.
  */
 #define min(x,y) ({ \
-	typeof(x) _x = (x); \
-	typeof(y) _y = (y); \
-	_x < _y ? _x : _y; })
+  typeof(x) _x = (x); \
+  typeof(y) _y = (y); \
+  _x < _y ? _x : _y; })
 
 /**
  * Get the padding required to make size a multiple of alignment
  */
 static inline size_t pad_len(size_t size, size_t alignment)
 {
-	size_t remainder;
+  size_t remainder;
 
-	remainder = size % alignment;
-	return remainder ? alignment - remainder : 0;
+  remainder = size % alignment;
+  return remainder ? alignment - remainder : 0;
 }
 
 /**
@@ -394,7 +394,7 @@ static inline size_t pad_len(size_t size, size_t alignment)
  */
 static inline size_t round_up(size_t size, size_t alignment)
 {
-	return size + pad_len(size, alignment);
+  return size + pad_len(size, alignment);
 }
 
 /**
@@ -402,7 +402,7 @@ static inline size_t round_up(size_t size, size_t alignment)
  */
 static inline size_t round_down(size_t size, size_t alignment)
 {
-	return size - (size % alignment);
+  return size - (size % alignment);
 }
 
 /**
@@ -410,16 +410,16 @@ static inline size_t round_down(size_t size, size_t alignment)
  *
  * The returned pointer must be freed using free_align(), not free().
  *
- * @param size			size of allocated data
- * @param align			alignment, up to 255 bytes, usually a power of 2
- * @return				allocated hunk, aligned to align bytes
+ * @param size      size of allocated data
+ * @param align      alignment, up to 255 bytes, usually a power of 2
+ * @return        allocated hunk, aligned to align bytes
  */
 void* malloc_align(size_t size, uint8_t align);
 
 /**
  * Free a hunk allocated by malloc_align().
  *
- * @param ptr			hunk to free
+ * @param ptr      hunk to free
  */
 void free_align(void *ptr);
 

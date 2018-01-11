@@ -41,10 +41,10 @@ typedef struct chunk_t chunk_t;
  * General purpose pointer/length abstraction.
  */
 struct chunk_t {
-	/** Pointer to start of data */
-	unsigned char *ptr;
-	/** Length of data in bytes */
-	size_t len;
+  /** Pointer to start of data */
+  unsigned char *ptr;
+  /** Length of data in bytes */
+  size_t len;
 };
 
 #include "utils.h"
@@ -59,8 +59,8 @@ extern chunk_t chunk_empty;
  */
 static inline chunk_t chunk_create(unsigned char *ptr, size_t len)
 {
-	chunk_t chunk = {ptr, len};
-	return chunk;
+  chunk_t chunk = {ptr, len};
+  return chunk;
 }
 
 /**
@@ -97,11 +97,11 @@ void chunk_split(chunk_t chunk, const char *mode, ...);
  *
  * If the write fails, errno is set appropriately.
  *
- * @param chunk			contents to write to file
- * @param path			path where file is written to
- * @param mask			file mode creation mask
- * @param force			overwrite existing file by force
- * @return				TRUE if write operation was successful
+ * @param chunk      contents to write to file
+ * @param path      path where file is written to
+ * @param mask      file mode creation mask
+ * @param force      overwrite existing file by force
+ * @return        TRUE if write operation was successful
  */
 bool chunk_write(chunk_t chunk, char *path, mode_t mask, bool force);
 
@@ -110,9 +110,9 @@ bool chunk_write(chunk_t chunk, char *path, mode_t mask, bool force);
  *
  * On error, errno is set appropriately.
  *
- * @param fd			file descriptor to read from
- * @param chunk			chunk receiving allocated buffer
- * @return				TRUE if successful, FALSE on failure
+ * @param fd      file descriptor to read from
+ * @param chunk      chunk receiving allocated buffer
+ * @return        TRUE if successful, FALSE on failure
  */
 bool chunk_from_fd(int fd, chunk_t *chunk);
 
@@ -125,9 +125,9 @@ bool chunk_from_fd(int fd, chunk_t *chunk);
  *
  * On error, errno is set appropriately.
  *
- * @param path			path of file to map
- * @param wr			TRUE to sync writes to disk
- * @return				mapped chunk, NULL on error
+ * @param path      path of file to map
+ * @param wr      TRUE to sync writes to disk
+ * @return        mapped chunk, NULL on error
  */
 chunk_t *chunk_map(char *path, bool wr);
 
@@ -137,8 +137,8 @@ chunk_t *chunk_map(char *path, bool wr);
  * When unmapping a writeable map, the return value should be checked to
  * ensure changes landed on disk.
  *
- * @param chunk			pointer returned from chunk_map()
- * @return				TRUE of changes written back to file
+ * @param chunk      pointer returned from chunk_map()
+ * @return        TRUE of changes written back to file
  */
 bool chunk_unmap(chunk_t *chunk);
 
@@ -148,10 +148,10 @@ bool chunk_unmap(chunk_t *chunk);
  * The resulting string is '\\0' terminated, but the chunk does not include
  * the '\\0'. If buf is supplied, it must hold at least (chunk.len * 2 + 1).
  *
- * @param chunk			data to convert to hex encoding
- * @param buf			buffer to write to, NULL to malloc
- * @param uppercase		TRUE to use uppercase letters
- * @return				chunk of encoded data
+ * @param chunk      data to convert to hex encoding
+ * @param buf      buffer to write to, NULL to malloc
+ * @param uppercase    TRUE to use uppercase letters
+ * @return        chunk of encoded data
  */
 chunk_t chunk_to_hex(chunk_t chunk, char *buf, bool uppercase);
 
@@ -161,9 +161,9 @@ chunk_t chunk_to_hex(chunk_t chunk, char *buf, bool uppercase);
  * If buf is supplied, it must hold at least (hex.len / 2) + (hex.len % 2)
  * bytes. It is filled by the right to give correct values for short inputs.
  *
- * @param hex			hex encoded input data
- * @param buf			buffer to write decoded data, NULL to malloc
- * @return				converted data
+ * @param hex      hex encoded input data
+ * @param buf      buffer to write decoded data, NULL to malloc
+ * @return        converted data
  */
 chunk_t chunk_from_hex(chunk_t hex, char *buf);
 
@@ -173,9 +173,9 @@ chunk_t chunk_from_hex(chunk_t hex, char *buf);
  * The resulting string is '\\0' terminated, but the chunk does not include
  * the '\\0'. If buf is supplied, it must hold at least (chunk.len * 4 / 3 + 1).
  *
- * @param chunk			data to convert
- * @param buf			buffer to write to, NULL to malloc
- * @return				chunk of encoded data
+ * @param chunk      data to convert
+ * @param buf      buffer to write to, NULL to malloc
+ * @return        chunk of encoded data
  */
 chunk_t chunk_to_base64(chunk_t chunk, char *buf);
 
@@ -184,9 +184,9 @@ chunk_t chunk_to_base64(chunk_t chunk, char *buf);
  *
  * If buf is supplied, it must hold at least (base64.len / 4 * 3).
  *
- * @param base64		base64 encoded input data
- * @param buf			buffer to write decoded data, NULL to malloc
- * @return				converted data
+ * @param base64    base64 encoded input data
+ * @param buf      buffer to write decoded data, NULL to malloc
+ * @return        converted data
  */
 chunk_t chunk_from_base64(chunk_t base64, char *buf);
 
@@ -196,9 +196,9 @@ chunk_t chunk_from_base64(chunk_t base64, char *buf);
  * The resulting string is '\\0' terminated, but the chunk does not include
  * the '\\0'. If buf is supplied, it must hold (chunk.len * 8 / 5 + 1) bytes.
  *
- * @param chunk			data to convert
- * @param buf			buffer to write to, NULL to malloc
- * @return				chunk of encoded data
+ * @param chunk      data to convert
+ * @param buf      buffer to write to, NULL to malloc
+ * @return        chunk of encoded data
  */
 chunk_t chunk_to_base32(chunk_t chunk, char *buf);
 
@@ -207,8 +207,8 @@ chunk_t chunk_to_base32(chunk_t chunk, char *buf);
  */
 static inline void chunk_free(chunk_t *chunk)
 {
-	free(chunk->ptr);
-	*chunk = chunk_empty;
+  free(chunk->ptr);
+  *chunk = chunk_empty;
 }
 
 /**
@@ -216,11 +216,11 @@ static inline void chunk_free(chunk_t *chunk)
  */
 static inline void chunk_clear(chunk_t *chunk)
 {
-	if (chunk->ptr)
-	{
-		memwipe(chunk->ptr, chunk->len);
-		chunk_free(chunk);
-	}
+  if (chunk->ptr)
+  {
+    memwipe(chunk->ptr, chunk->len);
+    chunk_free(chunk);
+  }
 }
 
 /**
@@ -273,13 +273,13 @@ static inline void chunk_clear(chunk_t *chunk)
  */
 static inline chunk_t chunk_skip(chunk_t chunk, size_t bytes)
 {
-	if (chunk.len > bytes)
-	{
-		chunk.ptr += bytes;
-		chunk.len -= bytes;
-		return chunk;
-	}
-	return chunk_empty;
+  if (chunk.len > bytes)
+  {
+    chunk.ptr += bytes;
+    chunk.len -= bytes;
+    return chunk;
+  }
+  return chunk_empty;
 }
 
 /**
@@ -287,12 +287,12 @@ static inline chunk_t chunk_skip(chunk_t chunk, size_t bytes)
  */
 static inline chunk_t chunk_skip_zero(chunk_t chunk)
 {
-	while (chunk.len > 1 && *chunk.ptr == 0x00)
-	{
-		chunk.ptr++;
-		chunk.len--;
-	}
-	return chunk;
+  while (chunk.len > 1 && *chunk.ptr == 0x00)
+  {
+    chunk.ptr++;
+    chunk.len--;
+  }
+  return chunk;
 }
 
 
@@ -308,8 +308,8 @@ int chunk_compare(chunk_t a, chunk_t b);
  */
 static inline bool chunk_equals(chunk_t a, chunk_t b)
 {
-	return a.ptr != NULL  && b.ptr != NULL &&
-			a.len == b.len && memeq(a.ptr, b.ptr, a.len);
+  return a.ptr != NULL  && b.ptr != NULL &&
+      a.len == b.len && memeq(a.ptr, b.ptr, a.len);
 }
 
 /**
@@ -321,8 +321,8 @@ static inline bool chunk_equals(chunk_t a, chunk_t b)
  */
 static inline bool chunk_equals_const(chunk_t a, chunk_t b)
 {
-	return a.ptr != NULL  && b.ptr != NULL &&
-			a.len == b.len && memeq_const(a.ptr, b.ptr, a.len);
+  return a.ptr != NULL  && b.ptr != NULL &&
+      a.len == b.len && memeq_const(a.ptr, b.ptr, a.len);
 }
 
 /**
@@ -331,14 +331,14 @@ static inline bool chunk_equals_const(chunk_t a, chunk_t b)
  */
 static inline bool chunk_equals_ptr(chunk_t *a, chunk_t *b)
 {
-	return a != NULL && b != NULL && chunk_equals(*a, *b);
+  return a != NULL && b != NULL && chunk_equals(*a, *b);
 }
 
 /**
  * Increment a chunk, as it would reprensent a network order integer.
  *
- * @param chunk			chunk to increment
- * @return				TRUE if an overflow occurred
+ * @param chunk      chunk to increment
+ * @return        TRUE if an overflow occurred
  */
 bool chunk_increment(chunk_t chunk);
 
@@ -348,10 +348,10 @@ bool chunk_increment(chunk_t chunk);
  * If sane is given, chunk is cloned into sane and all non printable characters
  * get replaced by "replace".
  *
- * @param chunk			chunk to check for printability
- * @param sane			pointer where sane version is allocated, or NULL
- * @param replace		character to use for replaceing unprintable characters
- * @return				TRUE if all characters in chunk are printable
+ * @param chunk      chunk to check for printability
+ * @param sane      pointer where sane version is allocated, or NULL
+ * @param replace    character to use for replaceing unprintable characters
+ * @return        TRUE if all characters in chunk are printable
  */
 bool chunk_printable(chunk_t chunk, chunk_t *sane, char replace);
 
@@ -375,17 +375,17 @@ void chunk_hash_seed();
  * @note This hash is only intended for hash tables not for cryptographic
  * purposes.
  *
- * @param chunk			data to hash
- * @return				hash value
+ * @param chunk      data to hash
+ * @return        hash value
  */
 uint32_t chunk_hash(chunk_t chunk);
 
 /**
  * Incremental version of chunk_hash. Use this to hash two or more chunks.
  *
- * @param chunk			data to hash
- * @param hash			previous hash value
- * @return				hash value
+ * @param chunk      data to hash
+ * @param hash      previous hash value
+ * @return        hash value
  */
 uint32_t chunk_hash_inc(chunk_t chunk, uint32_t hash);
 
@@ -398,8 +398,8 @@ uint32_t chunk_hash_inc(chunk_t chunk, uint32_t hash);
  *
  * @note This hash is not intended for cryptographic purposes.
  *
- * @param chunk			data to hash
- * @return				hash value
+ * @param chunk      data to hash
+ * @return        hash value
  */
 uint32_t chunk_hash_static(chunk_t chunk);
 
@@ -407,9 +407,9 @@ uint32_t chunk_hash_static(chunk_t chunk);
  * Incremental version of chunk_hash_static(). Use this to hash two or more
  * chunks in a predictable way.
  *
- * @param chunk			data to hash
- * @param hash			previous hash value
- * @return				hash value
+ * @param chunk      data to hash
+ * @param hash      previous hash value
+ * @return        hash value
  */
 uint32_t chunk_hash_static_inc(chunk_t chunk, uint32_t hash);
 
@@ -421,9 +421,9 @@ uint32_t chunk_hash_static_inc(chunk_t chunk, uint32_t hash);
  * @note While SipHash has strong features using it for cryptographic purposes
  * is not recommended (in particular because of the rather short output size).
  *
- * @param chunk			data to process
- * @param key			key to use
- * @return				MAC for given input and key
+ * @param chunk      data to process
+ * @param key      key to use
+ * @return        MAC for given input and key
  */
 uint64_t chunk_mac(chunk_t chunk, unsigned char *key);
 

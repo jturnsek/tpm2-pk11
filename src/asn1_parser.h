@@ -52,10 +52,10 @@ typedef struct asn1Object_t asn1Object_t;
  * Syntax definition of an ASN.1 object
  */
 struct asn1Object_t{
-	uint32_t level;
-	const unsigned char *name;
-	asn1_t type;
-	uint16_t flags;
+  uint32_t level;
+  const unsigned char *name;
+  asn1_t type;
+  uint16_t flags;
 };
 
 typedef struct asn1_parser_t asn1_parser_t;
@@ -65,58 +65,58 @@ typedef struct asn1_parser_t asn1_parser_t;
  */
 struct asn1_parser_t {
 
-	/**
-	 * Parse the next ASN.1 object in the hierarchy and return it
-	 *
-	 * @param objectID	current line in the object syntax definition
-	 * @param object	current object
-	 * @return 			- FALSE if end of object syntax definition was reached
-	 *							or a parsing error occurred
-	 *					- TRUE	otherwise
-	 */
-	bool (*iterate)(asn1_parser_t *this, int *objectID, chunk_t *object);
+  /**
+   * Parse the next ASN.1 object in the hierarchy and return it
+   *
+   * @param objectID  current line in the object syntax definition
+   * @param object  current object
+   * @return       - FALSE if end of object syntax definition was reached
+   *              or a parsing error occurred
+   *          - TRUE  otherwise
+   */
+  bool (*iterate)(asn1_parser_t *this, int *objectID, chunk_t *object);
 
-	/**
-	 * Get the current parsing level
-	 *
-	 * @return 			current level
-	 */
-	uint32_t (*get_level)(asn1_parser_t *this);
+  /**
+   * Get the current parsing level
+   *
+   * @return       current level
+   */
+  uint32_t (*get_level)(asn1_parser_t *this);
 
-	/**
-	 * Set the top-most level
-	 *
-	 * @param level		top-most level
-	 */
-	void (*set_top_level)(asn1_parser_t *this, uint32_t level0);
+  /**
+   * Set the top-most level
+   *
+   * @param level    top-most level
+   */
+  void (*set_top_level)(asn1_parser_t *this, uint32_t level0);
 
-	/**
-	 * Set implicit and private flags
-	 *
-	 * @param implicit	top-most type of object is implicit
-	 * @param private	object data is private (use debug level 4)
-	 */
-	void (*set_flags)(asn1_parser_t *this, bool implicit, bool private);
+  /**
+   * Set implicit and private flags
+   *
+   * @param implicit  top-most type of object is implicit
+   * @param private  object data is private (use debug level 4)
+   */
+  void (*set_flags)(asn1_parser_t *this, bool implicit, bool private);
 
-	/**
-	 * Show final parsing status
-	 *
-	 * @return			TRUE if parsing was successful, FALSE otherwise
-	 */
-	bool (*success)(asn1_parser_t *this);
+  /**
+   * Show final parsing status
+   *
+   * @return      TRUE if parsing was successful, FALSE otherwise
+   */
+  bool (*success)(asn1_parser_t *this);
 
-	/**
-	 * Destroy the ASN.1 parser
-	 */
-	void (*destroy)(asn1_parser_t *this);
+  /**
+   * Destroy the ASN.1 parser
+   */
+  void (*destroy)(asn1_parser_t *this);
 };
 
 /**
  * Create an ASN.1 parser
  *
- * @param objects	syntax definition of the ASN.1 object to be parsed
- * @param blob		ASN.1 coded binary blob
- * @return			ASN.1 context
+ * @param objects  syntax definition of the ASN.1 object to be parsed
+ * @param blob    ASN.1 coded binary blob
+ * @return      ASN.1 context
  */
 asn1_parser_t* asn1_parser_create(asn1Object_t const *objects, chunk_t blob);
 

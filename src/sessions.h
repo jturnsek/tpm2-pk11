@@ -31,10 +31,10 @@
 
 typedef enum mechanism_type
 {
-	Unknown = 0,
-	RSA,
-	RSA_PKCS,
-	ECDSA
+  Unknown = 0,
+  RSA,
+  RSA_PKCS,
+  ECDSA
 } mechanism;
 
 struct session {

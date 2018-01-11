@@ -40,7 +40,7 @@ const chunk_t ASN1_INTEGER_2 = chunk_from_chars(0x02, 0x01, 0x02);
  */
 chunk_t asn1_algorithmIdentifier_params(int oid, chunk_t params)
 {
-	return asn1_wrap(ASN1_SEQUENCE, "mm", asn1_build_known_oid(oid), params);
+  return asn1_wrap(ASN1_SEQUENCE, "mm", asn1_build_known_oid(oid), params);
 }
 
 /*
@@ -48,25 +48,25 @@ chunk_t asn1_algorithmIdentifier_params(int oid, chunk_t params)
  */
 chunk_t asn1_algorithmIdentifier(int oid)
 {
-	chunk_t parameters;
+  chunk_t parameters;
 
-	/* some algorithmIdentifiers have a NULL parameters field and some do not */
-	switch (oid)
-	{
-		case OID_ECDSA_WITH_SHA1:
-		case OID_ECDSA_WITH_SHA224:
-		case OID_ECDSA_WITH_SHA256:
-		case OID_ECDSA_WITH_SHA384:
-		case OID_ECDSA_WITH_SHA512:
-		case OID_ED25519:
-		case OID_ED448:
-			parameters = chunk_empty;
-			break;
-		default:
-			parameters = asn1_simple_object(ASN1_NULL, chunk_empty);
-			break;
-	}
-	return asn1_algorithmIdentifier_params(oid, parameters);
+  /* some algorithmIdentifiers have a NULL parameters field and some do not */
+  switch (oid)
+  {
+    case OID_ECDSA_WITH_SHA1:
+    case OID_ECDSA_WITH_SHA224:
+    case OID_ECDSA_WITH_SHA256:
+    case OID_ECDSA_WITH_SHA384:
+    case OID_ECDSA_WITH_SHA512:
+    case OID_ED25519:
+    case OID_ED448:
+      parameters = chunk_empty;
+      break;
+    default:
+      parameters = asn1_simple_object(ASN1_NULL, chunk_empty);
+      break;
+  }
+  return asn1_algorithmIdentifier_params(oid, parameters);
 }
 
 /*
@@ -74,34 +74,34 @@ chunk_t asn1_algorithmIdentifier(int oid)
  */
 int asn1_known_oid(chunk_t object)
 {
-	int oid = 0;
+  int oid = 0;
 
-	while (object.len)
-	{
-		if (oid_names[oid].octet == *object.ptr)
-		{
-			if (--object.len == 0 || oid_names[oid].down == 0)
-			{
-				return oid;		  /* found terminal symbol */
-			}
-			else
-			{
-				object.ptr++; oid++; /* advance to next hex octet */
-			}
-		}
-		else
-		{
-			if (oid_names[oid].next)
-			{
-				oid = oid_names[oid].next;
-			}
-			else
-			{
-				return OID_UNKNOWN;
-			}
-		}
-	}
-	return OID_UNKNOWN;
+  while (object.len)
+  {
+    if (oid_names[oid].octet == *object.ptr)
+    {
+      if (--object.len == 0 || oid_names[oid].down == 0)
+      {
+        return oid;      /* found terminal symbol */
+      }
+      else
+      {
+        object.ptr++; oid++; /* advance to next hex octet */
+      }
+    }
+    else
+    {
+      if (oid_names[oid].next)
+      {
+        oid = oid_names[oid].next;
+      }
+      else
+      {
+        return OID_UNKNOWN;
+      }
+    }
+  }
+  return OID_UNKNOWN;
 }
 
 /*
@@ -109,31 +109,31 @@ int asn1_known_oid(chunk_t object)
  */
 chunk_t asn1_build_known_oid(int n)
 {
-	chunk_t oid;
-	int i;
+  chunk_t oid;
+  int i;
 
-	if (n < 0 || n >= OID_MAX)
-	{
-		return chunk_empty;
-	}
+  if (n < 0 || n >= OID_MAX)
+  {
+    return chunk_empty;
+  }
 
-	i = oid_names[n].level + 1;
-	oid = chunk_alloc(2 + i);
-	oid.ptr[0] = ASN1_OID;
-	oid.ptr[1] = i;
+  i = oid_names[n].level + 1;
+  oid = chunk_alloc(2 + i);
+  oid.ptr[0] = ASN1_OID;
+  oid.ptr[1] = i;
 
-	do
-	{
-		if (oid_names[n].level >= i)
-		{
-			n--;
-			continue;
-		}
-		oid.ptr[--i + 2] = oid_names[n--].octet;
-	}
-	while (i > 0);
+  do
+  {
+    if (oid_names[n].level >= i)
+    {
+      n--;
+      continue;
+    }
+    oid.ptr[--i + 2] = oid_names[n--].octet;
+  }
+  while (i > 0);
 
-	return oid;
+  return oid;
 }
 
 /**
@@ -141,17 +141,17 @@ chunk_t asn1_build_known_oid(int n)
  */
 static int bytes_required(uint32_t val)
 {
-	int shift, required = 1;
+  int shift, required = 1;
 
-	/* sufficient to handle 32 bit node numbers */
-	for (shift = 28; shift; shift -= 7)
-	{
-		if (val >> shift)
-		{	/* do not encode leading zeroes */
-			required++;
-		}
-	}
-	return required;
+  /* sufficient to handle 32 bit node numbers */
+  for (shift = 28; shift; shift -= 7)
+  {
+    if (val >> shift)
+    {  /* do not encode leading zeroes */
+      required++;
+    }
+  }
+  return required;
 }
 
 typedef struct enumerator_t enumerator_t;
@@ -161,207 +161,207 @@ typedef struct enumerator_t enumerator_t;
  */
 struct enumerator_t {
 
-	/**
-	 * Enumerate collection.
-	 *
-	 * The enumerate() method takes a variable number of pointer arguments
-	 * where the enumerated values get written to.
-	 *
-	 * @note Just assigning the generic enumerator_enumerate_default() function
-	 * that calls the enumerator's venumerate() method is usually enough.
-	 *
-	 * @param ...	variable list of enumerated items, implementation dependent
-	 * @return		TRUE if pointers returned
-	 */
-	bool (*enumerate)(enumerator_t *this, ...);
+  /**
+   * Enumerate collection.
+   *
+   * The enumerate() method takes a variable number of pointer arguments
+   * where the enumerated values get written to.
+   *
+   * @note Just assigning the generic enumerator_enumerate_default() function
+   * that calls the enumerator's venumerate() method is usually enough.
+   *
+   * @param ...  variable list of enumerated items, implementation dependent
+   * @return    TRUE if pointers returned
+   */
+  bool (*enumerate)(enumerator_t *this, ...);
 
-	/**
-	 * Enumerate collection.
-	 *
-	 * The venumerate() method takes a variable argument list containing
-	 * pointers where the enumerated values get written to.
-	 *
-	 * To simplify the implementation the VA_ARGS_VGET() macro may be used.
-	 *
-	 * @param args	variable list of enumerated items, implementation dependent
-	 * @return		TRUE if pointers returned
-	 */
-	bool (*venumerate)(enumerator_t *this, va_list args);
+  /**
+   * Enumerate collection.
+   *
+   * The venumerate() method takes a variable argument list containing
+   * pointers where the enumerated values get written to.
+   *
+   * To simplify the implementation the VA_ARGS_VGET() macro may be used.
+   *
+   * @param args  variable list of enumerated items, implementation dependent
+   * @return    TRUE if pointers returned
+   */
+  bool (*venumerate)(enumerator_t *this, va_list args);
 
-	/**
-	 * Destroy an enumerator_t instance.
-	 */
-	void (*destroy)(enumerator_t *this);
+  /**
+   * Destroy an enumerator_t instance.
+   */
+  void (*destroy)(enumerator_t *this);
 };
 
 bool enumerator_enumerate_default(enumerator_t *enumerator, ...)
 {
-	va_list args;
-	bool result;
+  va_list args;
+  bool result;
 
-	if (!enumerator->venumerate)
-	{
-		return FALSE;
-	}
-	va_start(args, enumerator);
-	result = enumerator->venumerate(enumerator, args);
-	va_end(args);
-	return result;
+  if (!enumerator->venumerate)
+  {
+    return FALSE;
+  }
+  va_start(args, enumerator);
+  result = enumerator->venumerate(enumerator, args);
+  va_end(args);
+  return result;
 }
 
 /**
  * Enumerator implementation for token enumerator
  */
 typedef struct {
-	/** implements enumerator_t */
-	enumerator_t public;
-	/** string to parse */
-	char *string;
-	/** current position */
-	char *pos;
-	/** separater chars */
-	const char *sep;
-	/** trim chars */
-	const char *trim;
+  /** implements enumerator_t */
+  enumerator_t public;
+  /** string to parse */
+  char *string;
+  /** current position */
+  char *pos;
+  /** separater chars */
+  const char *sep;
+  /** trim chars */
+  const char *trim;
 } token_enum_t;
 
 METHOD(enumerator_t, destroy_token_enum, void,
-	token_enum_t *this)
+  token_enum_t *this)
 {
-	free(this->string);
-	free(this);
+  free(this->string);
+  free(this);
 }
 
 METHOD(enumerator_t, enumerate_token_enum, bool,
-	token_enum_t *this, va_list args)
+  token_enum_t *this, va_list args)
 {
-	const char *sep, *trim;
-	char *pos = NULL, *tmp, **token;
-	bool last = FALSE;
+  const char *sep, *trim;
+  char *pos = NULL, *tmp, **token;
+  bool last = FALSE;
 
-	VA_ARGS_VGET(args, token);
+  VA_ARGS_VGET(args, token);
 
-	/* trim leading characters/separators */
-	while (*this->pos)
-	{
-		trim = this->trim;
-		while (*trim)
-		{
-			if (*trim == *this->pos)
-			{
-				this->pos++;
-				break;
-			}
-			trim++;
-		}
-		sep = this->sep;
-		while (*sep)
-		{
-			if (*sep == *this->pos)
-			{
-				this->pos++;
-				break;
-			}
-			sep++;
-		}
-		if (!*trim && !*sep)
-		{
-			break;
-		}
-	}
+  /* trim leading characters/separators */
+  while (*this->pos)
+  {
+    trim = this->trim;
+    while (*trim)
+    {
+      if (*trim == *this->pos)
+      {
+        this->pos++;
+        break;
+      }
+      trim++;
+    }
+    sep = this->sep;
+    while (*sep)
+    {
+      if (*sep == *this->pos)
+      {
+        this->pos++;
+        break;
+      }
+      sep++;
+    }
+    if (!*trim && !*sep)
+    {
+      break;
+    }
+  }
 
-	switch (*this->pos)
-	{
-		case '"':
-		case '\'':
-		{
-			/* read quoted token */
-			tmp = strchr(this->pos + 1, *this->pos);
-			if (tmp)
-			{
-				*token = this->pos + 1;
-				*tmp = '\0';
-				this->pos = tmp + 1;
-				return TRUE;
-			}
-			/* unterminated string, FALL-THROUGH */
-		}
-		default:
-		{
-			/* find nearest separator */
-			sep = this->sep;
-			while (*sep)
-			{
-				tmp = strchr(this->pos, *sep);
-				if (tmp && (pos == NULL || tmp < pos))
-				{
-					pos = tmp;
-				}
-				sep++;
-			}
-			*token = this->pos;
-			if (pos)
-			{
-				*pos = '\0';
-				this->pos = pos + 1;
-			}
-			else
-			{
-				last = TRUE;
-				pos = this->pos = strchr(this->pos, '\0');
-			}
-			break;
-		}
-	}
+  switch (*this->pos)
+  {
+    case '"':
+    case '\'':
+    {
+      /* read quoted token */
+      tmp = strchr(this->pos + 1, *this->pos);
+      if (tmp)
+      {
+        *token = this->pos + 1;
+        *tmp = '\0';
+        this->pos = tmp + 1;
+        return TRUE;
+      }
+      /* unterminated string, FALL-THROUGH */
+    }
+    default:
+    {
+      /* find nearest separator */
+      sep = this->sep;
+      while (*sep)
+      {
+        tmp = strchr(this->pos, *sep);
+        if (tmp && (pos == NULL || tmp < pos))
+        {
+          pos = tmp;
+        }
+        sep++;
+      }
+      *token = this->pos;
+      if (pos)
+      {
+        *pos = '\0';
+        this->pos = pos + 1;
+      }
+      else
+      {
+        last = TRUE;
+        pos = this->pos = strchr(this->pos, '\0');
+      }
+      break;
+    }
+  }
 
-	/* trim trailing characters */
-	pos--;
-	while (pos >= *token)
-	{
-		trim = this->trim;
-		while (*trim)
-		{
-			if (*trim == *pos)
-			{
-				*(pos--) = '\0';
-				break;
-			}
-			trim++;
-		}
-		if (!*trim)
-		{
-			break;
-		}
-	}
+  /* trim trailing characters */
+  pos--;
+  while (pos >= *token)
+  {
+    trim = this->trim;
+    while (*trim)
+    {
+      if (*trim == *pos)
+      {
+        *(pos--) = '\0';
+        break;
+      }
+      trim++;
+    }
+    if (!*trim)
+    {
+      break;
+    }
+  }
 
-	if (!last || pos >= *token)
-	{
-		return TRUE;
-	}
-	return FALSE;
+  if (!last || pos >= *token)
+  {
+    return TRUE;
+  }
+  return FALSE;
 }
 
 /*
  * Described in header
  */
 enumerator_t* enumerator_create_token(const char *string, const char *sep,
-									  const char *trim)
+                    const char *trim)
 {
-	token_enum_t *this;
+  token_enum_t *this;
 
-	INIT(this,
-		.public = {
-			.enumerate = enumerator_enumerate_default,
-			.venumerate = _enumerate_token_enum,
-			.destroy = _destroy_token_enum,
-		},
-		.string = strdup(string),
-		.sep = sep,
-		.trim = trim,
-	);
-	this->pos = this->string;
+  INIT(this,
+    .public = {
+      .enumerate = enumerator_enumerate_default,
+      .venumerate = _enumerate_token_enum,
+      .destroy = _destroy_token_enum,
+    },
+    .string = strdup(string),
+    .sep = sep,
+    .trim = trim,
+  );
+  this->pos = this->string;
 
-	return &this->public;
+  return &this->public;
 }
 
 /*
@@ -369,42 +369,42 @@ enumerator_t* enumerator_create_token(const char *string, const char *sep,
  */
 chunk_t asn1_oid_from_string(char *str)
 {
-	enumerator_t *enumerator;
-	size_t buf_len = 64;
-	unsigned char buf[buf_len];
-	char *end;
-	int i = 0, pos = 0, req, shift;
-	uint32_t val, first = 0;
+  enumerator_t *enumerator;
+  size_t buf_len = 64;
+  unsigned char buf[buf_len];
+  char *end;
+  int i = 0, pos = 0, req, shift;
+  uint32_t val, first = 0;
 
-	enumerator = enumerator_create_token(str, ".", "");
-	while (enumerator->enumerate(enumerator, &str))
-	{
-		val = strtoul(str, &end, 10);
-		req = bytes_required(val);
-		if (end == str || pos + req > buf_len)
-		{
-			pos = 0;
-			break;
-		}
-		switch (i++)
-		{
-			case 0:
-				first = val;
-				break;
-			case 1:
-				buf[pos++] = first * 40 + val;
-				break;
-			default:
-				for (shift = (req - 1) * 7; shift; shift -= 7)
-				{
-					buf[pos++] = 0x80 | ((val >> shift) & 0x7F);
-				}
-				buf[pos++] = val & 0x7F;
-		}
-	}
-	enumerator->destroy(enumerator);
+  enumerator = enumerator_create_token(str, ".", "");
+  while (enumerator->enumerate(enumerator, &str))
+  {
+    val = strtoul(str, &end, 10);
+    req = bytes_required(val);
+    if (end == str || pos + req > buf_len)
+    {
+      pos = 0;
+      break;
+    }
+    switch (i++)
+    {
+      case 0:
+        first = val;
+        break;
+      case 1:
+        buf[pos++] = first * 40 + val;
+        break;
+      default:
+        for (shift = (req - 1) * 7; shift; shift -= 7)
+        {
+          buf[pos++] = 0x80 | ((val >> shift) & 0x7F);
+        }
+        buf[pos++] = val & 0x7F;
+    }
+  }
+  enumerator->destroy(enumerator);
 
-	return chunk_clone(chunk_create(buf, pos));
+  return chunk_clone(chunk_create(buf, pos));
 }
 
 /*
@@ -412,44 +412,44 @@ chunk_t asn1_oid_from_string(char *str)
  */
 char *asn1_oid_to_string(chunk_t oid)
 {
-	size_t len = 64;
-	char buf[len], *pos = buf;
-	int written;
-	uint32_t val;
+  size_t len = 64;
+  char buf[len], *pos = buf;
+  int written;
+  uint32_t val;
 
-	if (!oid.len)
-	{
-		return NULL;
-	}
-	val = oid.ptr[0] / 40;
-	written = snprintf(buf, len, "%u.%u", val, oid.ptr[0] - val * 40);
-	oid = chunk_skip(oid, 1);
-	if (written < 0 || written >= len)
-	{
-		return NULL;
-	}
-	pos += written;
-	len -= written;
-	val = 0;
+  if (!oid.len)
+  {
+    return NULL;
+  }
+  val = oid.ptr[0] / 40;
+  written = snprintf(buf, len, "%u.%u", val, oid.ptr[0] - val * 40);
+  oid = chunk_skip(oid, 1);
+  if (written < 0 || written >= len)
+  {
+    return NULL;
+  }
+  pos += written;
+  len -= written;
+  val = 0;
 
-	while (oid.len)
-	{
-		val = (val << 7) + (uint32_t)(oid.ptr[0] & 0x7f);
+  while (oid.len)
+  {
+    val = (val << 7) + (uint32_t)(oid.ptr[0] & 0x7f);
 
-		if (oid.ptr[0] < 128)
-		{
-			written = snprintf(pos, len, ".%u", val);
-			if (written < 0 || written >= len)
-			{
-				return NULL;
-			}
-			pos += written;
-			len -= written;
-			val = 0;
-		}
-		oid = chunk_skip(oid, 1);
-	}
-	return (val == 0) ? strdup(buf) : NULL;
+    if (oid.ptr[0] < 128)
+    {
+      written = snprintf(pos, len, ".%u", val);
+      if (written < 0 || written >= len)
+      {
+        return NULL;
+      }
+      pos += written;
+      len -= written;
+      val = 0;
+    }
+    oid = chunk_skip(oid, 1);
+  }
+  return (val == 0) ? strdup(buf) : NULL;
 }
 
 /*
@@ -457,58 +457,58 @@ char *asn1_oid_to_string(chunk_t oid)
  */
 size_t asn1_length(chunk_t *blob)
 {
-	unsigned char n;
-	size_t len;
+  unsigned char n;
+  size_t len;
 
-	if (blob->len < 2)
-	{
-		//DBG2(DBG_ASN, "insufficient number of octets to parse ASN.1 length");
-		return ASN1_INVALID_LENGTH;
-	}
+  if (blob->len < 2)
+  {
+    //DBG2(DBG_ASN, "insufficient number of octets to parse ASN.1 length");
+    return ASN1_INVALID_LENGTH;
+  }
 
-	/* read length field, skip tag and length */
-	n = blob->ptr[1];
-	blob->ptr += 2;
-	blob->len -= 2;
+  /* read length field, skip tag and length */
+  n = blob->ptr[1];
+  blob->ptr += 2;
+  blob->len -= 2;
 
-	if ((n & 0x80) == 0)
-	{	/* single length octet */
-		if (n > blob->len)
-		{
-			//DBG2(DBG_ASN, "length is larger than remaining blob size");
-			return ASN1_INVALID_LENGTH;
-		}
-		return n;
-	}
+  if ((n & 0x80) == 0)
+  {  /* single length octet */
+    if (n > blob->len)
+    {
+      //DBG2(DBG_ASN, "length is larger than remaining blob size");
+      return ASN1_INVALID_LENGTH;
+    }
+    return n;
+  }
 
-	/* composite length, determine number of length octets */
-	n &= 0x7f;
+  /* composite length, determine number of length octets */
+  n &= 0x7f;
 
-	if (n == 0 || n > blob->len)
-	{
-		//DBG2(DBG_ASN, "number of length octets invalid");
-		return ASN1_INVALID_LENGTH;
-	}
+  if (n == 0 || n > blob->len)
+  {
+    //DBG2(DBG_ASN, "number of length octets invalid");
+    return ASN1_INVALID_LENGTH;
+  }
 
-	if (n > sizeof(len))
-	{
-		//DBG2(DBG_ASN, "number of length octets is larger than limit of"" %d octets", (int)sizeof(len));
-		return ASN1_INVALID_LENGTH;
-	}
+  if (n > sizeof(len))
+  {
+    //DBG2(DBG_ASN, "number of length octets is larger than limit of"" %d octets", (int)sizeof(len));
+    return ASN1_INVALID_LENGTH;
+  }
 
-	len = 0;
+  len = 0;
 
-	while (n-- > 0)
-	{
-		len = 256*len + *blob->ptr++;
-		blob->len--;
-	}
-	if (len > blob->len)
-	{
-		//DBG2(DBG_ASN, "length is larger than remaining blob size");
-		return ASN1_INVALID_LENGTH;
-	}
-	return len;
+  while (n-- > 0)
+  {
+    len = 256*len + *blob->ptr++;
+    blob->len--;
+  }
+  if (len > blob->len)
+  {
+    //DBG2(DBG_ASN, "length is larger than remaining blob size");
+    return ASN1_INVALID_LENGTH;
+  }
+  return len;
 }
 
 /*
@@ -516,46 +516,46 @@ size_t asn1_length(chunk_t *blob)
  */
 int asn1_unwrap(chunk_t *blob, chunk_t *inner)
 {
-	chunk_t res;
-	unsigned char len;
-	int type;
+  chunk_t res;
+  unsigned char len;
+  int type;
 
-	if (blob->len < 2)
-	{
-		return ASN1_INVALID;
-	}
-	type = blob->ptr[0];
-	len = blob->ptr[1];
-	*blob = chunk_skip(*blob, 2);
+  if (blob->len < 2)
+  {
+    return ASN1_INVALID;
+  }
+  type = blob->ptr[0];
+  len = blob->ptr[1];
+  *blob = chunk_skip(*blob, 2);
 
-	if ((len & 0x80) == 0)
-	{	/* single length octet */
-		res.len = len;
-	}
-	else
-	{	/* composite length, determine number of length octets */
-		len &= 0x7f;
-		if (len == 0 || len > blob->len || len > sizeof(res.len))
-		{
-			return ASN1_INVALID;
-		}
-		res.len = 0;
-		while (len-- > 0)
-		{
-			res.len = 256 * res.len + blob->ptr[0];
-			*blob = chunk_skip(*blob, 1);
-		}
-	}
-	if (res.len > blob->len)
-	{
-		return ASN1_INVALID;
-	}
-	res.ptr = blob->ptr;
-	*blob = chunk_skip(*blob, res.len);
-	/* updating inner not before we are finished allows a caller to pass
-	 * blob = inner */
-	*inner = res;
-	return type;
+  if ((len & 0x80) == 0)
+  {  /* single length octet */
+    res.len = len;
+  }
+  else
+  {  /* composite length, determine number of length octets */
+    len &= 0x7f;
+    if (len == 0 || len > blob->len || len > sizeof(res.len))
+    {
+      return ASN1_INVALID;
+    }
+    res.len = 0;
+    while (len-- > 0)
+    {
+      res.len = 256 * res.len + blob->ptr[0];
+      *blob = chunk_skip(*blob, 1);
+    }
+  }
+  if (res.len > blob->len)
+  {
+    return ASN1_INVALID;
+  }
+  res.ptr = blob->ptr;
+  *blob = chunk_skip(*blob, res.len);
+  /* updating inner not before we are finished allows a caller to pass
+   * blob = inner */
+  *inner = res;
+  return type;
 }
 
 static const int days[] = { 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334 };
@@ -566,126 +566,126 @@ static const int tm_leap_1970 = 477;
  */
 time_t asn1_to_time(const chunk_t *utctime, asn1_t type)
 {
-	int tm_year, tm_mon, tm_day, tm_hour, tm_min, tm_sec;
-	int tm_leap_4, tm_leap_100, tm_leap_400, tm_leap;
-	int tz_hour, tz_min, tz_offset;
-	time_t tm_days, tm_secs;
-	char buf[BUF_LEN], *eot = NULL;
+  int tm_year, tm_mon, tm_day, tm_hour, tm_min, tm_sec;
+  int tm_leap_4, tm_leap_100, tm_leap_400, tm_leap;
+  int tz_hour, tz_min, tz_offset;
+  time_t tm_days, tm_secs;
+  char buf[BUF_LEN], *eot = NULL;
 
-	snprintf(buf, sizeof(buf), "%.*s", (int)utctime->len, utctime->ptr);
+  snprintf(buf, sizeof(buf), "%.*s", (int)utctime->len, utctime->ptr);
 
-	if ((eot = strchr(buf, 'Z')) != NULL)
-	{
-		tz_offset = 0; /* Zulu time with a zero time zone offset */
-	}
-	else if ((eot = strchr(buf, '+')) != NULL)
-	{
-		if (sscanf(eot+1, "%2d%2d", &tz_hour, &tz_min) != 2)
-		{
-			return 0; /* error in positive timezone offset format */
-		}
-		tz_offset = 3600*tz_hour + 60*tz_min;  /* positive time zone offset */
-	}
-	else if ((eot = strchr(buf, '-')) != NULL)
-	{
-		if (sscanf(eot+1, "%2d%2d", &tz_hour, &tz_min) != 2)
-		{
-			return 0; /* error in negative timezone offset format */
-		}
-		tz_offset = -3600*tz_hour - 60*tz_min;  /* negative time zone offset */
-	}
-	else
-	{
-		return 0; /* error in time format */
-	}
+  if ((eot = strchr(buf, 'Z')) != NULL)
+  {
+    tz_offset = 0; /* Zulu time with a zero time zone offset */
+  }
+  else if ((eot = strchr(buf, '+')) != NULL)
+  {
+    if (sscanf(eot+1, "%2d%2d", &tz_hour, &tz_min) != 2)
+    {
+      return 0; /* error in positive timezone offset format */
+    }
+    tz_offset = 3600*tz_hour + 60*tz_min;  /* positive time zone offset */
+  }
+  else if ((eot = strchr(buf, '-')) != NULL)
+  {
+    if (sscanf(eot+1, "%2d%2d", &tz_hour, &tz_min) != 2)
+    {
+      return 0; /* error in negative timezone offset format */
+    }
+    tz_offset = -3600*tz_hour - 60*tz_min;  /* negative time zone offset */
+  }
+  else
+  {
+    return 0; /* error in time format */
+  }
 
-	/* parse ASN.1 time string */
-	{
-		const char* format = (type == ASN1_UTCTIME)? "%2d%2d%2d%2d%2d":
-													 "%4d%2d%2d%2d%2d";
+  /* parse ASN.1 time string */
+  {
+    const char* format = (type == ASN1_UTCTIME)? "%2d%2d%2d%2d%2d":
+                           "%4d%2d%2d%2d%2d";
 
-		if (sscanf(buf, format, &tm_year, &tm_mon, &tm_day,
-								&tm_hour, &tm_min) != 5)
-		{
-			return 0; /* error in [yy]yymmddhhmm time format */
-		}
-	}
+    if (sscanf(buf, format, &tm_year, &tm_mon, &tm_day,
+                &tm_hour, &tm_min) != 5)
+    {
+      return 0; /* error in [yy]yymmddhhmm time format */
+    }
+  }
 
-	/* is there a seconds field? */
-	if ((eot - buf) == ((type == ASN1_UTCTIME)?12:14))
-	{
-		if (sscanf(eot-2, "%2d", &tm_sec) != 1)
-		{
-			return 0; /* error in ss seconds field format */
-		}
-	}
-	else
-	{
-		tm_sec = 0;
-	}
+  /* is there a seconds field? */
+  if ((eot - buf) == ((type == ASN1_UTCTIME)?12:14))
+  {
+    if (sscanf(eot-2, "%2d", &tm_sec) != 1)
+    {
+      return 0; /* error in ss seconds field format */
+    }
+  }
+  else
+  {
+    tm_sec = 0;
+  }
 
-	/* representation of two-digit years */
-	if (type == ASN1_UTCTIME)
-	{
-		tm_year += (tm_year < 50) ? 2000 : 1900;
-	}
+  /* representation of two-digit years */
+  if (type == ASN1_UTCTIME)
+  {
+    tm_year += (tm_year < 50) ? 2000 : 1900;
+  }
 
-	/* prevent obvious 32 bit integer overflows */
-	if (sizeof(time_t) == 4 && (tm_year > 2038 || tm_year < 1901))
-	{
-		return TIME_32_BIT_SIGNED_MAX;
-	}
+  /* prevent obvious 32 bit integer overflows */
+  if (sizeof(time_t) == 4 && (tm_year > 2038 || tm_year < 1901))
+  {
+    return TIME_32_BIT_SIGNED_MAX;
+  }
 
-	/* representation of months as 0..11*/
-	if (tm_mon < 1 || tm_mon > 12)
-	{
-		return 0;
-	}
-	tm_mon--;
+  /* representation of months as 0..11*/
+  if (tm_mon < 1 || tm_mon > 12)
+  {
+    return 0;
+  }
+  tm_mon--;
 
-	/* representation of days as 0..30 */
-	if (tm_day < 1 || tm_day > 31)
-	{	/* we don't actually validate the day in relation to tm_year/tm_mon */
-		return 0;
-	}
-	tm_day--;
+  /* representation of days as 0..30 */
+  if (tm_day < 1 || tm_day > 31)
+  {  /* we don't actually validate the day in relation to tm_year/tm_mon */
+    return 0;
+  }
+  tm_day--;
 
-	if (tm_hour < 0 || tm_hour > 23 ||
-		tm_min < 0 || tm_min > 59 ||
-		tm_sec < 0 || tm_sec > 60 /* allow leap seconds */)
-	{
-		return 0;
-	}
+  if (tm_hour < 0 || tm_hour > 23 ||
+    tm_min < 0 || tm_min > 59 ||
+    tm_sec < 0 || tm_sec > 60 /* allow leap seconds */)
+  {
+    return 0;
+  }
 
-	/* number of leap years between last year and 1970? */
-	tm_leap_4 = (tm_year - 1) / 4;
-	tm_leap_100 = tm_leap_4 / 25;
-	tm_leap_400 = tm_leap_100 / 4;
-	tm_leap = tm_leap_4 - tm_leap_100 + tm_leap_400 - tm_leap_1970;
+  /* number of leap years between last year and 1970? */
+  tm_leap_4 = (tm_year - 1) / 4;
+  tm_leap_100 = tm_leap_4 / 25;
+  tm_leap_400 = tm_leap_100 / 4;
+  tm_leap = tm_leap_4 - tm_leap_100 + tm_leap_400 - tm_leap_1970;
 
-	/* if date later then February, is the current year a leap year? */
-	if (tm_mon > 1 && (tm_year % 4 == 0) &&
-		(tm_year % 100 != 0 || tm_year % 400 == 0))
-	{
-		tm_leap++;
-	}
-	tm_days = 365 * (tm_year - 1970) + days[tm_mon] + tm_day + tm_leap;
-	tm_secs = 60 * (60 * (24 * tm_days + tm_hour) + tm_min) + tm_sec - tz_offset;
+  /* if date later then February, is the current year a leap year? */
+  if (tm_mon > 1 && (tm_year % 4 == 0) &&
+    (tm_year % 100 != 0 || tm_year % 400 == 0))
+  {
+    tm_leap++;
+  }
+  tm_days = 365 * (tm_year - 1970) + days[tm_mon] + tm_day + tm_leap;
+  tm_secs = 60 * (60 * (24 * tm_days + tm_hour) + tm_min) + tm_sec - tz_offset;
 
-	if (sizeof(time_t) == 4)
-	{	/* has a 32 bit signed integer overflow occurred? */
-		if (tm_year > 1970 && tm_secs < 0)
-		{	/* depending on the time zone, the first days in 1970 may result in
-			 * a negative value, but dates after 1970 never will */
-			return TIME_32_BIT_SIGNED_MAX;
-		}
-		if (tm_year < 1969 && tm_secs > 0)
-		{	/* similarly, tm_secs is not positive for dates before 1970, except
-			 * for the last days in 1969, depending on the time zone */
-			return TIME_32_BIT_SIGNED_MAX;
-		}
-	}
-	return tm_secs;
+  if (sizeof(time_t) == 4)
+  {  /* has a 32 bit signed integer overflow occurred? */
+    if (tm_year > 1970 && tm_secs < 0)
+    {  /* depending on the time zone, the first days in 1970 may result in
+       * a negative value, but dates after 1970 never will */
+      return TIME_32_BIT_SIGNED_MAX;
+    }
+    if (tm_year < 1969 && tm_secs > 0)
+    {  /* similarly, tm_secs is not positive for dates before 1970, except
+       * for the last days in 1969, depending on the time zone */
+      return TIME_32_BIT_SIGNED_MAX;
+    }
+  }
+  return tm_secs;
 }
 
 /**
@@ -693,33 +693,33 @@ time_t asn1_to_time(const chunk_t *utctime, asn1_t type)
  */
 chunk_t asn1_from_time(const time_t *time, asn1_t type)
 {
-	int offset;
-	const char *format;
-	char buf[BUF_LEN];
-	chunk_t formatted_time;
-	struct tm t = {};
+  int offset;
+  const char *format;
+  char buf[BUF_LEN];
+  chunk_t formatted_time;
+  struct tm t = {};
 
-	gmtime_r(time, &t);
-	/* RFC 5280 says that dates through the year 2049 MUST be encoded as UTCTIME
-	 * and dates in 2050 or later MUST be encoded as GENERALIZEDTIME. We only
-	 * enforce the latter to avoid overflows but allow callers to force the
-	 * encoding to GENERALIZEDTIME */
-	type = (t.tm_year >= 150) ? ASN1_GENERALIZEDTIME : type;
-	if (type == ASN1_GENERALIZEDTIME)
-	{
-		format = "%04d%02d%02d%02d%02d%02dZ";
-		offset = 1900;
-	}
-	else /* ASN1_UTCTIME */
-	{
-		format = "%02d%02d%02d%02d%02d%02dZ";
-		offset = (t.tm_year < 100) ? 0 : -100;
-	}
-	snprintf(buf, BUF_LEN, format, t.tm_year + offset,
-			 t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
-	formatted_time.ptr = buf;
-	formatted_time.len = strlen(buf);
-	return asn1_simple_object(type, formatted_time);
+  gmtime_r(time, &t);
+  /* RFC 5280 says that dates through the year 2049 MUST be encoded as UTCTIME
+   * and dates in 2050 or later MUST be encoded as GENERALIZEDTIME. We only
+   * enforce the latter to avoid overflows but allow callers to force the
+   * encoding to GENERALIZEDTIME */
+  type = (t.tm_year >= 150) ? ASN1_GENERALIZEDTIME : type;
+  if (type == ASN1_GENERALIZEDTIME)
+  {
+    format = "%04d%02d%02d%02d%02d%02dZ";
+    offset = 1900;
+  }
+  else /* ASN1_UTCTIME */
+  {
+    format = "%02d%02d%02d%02d%02d%02dZ";
+    offset = (t.tm_year < 100) ? 0 : -100;
+  }
+  snprintf(buf, BUF_LEN, format, t.tm_year + offset,
+       t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
+  formatted_time.ptr = buf;
+  formatted_time.len = strlen(buf);
+  return asn1_simple_object(type, formatted_time);
 }
 
 /*
@@ -727,42 +727,42 @@ chunk_t asn1_from_time(const time_t *time, asn1_t type)
  */
 void asn1_debug_simple_object(chunk_t object, asn1_t type, bool private)
 {
-	int oid;
+  int oid;
 
-	switch (type)
-	{
-		case ASN1_OID:
-			oid = asn1_known_oid(object);
-			if (oid == OID_UNKNOWN)
-			{
-				char *oid_str = asn1_oid_to_string(object);
+  switch (type)
+  {
+    case ASN1_OID:
+      oid = asn1_known_oid(object);
+      if (oid == OID_UNKNOWN)
+      {
+        char *oid_str = asn1_oid_to_string(object);
 
-				if (!oid_str)
-				{
-					break;
-				}
-				//DBG2(DBG_ASN, "  %s", oid_str);
-				free(oid_str);
-			}
-			return;
-		case ASN1_UTF8STRING:
-		case ASN1_IA5STRING:
-		case ASN1_PRINTABLESTRING:
-		case ASN1_T61STRING:
-		case ASN1_VISIBLESTRING:
-			//DBG2(DBG_ASN, "  '%.*s'", (int)object.len, object.ptr);
-			return;
-		case ASN1_UTCTIME:
-		case ASN1_GENERALIZEDTIME:
-			{
-				time_t time = asn1_to_time(&object, type);
+        if (!oid_str)
+        {
+          break;
+        }
+        //DBG2(DBG_ASN, "  %s", oid_str);
+        free(oid_str);
+      }
+      return;
+    case ASN1_UTF8STRING:
+    case ASN1_IA5STRING:
+    case ASN1_PRINTABLESTRING:
+    case ASN1_T61STRING:
+    case ASN1_VISIBLESTRING:
+      //DBG2(DBG_ASN, "  '%.*s'", (int)object.len, object.ptr);
+      return;
+    case ASN1_UTCTIME:
+    case ASN1_GENERALIZEDTIME:
+      {
+        time_t time = asn1_to_time(&object, type);
 
-				//DBG2(DBG_ASN, "  '%T'", &time, TRUE);
-			}
-			return;
-		default:
-			break;
-	}
+        //DBG2(DBG_ASN, "  '%T'", &time, TRUE);
+      }
+      return;
+    default:
+      break;
+  }
 }
 
 /**
@@ -770,32 +770,32 @@ void asn1_debug_simple_object(chunk_t object, asn1_t type, bool private)
  */
 bool asn1_parse_simple_object(chunk_t *object, asn1_t type, uint32_t level, const char* name)
 {
-	size_t len;
+  size_t len;
 
-	/* an ASN.1 object must possess at least a tag and length field */
-	if (object->len < 2)
-	{
-		//DBG2(DBG_ASN, "L%d - %s:  ASN.1 object smaller than 2 octets", level, name);
-		return FALSE;
-	}
+  /* an ASN.1 object must possess at least a tag and length field */
+  if (object->len < 2)
+  {
+    //DBG2(DBG_ASN, "L%d - %s:  ASN.1 object smaller than 2 octets", level, name);
+    return FALSE;
+  }
 
-	if (*object->ptr != type)
-	{
-		//DBG2(DBG_ASN, "L%d - %s: ASN1 tag 0x%02x expected, but is 0x%02x",level, name, type, *object->ptr);
-		return FALSE;
-	}
+  if (*object->ptr != type)
+  {
+    //DBG2(DBG_ASN, "L%d - %s: ASN1 tag 0x%02x expected, but is 0x%02x",level, name, type, *object->ptr);
+    return FALSE;
+  }
 
-	len = asn1_length(object);
+  len = asn1_length(object);
 
-	if (len == ASN1_INVALID_LENGTH)
-	{
-		//DBG2(DBG_ASN, "L%d - %s:  length of ASN.1 object invalid or too large",level, name);
-		return FALSE;
-	}
+  if (len == ASN1_INVALID_LENGTH)
+  {
+    //DBG2(DBG_ASN, "L%d - %s:  length of ASN.1 object invalid or too large",level, name);
+    return FALSE;
+  }
 
-	//DBG2(DBG_ASN, "L%d - %s:", level, name);
-	asn1_debug_simple_object(*object, type, FALSE);
-	return TRUE;
+  //DBG2(DBG_ASN, "L%d - %s:", level, name);
+  asn1_debug_simple_object(*object, type, FALSE);
+  return TRUE;
 }
 
 /*
@@ -803,15 +803,15 @@ bool asn1_parse_simple_object(chunk_t *object, asn1_t type, uint32_t level, cons
  */
 uint64_t asn1_parse_integer_uint64(chunk_t blob)
 {
-	uint64_t val = 0;
-	int i;
+  uint64_t val = 0;
+  int i;
 
-	for (i = 0; i < blob.len; i++)
-	{	/* if it is longer than 8 bytes, we just use the 8 LSBs */
-		val <<= 8;
-		val |= (uint64_t)blob.ptr[i];
-	}
-	return val;
+  for (i = 0; i < blob.len; i++)
+  {  /* if it is longer than 8 bytes, we just use the 8 LSBs */
+    val <<= 8;
+    val |= (uint64_t)blob.ptr[i];
+  }
+  return val;
 }
 
 /*
@@ -819,74 +819,74 @@ uint64_t asn1_parse_integer_uint64(chunk_t blob)
  */
 chunk_t asn1_integer_from_uint64(uint64_t val)
 {
-	unsigned char buf[sizeof(val)];
-	chunk_t enc = chunk_empty;
+  unsigned char buf[sizeof(val)];
+  chunk_t enc = chunk_empty;
 
-	if (val < 0x100)
-	{
-		buf[0] = (unsigned char)val;
-		return chunk_clone(chunk_create(buf, 1));
-	}
-	for (enc.ptr = buf + sizeof(val); val; enc.len++, val >>= 8)
-	{	/* fill the buffer from the end */
-		*(--enc.ptr) = val & 0xff;
-	}
-	return chunk_clone(enc);
+  if (val < 0x100)
+  {
+    buf[0] = (unsigned char)val;
+    return chunk_clone(chunk_create(buf, 1));
+  }
+  for (enc.ptr = buf + sizeof(val); val; enc.len++, val >>= 8)
+  {  /* fill the buffer from the end */
+    *(--enc.ptr) = val & 0xff;
+  }
+  return chunk_clone(enc);
 }
 
 /**
  * ASN.1 definition of an algorithmIdentifier
  */
 static const asn1Object_t algorithmIdentifierObjects[] = {
-	{ 0, "algorithmIdentifier",	ASN1_SEQUENCE,		ASN1_NONE			}, /* 0 */
-	{ 1,   "algorithm",			ASN1_OID,			ASN1_BODY			}, /* 1 */
-	{ 1,   "parameters",		ASN1_OID,			ASN1_RAW|ASN1_OPT	}, /* 2 */
-	{ 1,   "end opt",			ASN1_EOC,			ASN1_END			}, /* 3 */
-	{ 1,   "parameters",		ASN1_SEQUENCE,		ASN1_RAW|ASN1_OPT	}, /* 4 */
-	{ 1,   "end opt",			ASN1_EOC,			ASN1_END			}, /* 5 */
-	{ 1,   "parameters",		ASN1_OCTET_STRING,	ASN1_RAW|ASN1_OPT	}, /* 6 */
-	{ 1,   "end opt",			ASN1_EOC,			ASN1_END			}, /* 7 */
-	{ 0, "exit",				ASN1_EOC,			ASN1_EXIT			}
+  { 0, "algorithmIdentifier",  ASN1_SEQUENCE,    ASN1_NONE      }, /* 0 */
+  { 1,   "algorithm",      ASN1_OID,      ASN1_BODY      }, /* 1 */
+  { 1,   "parameters",    ASN1_OID,      ASN1_RAW|ASN1_OPT  }, /* 2 */
+  { 1,   "end opt",      ASN1_EOC,      ASN1_END      }, /* 3 */
+  { 1,   "parameters",    ASN1_SEQUENCE,    ASN1_RAW|ASN1_OPT  }, /* 4 */
+  { 1,   "end opt",      ASN1_EOC,      ASN1_END      }, /* 5 */
+  { 1,   "parameters",    ASN1_OCTET_STRING,  ASN1_RAW|ASN1_OPT  }, /* 6 */
+  { 1,   "end opt",      ASN1_EOC,      ASN1_END      }, /* 7 */
+  { 0, "exit",        ASN1_EOC,      ASN1_EXIT      }
 };
-#define ALGORITHM_ID_ALG				1
-#define ALGORITHM_ID_PARAMETERS_OID		2
-#define ALGORITHM_ID_PARAMETERS_SEQ		4
-#define ALGORITHM_ID_PARAMETERS_OCT		6
+#define ALGORITHM_ID_ALG        1
+#define ALGORITHM_ID_PARAMETERS_OID    2
+#define ALGORITHM_ID_PARAMETERS_SEQ    4
+#define ALGORITHM_ID_PARAMETERS_OCT    6
 
 /*
  * Defined in header
  */
 int asn1_parse_algorithmIdentifier(chunk_t blob, int level0, chunk_t *parameters)
 {
-	asn1_parser_t *parser;
-	chunk_t object;
-	int objectID;
-	int alg = OID_UNKNOWN;
+  asn1_parser_t *parser;
+  chunk_t object;
+  int objectID;
+  int alg = OID_UNKNOWN;
 
-	parser = asn1_parser_create(algorithmIdentifierObjects, blob);
-	parser->set_top_level(parser, level0);
+  parser = asn1_parser_create(algorithmIdentifierObjects, blob);
+  parser->set_top_level(parser, level0);
 
-	while (parser->iterate(parser, &objectID, &object))
-	{
-		switch (objectID)
-		{
-			case ALGORITHM_ID_ALG:
-				alg = asn1_known_oid(object);
-				break;
-			case ALGORITHM_ID_PARAMETERS_OID:
-			case ALGORITHM_ID_PARAMETERS_SEQ:
-			case ALGORITHM_ID_PARAMETERS_OCT:
-				if (parameters != NULL)
-				{
-					*parameters = object;
-				}
-				break;
-			default:
-				break;
-		}
-	}
-	parser->destroy(parser);
-	return alg;
+  while (parser->iterate(parser, &objectID, &object))
+  {
+    switch (objectID)
+    {
+      case ALGORITHM_ID_ALG:
+        alg = asn1_known_oid(object);
+        break;
+      case ALGORITHM_ID_PARAMETERS_OID:
+      case ALGORITHM_ID_PARAMETERS_SEQ:
+      case ALGORITHM_ID_PARAMETERS_OCT:
+        if (parameters != NULL)
+        {
+          *parameters = object;
+        }
+        break;
+      default:
+        break;
+    }
+  }
+  parser->destroy(parser);
+  return alg;
 }
 
 /*
@@ -894,42 +894,42 @@ int asn1_parse_algorithmIdentifier(chunk_t blob, int level0, chunk_t *parameters
  */
 bool is_asn1(chunk_t blob)
 {
-	uint32_t len;
-	unsigned char tag;
+  uint32_t len;
+  unsigned char tag;
 
-	if (!blob.len || !blob.ptr)
-	{
-		return FALSE;
-	}
+  if (!blob.len || !blob.ptr)
+  {
+    return FALSE;
+  }
 
-	tag = *blob.ptr;
-	if (tag != ASN1_SEQUENCE && tag != ASN1_SET && tag != ASN1_OCTET_STRING)
-	{
-		//DBG2(DBG_ASN, "  file content is not binary ASN.1");
-		return FALSE;
-	}
+  tag = *blob.ptr;
+  if (tag != ASN1_SEQUENCE && tag != ASN1_SET && tag != ASN1_OCTET_STRING)
+  {
+    //DBG2(DBG_ASN, "  file content is not binary ASN.1");
+    return FALSE;
+  }
 
-	len = asn1_length(&blob);
+  len = asn1_length(&blob);
 
-	if (len == ASN1_INVALID_LENGTH)
-	{
-		return FALSE;
-	}
+  if (len == ASN1_INVALID_LENGTH)
+  {
+    return FALSE;
+  }
 
-	/* exact match */
-	if (len == blob.len)
-	{
-		return TRUE;
-	}
+  /* exact match */
+  if (len == blob.len)
+  {
+    return TRUE;
+  }
 
-	/* some websites append a surplus newline character to the blob */
-	if (len + 1 == blob.len && *(blob.ptr + len) == '\n')
-	{
-		return TRUE;
-	}
+  /* some websites append a surplus newline character to the blob */
+  if (len + 1 == blob.len && *(blob.ptr + len) == '\n')
+  {
+    return TRUE;
+  }
 
-	//DBG2(DBG_ASN, "  file size does not match ASN.1 coded length");
-	return FALSE;
+  //DBG2(DBG_ASN, "  file size does not match ASN.1 coded length");
+  return FALSE;
 }
 
 /*
@@ -937,18 +937,18 @@ bool is_asn1(chunk_t blob)
  */
 bool asn1_is_printablestring(chunk_t str)
 {
-	const char printablestring_charset[] =
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 '()+,-./:=?";
-	uint32_t i;
+  const char printablestring_charset[] =
+    "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789 '()+,-./:=?";
+  uint32_t i;
 
-	for (i = 0; i < str.len; i++)
-	{
-		if (strchr(printablestring_charset, str.ptr[i]) == NULL)
-		{
-			return FALSE;
-		}
-	}
-	return TRUE;
+  for (i = 0; i < str.len; i++)
+  {
+    if (strchr(printablestring_charset, str.ptr[i]) == NULL)
+    {
+      return FALSE;
+    }
+  }
+  return TRUE;
 }
 
 /**
@@ -956,32 +956,32 @@ bool asn1_is_printablestring(chunk_t str)
  */
 static void asn1_code_length(size_t length, chunk_t *code)
 {
-	if (length < 128)
-	{
-		code->ptr[0] = length;
-		code->len = 1;
-	}
-	else if (length < 256)
-	{
-		code->ptr[0] = 0x81;
-		code->ptr[1] = (unsigned char) length;
-		code->len = 2;
-	}
-	else if (length < 65536)
-	{
-		code->ptr[0] = 0x82;
-		code->ptr[1] = length >> 8;
-		code->ptr[2] = length & 0x00ff;
-		code->len = 3;
-	}
-	else
-	{
-		code->ptr[0] = 0x83;
-		code->ptr[1] = length >> 16;
-		code->ptr[2] = (length >> 8) & 0x00ff;
-		code->ptr[3] = length & 0x0000ff;
-		code->len = 4;
-	}
+  if (length < 128)
+  {
+    code->ptr[0] = length;
+    code->len = 1;
+  }
+  else if (length < 256)
+  {
+    code->ptr[0] = 0x81;
+    code->ptr[1] = (unsigned char) length;
+    code->len = 2;
+  }
+  else if (length < 65536)
+  {
+    code->ptr[0] = 0x82;
+    code->ptr[1] = length >> 8;
+    code->ptr[2] = length & 0x00ff;
+    code->len = 3;
+  }
+  else
+  {
+    code->ptr[0] = 0x83;
+    code->ptr[1] = length >> 16;
+    code->ptr[2] = (length >> 8) & 0x00ff;
+    code->ptr[3] = length & 0x0000ff;
+    code->len = 4;
+  }
 }
 
 /**
@@ -989,28 +989,28 @@ static void asn1_code_length(size_t length, chunk_t *code)
  */
 unsigned char* asn1_build_object(chunk_t *object, asn1_t type, size_t datalen)
 {
-	unsigned char length_buf[4];
-	chunk_t length = { length_buf, 0 };
-	unsigned char *pos;
+  unsigned char length_buf[4];
+  chunk_t length = { length_buf, 0 };
+  unsigned char *pos;
 
-	/* code the asn.1 length field */
-	asn1_code_length(datalen, &length);
+  /* code the asn.1 length field */
+  asn1_code_length(datalen, &length);
 
-	/* allocate memory for the asn.1 TLV object */
-	object->len = 1 + length.len + datalen;
-	object->ptr = malloc(object->len);
+  /* allocate memory for the asn.1 TLV object */
+  object->len = 1 + length.len + datalen;
+  object->ptr = malloc(object->len);
 
-	/* set position pointer at the start of the object */
-	pos = object->ptr;
+  /* set position pointer at the start of the object */
+  pos = object->ptr;
 
-	/* copy the asn.1 tag field and advance the pointer */
-	*pos++ = type;
+  /* copy the asn.1 tag field and advance the pointer */
+  *pos++ = type;
 
-	/* copy the asn.1 length field and advance the pointer */
-	memcpy(pos, length.ptr, length.len);
-	pos += length.len;
+  /* copy the asn.1 length field and advance the pointer */
+  memcpy(pos, length.ptr, length.len);
+  pos += length.len;
 
-	return pos;
+  return pos;
 }
 
 /**
@@ -1018,13 +1018,13 @@ unsigned char* asn1_build_object(chunk_t *object, asn1_t type, size_t datalen)
  */
 chunk_t asn1_simple_object(asn1_t tag, chunk_t content)
 {
-	chunk_t object;
+  chunk_t object;
 
-	unsigned char *pos = asn1_build_object(&object, tag, content.len);
-	memcpy(pos, content.ptr, content.len);
-	pos += content.len;
+  unsigned char *pos = asn1_build_object(&object, tag, content.len);
+  memcpy(pos, content.ptr, content.len);
+  pos += content.len;
 
-	return object;
+  return object;
 }
 
 /**
@@ -1032,16 +1032,16 @@ chunk_t asn1_simple_object(asn1_t tag, chunk_t content)
  */
 chunk_t asn1_bitstring(const char *mode, chunk_t content)
 {
-	chunk_t object;
-	unsigned char *pos = asn1_build_object(&object, ASN1_BIT_STRING, 1 + content.len);
+  chunk_t object;
+  unsigned char *pos = asn1_build_object(&object, ASN1_BIT_STRING, 1 + content.len);
 
-	*pos++ = 0x00;
-	memcpy(pos, content.ptr, content.len);
-	if (*mode == 'm')
-	{
-		free(content.ptr);
-	}
-	return object;
+  *pos++ = 0x00;
+  memcpy(pos, content.ptr, content.len);
+  if (*mode == 'm')
+  {
+    free(content.ptr);
+  }
+  return object;
 }
 
 /**
@@ -1049,36 +1049,36 @@ chunk_t asn1_bitstring(const char *mode, chunk_t content)
  */
 chunk_t asn1_integer(const char *mode, chunk_t content)
 {
-	chunk_t object;
-	size_t len;
-	unsigned char *pos;
-	bool move;
+  chunk_t object;
+  size_t len;
+  unsigned char *pos;
+  bool move;
 
 
-	if (content.len == 0)
-	{	/* make sure 0 is encoded properly */
-		content = chunk_from_chars(0x00);
-		move = FALSE;
-	}
-	else
-	{
-		move = (*mode == 'm');
-	}
+  if (content.len == 0)
+  {  /* make sure 0 is encoded properly */
+    content = chunk_from_chars(0x00);
+    move = FALSE;
+  }
+  else
+  {
+    move = (*mode == 'm');
+  }
 
-	/* ASN.1 integers must be positive numbers in two's complement */
-	len = content.len + ((*content.ptr & 0x80) ? 1 : 0);
-	pos = asn1_build_object(&object, ASN1_INTEGER, len);
-	if (len > content.len)
-	{
-		*pos++ = 0x00;
-	}
-	memcpy(pos, content.ptr, content.len);
+  /* ASN.1 integers must be positive numbers in two's complement */
+  len = content.len + ((*content.ptr & 0x80) ? 1 : 0);
+  pos = asn1_build_object(&object, ASN1_INTEGER, len);
+  if (len > content.len)
+  {
+    *pos++ = 0x00;
+  }
+  memcpy(pos, content.ptr, content.len);
 
-	if (move)
-	{
-		free(content.ptr);
-	}
-	return object;
+  if (move)
+  {
+    free(content.ptr);
+  }
+  return object;
 }
 
 /**
@@ -1087,89 +1087,89 @@ chunk_t asn1_integer(const char *mode, chunk_t content)
  */
 chunk_t asn1_wrap(asn1_t type, const char *mode, ...)
 {
-	chunk_t construct;
-	va_list chunks;
-	unsigned char *pos;
-	int i;
-	int count = strlen(mode);
+  chunk_t construct;
+  va_list chunks;
+  unsigned char *pos;
+  int i;
+  int count = strlen(mode);
 
-	/* sum up lengths of individual chunks */
-	va_start(chunks, mode);
-	construct.len = 0;
-	for (i = 0; i < count; i++)
-	{
-		chunk_t ch = va_arg(chunks, chunk_t);
-		construct.len += ch.len;
-	}
-	va_end(chunks);
+  /* sum up lengths of individual chunks */
+  va_start(chunks, mode);
+  construct.len = 0;
+  for (i = 0; i < count; i++)
+  {
+    chunk_t ch = va_arg(chunks, chunk_t);
+    construct.len += ch.len;
+  }
+  va_end(chunks);
 
-	/* allocate needed memory for construct */
-	pos = asn1_build_object(&construct, type, construct.len);
+  /* allocate needed memory for construct */
+  pos = asn1_build_object(&construct, type, construct.len);
 
-	/* copy or move the chunks */
-	va_start(chunks, mode);
-	for (i = 0; i < count; i++)
-	{
-		chunk_t ch = va_arg(chunks, chunk_t);
+  /* copy or move the chunks */
+  va_start(chunks, mode);
+  for (i = 0; i < count; i++)
+  {
+    chunk_t ch = va_arg(chunks, chunk_t);
 
-		memcpy(pos, ch.ptr, ch.len);
-		pos += ch.len;
+    memcpy(pos, ch.ptr, ch.len);
+    pos += ch.len;
 
-		switch (*mode++)
-		{
-			case 's':
-				chunk_clear(&ch);
-				break;
-			case 'm':
-				free(ch.ptr);
-				break;
-			default:
-				break;
-		}
-	}
-	va_end(chunks);
+    switch (*mode++)
+    {
+      case 's':
+        chunk_clear(&ch);
+        break;
+      case 'm':
+        free(ch.ptr);
+        break;
+      default:
+        break;
+    }
+  }
+  va_end(chunks);
 
-	return construct;
+  return construct;
 }
 
 /**
  * ASN.1 definition of time
  */
 static const asn1Object_t timeObjects[] = {
-	{ 0, "utcTime",			ASN1_UTCTIME,			ASN1_OPT|ASN1_BODY	}, /* 0 */
-	{ 0, "end opt",			ASN1_EOC,				ASN1_END			}, /* 1 */
-	{ 0, "generalizeTime",	ASN1_GENERALIZEDTIME,	ASN1_OPT|ASN1_BODY	}, /* 2 */
-	{ 0, "end opt",			ASN1_EOC,				ASN1_END			}, /* 3 */
-	{ 0, "exit",			ASN1_EOC,				ASN1_EXIT			}
+  { 0, "utcTime",      ASN1_UTCTIME,      ASN1_OPT|ASN1_BODY  }, /* 0 */
+  { 0, "end opt",      ASN1_EOC,        ASN1_END      }, /* 1 */
+  { 0, "generalizeTime",  ASN1_GENERALIZEDTIME,  ASN1_OPT|ASN1_BODY  }, /* 2 */
+  { 0, "end opt",      ASN1_EOC,        ASN1_END      }, /* 3 */
+  { 0, "exit",      ASN1_EOC,        ASN1_EXIT      }
 };
 #ifdef TIME_UTC
 /* used by C11 timespec_get(), <time.h> */
 # undef TIME_UTC
 #endif
-#define TIME_UTC			0
-#define TIME_GENERALIZED	2
+#define TIME_UTC      0
+#define TIME_GENERALIZED  2
 
 /**
  * extracts and converts a UTCTIME or GENERALIZEDTIME object
  */
 time_t asn1_parse_time(chunk_t blob, int level0)
 {
-	asn1_parser_t *parser;
-	chunk_t object;
-	int objectID;
-	time_t utc_time = 0;
+  asn1_parser_t *parser;
+  chunk_t object;
+  int objectID;
+  time_t utc_time = 0;
 
-	parser= asn1_parser_create(timeObjects, blob);
-	parser->set_top_level(parser, level0);
+  parser= asn1_parser_create(timeObjects, blob);
+  parser->set_top_level(parser, level0);
 
-	while (parser->iterate(parser, &objectID, &object))
-	{
-		if (objectID == TIME_UTC || objectID == TIME_GENERALIZED)
-		{
-			utc_time = asn1_to_time(&object, (objectID == TIME_UTC)
-									? ASN1_UTCTIME : ASN1_GENERALIZEDTIME);
-		}
-	}
-	parser->destroy(parser);
-	return utc_time;
+  while (parser->iterate(parser, &objectID, &object))
+  {
+    if (objectID == TIME_UTC || objectID == TIME_GENERALIZED)
+    {
+      utc_time = asn1_to_time(&object, (objectID == TIME_UTC)
+                  ? ASN1_UTCTIME : ASN1_GENERALIZEDTIME);
+    }
+  }
+  parser->destroy(parser);
+  return utc_time;
 }
