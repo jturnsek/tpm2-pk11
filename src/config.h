@@ -31,6 +31,8 @@ struct config {
   char* device;
   char* hostname;
   char* certificates;
+  char* log_file;
+  int log_level;
   unsigned int port;
   bool sign_using_encrypt;
 };
