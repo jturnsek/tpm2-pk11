@@ -128,7 +128,7 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
       goto error;
     }
 
-    if (userdata->tpm_key.publicArea.type == TPM_ALG_RSASSA) {
+    if (userdata->tpm_key.publicArea.type == TPM2_ALG_RSASSA) {
       TPM2B_PUBLIC_KEY_RSA *rsa_key = &userdata->tpm_key.publicArea.unique.rsa;
       TPMS_RSA_PARMS *rsa_key_parms = &userdata->tpm_key.publicArea.parameters.rsaDetail;
 
@@ -179,7 +179,7 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
       public_object->opposite = object;
       object->opposite = public_object;
     }
-    else if (userdata->tpm_key.publicArea.type == TPM_ALG_ECDSA) {
+    else if (userdata->tpm_key.publicArea.type == TPM2_ALG_ECDSA) {
       TPMS_ECC_POINT *ecc_key = &userdata->tpm_key.publicArea.unique.ecc; 
       TPMS_ECC_PARMS *ecc_key_parms = &userdata->tpm_key.publicArea.parameters.eccDetail;
 

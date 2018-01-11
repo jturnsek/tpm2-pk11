@@ -119,6 +119,49 @@ void *memstr(const void *haystack, const char *needle, size_t n)
   return NULL;
 }
 
+/**
+ * Described in header.
+ */
+void* malloc_align(size_t size, uint8_t align)
+{
+  uint8_t pad;
+  void *ptr;
+
+  if (align == 0)
+  {
+    align = 1;
+  }
+  ptr = malloc(align + sizeof(pad) + size);
+  if (!ptr)
+  {
+    return NULL;
+  }
+  /* store padding length just before data, down to the allocation boundary
+   * to do some verification during free_align() */
+  pad = align - ((uintptr_t)ptr % align);
+  memset(ptr, pad, pad);
+  return ptr + pad;
+}
+
+/**
+ * Described in header.
+ */
+void free_align(void *ptr)
+{
+  uint8_t pad, *pos;
+
+  pos = ptr - 1;
+  /* verify padding to check any corruption */
+  for (pad = *pos; (void*)pos >= ptr - pad; pos--)
+  {
+    if (*pos != pad)
+    {
+      return;
+    }
+  }
+  free(ptr - pad);
+}
+
 void strncpy_pad(char *dest, const char *src, size_t n) {
   size_t len = strlen(src);
   memcpy(dest, src, len < n ? len : n);

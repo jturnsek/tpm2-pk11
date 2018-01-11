@@ -168,9 +168,9 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, 
       for (int k = 0; k < object->entries[j].num_attrs; k++) {
         if (pTemplate[i].type == index[k].type) {
           if (index[k].size_offset == 0)
-            retmem(pTemplate[i].pValue, &pTemplate[i].ulValueLen, obj + index[k].offset, index[k].size);
+            retmem(pTemplate[i].pValue, (size_t*)&pTemplate[i].ulValueLen, obj + index[k].offset, index[k].size);
           else
-            retmem(pTemplate[i].pValue, &pTemplate[i].ulValueLen, *((void**) (obj + index[k].offset)), *((size_t*) (obj + index[k].size_offset)));
+            retmem(pTemplate[i].pValue, (size_t*)&pTemplate[i].ulValueLen, *((void**) (obj + index[k].offset)), *((size_t*) (obj + index[k].size_offset)));
         }
       }
     }
@@ -221,7 +221,7 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, 
     if (rc != TPM2_RC_SUCCESS) { 
       return CKR_GENERAL_ERROR; 
     }  
-    retmem(pSignature, pulSignatureLen, buffer, sizeof(buffer));
+    retmem(pSignature, (size_t*)pulSignatureLen, buffer, sizeof(buffer));
   }
   
   return rc == TPM2_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
@@ -275,7 +275,7 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pEncryptedData, CK_ULONG
   struct session* session = get_session(hSession);
   TPM2_RC ret = tpm_rsa_decrypt(session->context, session->keyHandle, pEncryptedData, ulEncryptedDataLen, &message);
   
-  retmem(pData, pulDataLen, message.buffer, message.size);
+  retmem(pData, (size_t*)pulDataLen, message.buffer, message.size);
 
   return ret == TPM2_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
 }
@@ -305,7 +305,7 @@ CK_RV C_Encrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLe
 
   TPM2_RC ret = tpm_rsa_encrypt(session->context, session->keyHandle, pData, ulDataLen, &message);
   
-  retmem(pEncryptedData, pulEncryptedDataLen, message.buffer, message.size);
+  retmem(pEncryptedData, (size_t*)pulEncryptedDataLen, message.buffer, message.size);
 
   return ret == TPM2_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
 }
@@ -389,7 +389,7 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pRandomData, CK_U
     return CKR_GENERAL_ERROR;
   }
 
-  retmem(pRandomData, ulRandomLen, random_bytes.buffer, random_bytes.size);
+  retmem(pRandomData, (size_t*)&ulRandomLen, random_bytes.buffer, random_bytes.size);
 
   return CKR_OK;
 }
