@@ -179,6 +179,7 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
     }
     else if (userdata->tpm_key.publicArea.type == TPM2_ALG_ECDSA) {
       TPMS_ECC_POINT *ecc = &userdata->tpm_key.publicArea.unique.ecc;
+      chunk_t ecc_point;
       uint8_t *pos;
 
       userdata->public_object.id = userdata->name.name;
@@ -194,7 +195,7 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
       userdata->key.key_type = CKK_EC;
 
       /* allocate space for bit string */
-      pos = asn1_build_object(&userdata->public_key.ec.ec_point, ASN1_BIT_STRING, 2 + ecc->x.size + ecc->y.size);
+      pos = asn1_build_object(&ecc_point, ASN1_BIT_STRING, 2 + ecc->x.size + ecc->y.size);
       /* bit string length is a multiple of octets */
       *pos++ = 0x00;
       /* uncompressed ECC point format */
@@ -204,6 +205,9 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
       pos += ecc->x.size;
       /* copy y coordinate of ECC point */
       memcpy(pos, ecc->y.buffer, ecc->y.size);
+
+      /* encoding of AIK ECC point */
+      userdata->public_key.ec.ec_point = asn1_wrap(ASN1_SEQUENCE, "m", ecc_point);
       /* encoding of AIK ECC params */
       userdata->public_key.ec.ec_params = asn1_wrap(ASN1_SEQUENCE, "mm",
                                             asn1_wrap(ASN1_SEQUENCE, "mm",
