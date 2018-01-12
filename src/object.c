@@ -18,21 +18,32 @@
  */
 
 #include "object.h"
+#include "log.h"
 
 void* attr_get(pObject object, CK_ATTRIBUTE_TYPE type, size_t *size) {
+  print_log(VERBOSE, "attr_get: num_entries=%d", (int)object->num_entries);
   for (int i = 0; i < object->num_entries; i++) {
+    print_log(VERBOSE, "attr_get: i=%d", i);
     pAttrIndexEntry entries = &object->entries[i];
+    print_log(VERBOSE, "attr_get: entries->num_attrs=%d", (int)entries->num_attrs);
     for (int j = 0; j < entries->num_attrs; j++) {
+      print_log(VERBOSE, "attr_get: j=%d", j);
       if (type == entries->indexes[j].type) {
         pAttrIndex index = &entries->indexes[j];
+        print_log(VERBOSE, "attr_get: index=%d", (int)index);
         if (index->size_offset == 0) {
-          if (size)
+          if (size) {
+            print_log(VERBOSE, "attr_get: *size=%d", (int)(index->size));
             *size = index->size;
+          }
+          print_log(VERBOSE, "attr_get: foobar1");
           return entries->object + index->offset;
         } else {
-          if (size)
+          if (size) {
+            print_log(VERBOSE, "attr_get: krneki=%d", (int)(entries->object + index->size_offset));
             *size = *((size_t*) (entries->object + index->size_offset));
-
+          }
+          print_log(VERBOSE, "attr_get: foobar2");
           return *((void**) (entries->object + index->offset));
         }
       }
