@@ -131,7 +131,7 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved) {
 }
 
 CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount) {
-  print_log(VERBOSE, "C_FindObjectsInit: session = %x, count = %d", hSession, ulCount);
+  print_log(VERBOSE, "C_FindObjectsInit: session = %x, template =%x, count = %d", hSession, pTemplate, ulCount);
   struct session *session = get_session(hSession);
   session->find_cursor = session->objects;
   session->filters = pTemplate;
