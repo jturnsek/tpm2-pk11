@@ -244,7 +244,7 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
       userdata->key.decrypt = CK_FALSE;
       userdata->key.encrypt = CK_FALSE;
       userdata->key.key_type = CKK_EC;
-
+      print_log(VERBOSE, "object_load: before asn1_build_object");
       /* allocate space for bit string */
       pos = asn1_build_object(&ecc_point, ASN1_BIT_STRING, 2 + ecc->x.size + ecc->y.size);
       /* bit string length is a multiple of octets */
@@ -256,15 +256,16 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
       pos += ecc->x.size;
       /* copy y coordinate of ECC point */
       memcpy(pos, ecc->y.buffer, ecc->y.size);
-
+      print_log(VERBOSE, "object_load: before asn1_wrap");
       /* encoding of AIK ECC point */
       userdata->public_key.ec.ec_point = asn1_wrap(ASN1_SEQUENCE, "m", ecc_point);
+      print_log(VERBOSE, "object_load: before asn1_wrap 2");
       /* encoding of AIK ECC params */
       userdata->public_key.ec.ec_params = asn1_wrap(ASN1_SEQUENCE, "mm",
                                             asn1_wrap(ASN1_SEQUENCE, "mm",
                                               asn1_build_known_oid(OID_EC_PUBLICKEY),
                                               asn1_build_known_oid(OID_PRIME256V1)));
-
+      print_log(VERBOSE, "object_load: after ASN.1 stuff");
       pObject object = malloc(sizeof(Object));
       if (object == NULL) {
         free(userdata);

@@ -20,6 +20,9 @@
 #include "object.h"
 
 void* attr_get(pObject object, CK_ATTRIBUTE_TYPE type, size_t *size) {
+  if (!object) {
+    return NULL;
+  }
   for (int i = 0; i < object->num_entries; i++) {
     pAttrIndexEntry entries = &object->entries[i];
     for (int j = 0; j < entries->num_attrs; j++) {
