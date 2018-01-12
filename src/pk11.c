@@ -154,7 +154,6 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, C
       print_log(VERBOSE, "C_FindObjects: for loop: j=%d", j);
       size_t size = 0;
       void* value = attr_get(object, session->filters[j].type, &size);
-      print_log(VERBOSE, "C_FindObjects: for loop: value=%x", (int)value);
       if (session->filters[j].ulValueLen != size || memcmp(session->filters[j].pValue, value, size) != 0) {
         filtered = true;
         break;
