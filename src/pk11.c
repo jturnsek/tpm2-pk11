@@ -66,7 +66,7 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID, CK_FLAGS flags, CK_VOID_PTR pApplication,
     return CKR_GENERAL_ERROR;
 
   int ret = session_init((struct session*) *phSession, &pk11_config);
-
+  print_log(VERBOSE, "C_OpenSession: ret = %d", ret);
   return ret != 0 ? CKR_GENERAL_ERROR : CKR_OK;
 }
 
