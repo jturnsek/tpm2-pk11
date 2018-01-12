@@ -145,27 +145,31 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, C
   tpm_list(get_session(hSession)->context, &persistent);
   struct session* session = get_session(hSession);
   *pulObjectCount = 0;
-  //print_log(VERBOSE, "C_FindObjects: I am here!");
+  print_log(VERBOSE, "C_FindObjects: I am here!");
   while (session->find_cursor != NULL && *pulObjectCount < ulMaxObjectCount) {
-    //print_log(VERBOSE, "C_FindObjects: while loop: ulObjectCount=%d", (int)*pulObjectCount);
+    print_log(VERBOSE, "C_FindObjects: while loop: ulObjectCount=%d", (int)*pulObjectCount);
     pObject object = session->find_cursor->object;
     bool filtered = false;
     for (int j = 0; j < session->num_filters; j++) {
-      //print_log(VERBOSE, "C_FindObjects: for loop: j=%d", j);
+      print_log(VERBOSE, "C_FindObjects: for loop: j=%d", j);
       size_t size = 0;
       void* value = attr_get(object, session->filters[j].type, &size);
+      print_log(VERBOSE, "C_FindObjects: for loop: value=0x%x", (int)value);
       if (session->filters[j].ulValueLen != size || memcmp(session->filters[j].pValue, value, size) != 0) {
         filtered = true;
         break;
       }
     }
     if (!filtered) {
-      //print_log(VERBOSE, "C_FindObjects: while loop: filtered=false");
+      print_log(VERBOSE, "C_FindObjects: while loop: filtered=false");
       phObject[*pulObjectCount] = (CK_OBJECT_HANDLE) session->find_cursor->object;
       (*pulObjectCount)++;
     }
-    //print_log(VERBOSE, "C_FindObjects: while loop: end");
+    print_log(VERBOSE, "C_FindObjects: while loop: end");
     session->find_cursor = session->find_cursor->next;
+  }   
+
+  return CKR_OK;
 }
 
 CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession) {
