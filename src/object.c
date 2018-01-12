@@ -28,7 +28,6 @@ void* attr_get(pObject object, CK_ATTRIBUTE_TYPE type, size_t *size) {
         if (index->size_offset == 0) {
           if (size)
             *size = index->size;
-
           return entries->object + index->offset;
         } else {
           if (size)
