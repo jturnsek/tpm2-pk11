@@ -38,7 +38,7 @@ typedef struct userdata_tpm_t {
   CK_UTF8CHAR label[256];
   PkcsObject public_object, private_object;
   PkcsKey key;
-  PkcsPublicKey public_key
+  PkcsPublicKey public_key;
   PkcsModulus modulus;
 } UserdataTpm, *pUserdataTpm;
 
@@ -57,14 +57,12 @@ static AttrIndex KEY_INDEX[] = {
 };
 
 static AttrIndex PUBLIC_KEY_RSA_INDEX[] = {
-  attr_dynamic_index_of(CKA_MODULUS, PkcsRSAPublicKey, modulus, modulus_size),
-  attr_index_of(CKA_MODULUS_BITS, PkcsRSAPublicKey, bits),
-  attr_index_of(CKA_PUBLIC_EXPONENT, PkcsRSAPublicKey, exponent)
+  attr_index_of(CKA_PUBLIC_EXPONENT, PkcsPublicKey, exponent)
 };
 
 static AttrIndex MODULUS_INDEX[] = {
   attr_dynamic_index_of(CKA_MODULUS, PkcsModulus, modulus, modulus_size),
-  attr_index_of(CKA_MODULUS_BITS, PkcsModulus, bits),
+  attr_index_of(CKA_MODULUS_BITS, PkcsModulus, bits)
 };
 
 static AttrIndex PUBLIC_KEY_EC_INDEX[] = {
