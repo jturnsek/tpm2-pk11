@@ -22,6 +22,7 @@
 #include "tpm.h"
 #include "pk11.h"
 #include "oid.h"
+#include "log.h"
 
 #include <stdio.h>
 #include <endian.h>
@@ -80,6 +81,7 @@ pObject object_get(pObjectList list, int id) {
 }
 
 void object_add(pObjectList list, pObject object) {
+  print_log(VERBOSE, "object_add: object = %x", (int)object);
   if (list->object == NULL)
     list->object = object;
   else {
@@ -136,7 +138,7 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
       free(userdata);
       goto error;
     }
-
+    print_log(VERBOSE, "object_load: type = %x", (int)userdata->tpm_key.publicArea.type);
     if (userdata->tpm_key.publicArea.type == TPM2_ALG_RSASSA) {
       TPM2B_PUBLIC_KEY_RSA *rsa_key = &userdata->tpm_key.publicArea.unique.rsa;
       TPMS_RSA_PARMS *rsa_key_parms = &userdata->tpm_key.publicArea.parameters.rsaDetail;
