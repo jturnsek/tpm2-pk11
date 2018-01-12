@@ -40,6 +40,8 @@
 typedef struct pkcs_object_t {
   void* id;
   size_t id_size;
+  char* label;
+  size_t label_size;
   CK_OBJECT_CLASS class;
 } PkcsObject, *pPkcsObject;
 
@@ -52,11 +54,14 @@ typedef struct pkcs_key_t {
 } PkcsKey, *pPkcsKey;
 
 typedef struct pkcs_rsa_public_key_t {
+  uint32_t exponent;
+} PkcsRSAPublicKey, *pPkcsRSAPublicKey;
+
+typedef struct pkcs_modulus_t {
   void* modulus;
   size_t modulus_size;
   CK_ULONG bits;
-  uint32_t exponent;
-} PkcsRSAPublicKey, *pPkcsRSAPublicKey;
+} PkcsModulus, *pPkcsModulus;
 
 typedef struct pkcs_ec_public_key_t {
   chunk_t ec_params;
