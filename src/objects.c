@@ -57,7 +57,7 @@ static AttrIndex KEY_INDEX[] = {
 };
 
 static AttrIndex PUBLIC_KEY_RSA_INDEX[] = {
-  attr_index_of(CKA_PUBLIC_EXPONENT, PkcsPublicKey, exponent)
+  attr_index_of(CKA_PUBLIC_EXPONENT, PkcsRSAPublicKey, exponent)
 };
 
 static AttrIndex MODULUS_INDEX[] = {
