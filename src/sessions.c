@@ -19,6 +19,7 @@
  */
 
 #include "sessions.h"
+#include "log.h"
 
 #include <stdlib.h>
 
@@ -122,7 +123,7 @@ int session_init(struct session* session, struct config *config) {
   rc = Tss2_Sys_Initialize(session->context, size, tcti_ctx, &abi_version);
 
   session->objects = object_load(session->context, config);
-
+  print_log(VERBOSE, "session_init: objects = %x", (int)session->objects);
   return 0;
 
   cleanup:
