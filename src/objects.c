@@ -262,9 +262,8 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
       print_log(VERBOSE, "object_load: before asn1_wrap 2");
       /* encoding of AIK ECC params */
       userdata->public_key.ec.ec_params = asn1_wrap(ASN1_SEQUENCE, "mm",
-                                            asn1_wrap(ASN1_SEQUENCE, "mm",
-                                              asn1_build_known_oid(OID_EC_PUBLICKEY),
-                                              asn1_build_known_oid(OID_PRIME256V1)));
+                                            asn1_build_known_oid(OID_EC_PUBLICKEY),
+                                            asn1_build_known_oid(OID_PRIME256V1));
       print_log(VERBOSE, "object_load: after ASN.1 stuff");
       pObject object = malloc(sizeof(Object));
       if (object == NULL) {
