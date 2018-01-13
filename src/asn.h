@@ -32,62 +32,62 @@
  * Definition of some primitive ASN1 types
  */
 typedef enum {
-  ASN1_EOC =        		0x00,
-  ASN1_BOOLEAN =      		0x01,
-  ASN1_INTEGER =      		0x02,
-  ASN1_BIT_STRING =    		0x03,
-  ASN1_OCTET_STRING =   	0x04,
-  ASN1_NULL =        		0x05,
-  ASN1_OID =        		0x06,
-  ASN1_ENUMERATED =    		0x0A,
-  ASN1_UTF8STRING =    		0x0C,
-  ASN1_NUMERICSTRING = 		0x12,
-  ASN1_PRINTABLESTRING =	0x13,
-  ASN1_T61STRING =    		0x14,
-  ASN1_VIDEOTEXSTRING = 	0x15,
-  ASN1_IA5STRING =    		0x16,
-  ASN1_UTCTIME =      		0x17,
-  ASN1_GENERALIZEDTIME =	0x18,
-  ASN1_GRAPHICSTRING =  	0x19,
-  ASN1_VISIBLESTRING =  	0x1A,
-  ASN1_GENERALSTRING =  	0x1B,
-  ASN1_UNIVERSALSTRING =	0x1C,
-  ASN1_BMPSTRING =    		0x1E,
+  ASN1_EOC =              0x00,
+  ASN1_BOOLEAN =          0x01,
+  ASN1_INTEGER =          0x02,
+  ASN1_BIT_STRING =       0x03,
+  ASN1_OCTET_STRING =     0x04,
+  ASN1_NULL =             0x05,
+  ASN1_OID =              0x06,
+  ASN1_ENUMERATED =       0x0A,
+  ASN1_UTF8STRING =       0x0C,
+  ASN1_NUMERICSTRING =    0x12,
+  ASN1_PRINTABLESTRING =  0x13,
+  ASN1_T61STRING =        0x14,
+  ASN1_VIDEOTEXSTRING =   0x15,
+  ASN1_IA5STRING =        0x16,
+  ASN1_UTCTIME =          0x17,
+  ASN1_GENERALIZEDTIME =  0x18,
+  ASN1_GRAPHICSTRING =    0x19,
+  ASN1_VISIBLESTRING =    0x1A,
+  ASN1_GENERALSTRING =    0x1B,
+  ASN1_UNIVERSALSTRING =  0x1C,
+  ASN1_BMPSTRING =        0x1E,
 
-  ASN1_CONSTRUCTED =    	0x20,
+  ASN1_CONSTRUCTED =      0x20,
 
-  ASN1_SEQUENCE =      		0x30,
-  ASN1_SET =        		0x31,
+  ASN1_SEQUENCE =         0x30,
+  ASN1_SET =              0x31,
 
-  ASN1_CONTEXT_S_0 =    	0x80,
-  ASN1_CONTEXT_S_1 =    	0x81,
-  ASN1_CONTEXT_S_2 =    	0x82,
-  ASN1_CONTEXT_S_3 =    	0x83,
-  ASN1_CONTEXT_S_4 =    	0x84,
-  ASN1_CONTEXT_S_5 =    	0x85,
-  ASN1_CONTEXT_S_6 =    	0x86,
-  ASN1_CONTEXT_S_7 =    	0x87,
-  ASN1_CONTEXT_S_8 =    	0x88,
+  ASN1_CONTEXT_S_0 =      0x80,
+  ASN1_CONTEXT_S_1 =      0x81,
+  ASN1_CONTEXT_S_2 =      0x82,
+  ASN1_CONTEXT_S_3 =      0x83,
+  ASN1_CONTEXT_S_4 =      0x84,
+  ASN1_CONTEXT_S_5 =      0x85,
+  ASN1_CONTEXT_S_6 =      0x86,
+  ASN1_CONTEXT_S_7 =      0x87,
+  ASN1_CONTEXT_S_8 =      0x88,
 
-  ASN1_CONTEXT_C_0 =    	0xA0,
-  ASN1_CONTEXT_C_1 =    	0xA1,
-  ASN1_CONTEXT_C_2 =    	0xA2,
-  ASN1_CONTEXT_C_3 =    	0xA3,
-  ASN1_CONTEXT_C_4 =    	0xA4,
-  ASN1_CONTEXT_C_5 =    	0xA5,
+  ASN1_CONTEXT_C_0 =      0xA0,
+  ASN1_CONTEXT_C_1 =      0xA1,
+  ASN1_CONTEXT_C_2 =      0xA2,
+  ASN1_CONTEXT_C_3 =      0xA3,
+  ASN1_CONTEXT_C_4 =      0xA4,
+  ASN1_CONTEXT_C_5 =      0xA5,
 
-  ASN1_INVALID =      		0x100,
+  ASN1_INVALID =          0x100,
 } asn_t;
 
 /**
  * General purpose pointer/length abstraction.
  */
-struct asn_buf_t {
+typedef struct {
   /** Pointer to start of data */
   unsigned char *ptr;
   /** Length of data in bytes */
   size_t len;
-};
+} asn_buf_t;
 
 extern asn_buf_t asn_buf_empty;
 
@@ -196,7 +196,7 @@ extern const asn_oid_t asn_oid_names[];
 #define OID_PKCS7_DATA                    113
 #define OID_PKCS7_SIGNED_DATA             114
 #define OID_PKCS7_ENVELOPED_DATA          115
-#define OID_PKCS7_SIGNED_ENVELOPED_DATA		116
+#define OID_PKCS7_SIGNED_ENVELOPED_DATA   116
 #define OID_PKCS7_DIGESTED_DATA           117
 #define OID_PKCS7_ENCRYPTED_DATA          118
 #define OID_EMAIL_ADDRESS                 120
