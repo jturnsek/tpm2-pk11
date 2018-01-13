@@ -148,7 +148,7 @@ TPM2_RC tpm_rsa_encrypt(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsign
 
   memcpy(in_data.buffer, data, data_length);
 
-  return Tss2_Sys_RSA_Encrypt(context, handle, NULL, &in_data, &scheme, &label, &message, &out_sessions_data);
+  return Tss2_Sys_RSA_Encrypt(context, handle, NULL, &in_data, &scheme, &label, message, &out_sessions_data);
 }
 
 TPM2_RC tpm_list(TSS2_SYS_CONTEXT *context, TPMS_CAPABILITY_DATA* capability_data) {
