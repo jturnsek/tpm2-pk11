@@ -128,33 +128,6 @@ asn_buf_t asn_wrap(asn_t type, const char *mode, ...)
   return construct;
 }
 
-asn_buf_t asn_build_known_oid(int n)
-{
-  asn_buf_t oid;
-  int i;
-
-  if (n < 0 || n >= OID_MAX) {
-    return asn_buf_empty;
-  }
-
-  i = asn_oid_names[n].level + 1;
-  oid = asn_buf_alloc(2 + i);
-  oid.ptr[0] = ASN1_OID;
-  oid.ptr[1] = i;
-
-  do {
-    if (asn_oid_names[n].level >= i) {
-      n--;
-      continue;
-    }
-    oid.ptr[--i + 2] = asn_oid_names[n--].octet;
-  }
-  while (i > 0);
-
-  return oid;
-}
-
-
 /**
  * OID names
  */
@@ -657,3 +630,29 @@ const asn_oid_t asn_oid_names[] = {
   {        0x03,               496, 0,  4, "tcg-at-tpmVersion"               }, /* 495 */
   {        0x0F,                 0, 0,  4, "tcg-at-tpmIdLabel"               }  /* 496 */
 };
+
+asn_buf_t asn_build_known_oid(int n)
+{
+  asn_buf_t oid;
+  int i;
+
+  if (n < 0 || n >= OID_MAX) {
+    return asn_buf_empty;
+  }
+
+  i = asn_oid_names[n].level + 1;
+  oid = asn_buf_alloc(2 + i);
+  oid.ptr[0] = ASN1_OID;
+  oid.ptr[1] = i;
+
+  do {
+    if (asn_oid_names[n].level >= i) {
+      n--;
+      continue;
+    }
+    oid.ptr[--i + 2] = asn_oid_names[n--].octet;
+  }
+  while (i > 0);
+
+  return oid;
+}
