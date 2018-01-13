@@ -79,9 +79,6 @@ typedef enum {
   ASN1_INVALID =      		0x100,
 } asn_t;
 
-
-extern asn_buf_t asn_buf_empty;
-
 /**
  * General purpose pointer/length abstraction.
  */
@@ -91,6 +88,8 @@ struct asn_buf_t {
   /** Length of data in bytes */
   size_t len;
 };
+
+extern asn_buf_t asn_buf_empty;
 
 /**
  * Create a new asn_buf_t pointing to "ptr" with length "len"
