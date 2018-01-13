@@ -118,6 +118,37 @@ static inline void asn_buf_clear(asn_buf_t *buf)
   }
 }
 
+/**
+ * Build an empty ASN.1 object with tag and length fields already filled in
+ *
+ * @param object  returned object - memory is allocated by function
+ * @param type    ASN.1 type to be created
+ * @param datalen size of the body to be created
+ * @return        points to the first position in the body
+ */
+unsigned char* asn_build_object(asn_buf_t *object, asn_t type, size_t datalen)
+
+/**
+ * Build an ASN.1 object from a variable number of individual asn bufs
+ *
+ * The mode string specifies the number of asn bufs, and how to handle each of
+ * them with a single character: 'c' for copy (allocate new asn_buf), 'm' for move
+ * (free given asn_buf) or 's' for sensitive-copy (clear given asn_buf, then free).
+ *
+ * @param type    ASN.1 type to be created
+ * @param mode    for each list member: 'c', 'm' or 's'
+ * @return        asn_buf containing the ASN.1 coded object
+ */
+asn_buf_t asn_wrap(asn_t type, const char *mode, ...);
+
+/**
+ * Converts a known OID index to an ASN.1 OID
+ *
+ * @param n     index into the oid_names[] table
+ * @return      allocated OID asn_buf, asn_buf_empty if index out of range
+ */
+asn_buf_t asn_build_known_oid(int n);
+
 
 typedef struct {
   unsigned char octet;
