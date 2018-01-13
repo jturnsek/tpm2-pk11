@@ -137,17 +137,17 @@ asn_buf_t asn_build_known_oid(int n)
     return asn_buf_empty;
   }
 
-  i = oid_names[n].level + 1;
+  i = asn_oid_names[n].level + 1;
   oid = asn_buf_alloc(2 + i);
   oid.ptr[0] = ASN1_OID;
   oid.ptr[1] = i;
 
   do {
-    if (oid_names[n].level >= i) {
+    if (asn_oid_names[n].level >= i) {
       n--;
       continue;
     }
-    oid.ptr[--i + 2] = oid_names[n--].octet;
+    oid.ptr[--i + 2] = asn_oid_names[n--].octet;
   }
   while (i > 0);
 
@@ -158,7 +158,7 @@ asn_buf_t asn_build_known_oid(int n)
 /**
  * OID names
  */
-const oid_t oid_names[] = {
+const asn_oid_t asn_oid_names[] = {
   {0x02,                         7, 1,  0, "ITU-T Administration"            }, /*   0 */
   {  0x82,                       0, 1,  1, ""                                }, /*   1 */
   {    0x06,                     0, 1,  2, "Germany ITU-T member"            }, /*   2 */
