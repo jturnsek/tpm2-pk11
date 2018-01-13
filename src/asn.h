@@ -82,12 +82,14 @@ typedef enum {
 /**
  * General purpose pointer/length abstraction.
  */
-typedef struct {
+struct asn_buf_t {
   /** Pointer to start of data */
   unsigned char *ptr;
   /** Length of data in bytes */
   size_t len;
-} asn_buf_t;
+};
+
+typedef struct asn_buf_t asn_buf_t;
 
 extern asn_buf_t asn_buf_empty;
 
@@ -149,16 +151,16 @@ asn_buf_t asn_wrap(asn_t type, const char *mode, ...);
  */
 asn_buf_t asn_build_known_oid(int n);
 
-
-typedef struct {
+struct asn_oid_t {
   unsigned char octet;
   uint32_t  next;
   uint32_t  down;
   uint32_t  level;
   const unsigned char *name;
-} asn_oid_t;
+};
 
-extern const asn_oid_t asn_oid_names[];
+typedef struct asn_oid_t asn_oid_t;
+
 
 #define OID_UNKNOWN              		     -1
 #define OID_NAME_DISTINGUISHER            6
