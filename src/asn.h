@@ -128,7 +128,7 @@ static inline void asn_buf_clear(asn_buf_t *buf)
  * @param datalen size of the body to be created
  * @return        points to the first position in the body
  */
-unsigned char* asn_build_object(asn_buf_t *object, asn_t type, size_t datalen)
+unsigned char* asn_build_object(asn_buf_t *object, asn_t type, size_t datalen);
 
 /**
  * Build an ASN.1 object from a variable number of individual asn bufs
