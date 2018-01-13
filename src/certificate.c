@@ -59,7 +59,7 @@ pObject certificate_read(const char* pathname) {
   userdata->object.class = CKO_CERTIFICATE;
   userdata->object.id = userdata->id;
   userdata->object.id_size = 0;
-  char* filename = basename(pathname);
+  char* filename = basename((char*)pathname);
   while (userdata->object.id_size < sizeof(userdata->id)) {
     if (sscanf(filename + (userdata->object.id_size * 2), "%2hhx", userdata->id + userdata->object.id_size) != 1)
       break;
