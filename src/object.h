@@ -1,5 +1,6 @@
 /*
  * This file is part of tpm2-pk11.
+ * Copyright (C) 2018 Jernej Turnsek
  * Copyright (C) 2017 Iwan Timmer
  *
  * This library is free software; you can redistribute it and/or

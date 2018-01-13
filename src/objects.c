@@ -1,5 +1,6 @@
 /*
  * This file is part of tpm2-pk11.
+ * Copyright (C) 2018 Jernej Turnsek
  * Copyright (C) 2017 Iwan Timmer
  *
  * This library is free software; you can redistribute it and/or
@@ -21,7 +22,7 @@
 #include "certificate.h"
 #include "tpm.h"
 #include "pk11.h"
-#include "oid.h"
+#include "asn.h"
 #include "log.h"
 
 #include <stdio.h>
@@ -211,7 +212,7 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
     }
     else if (userdata->tpm_key.publicArea.type == TPM2_ALG_ECC) {
       TPMS_ECC_POINT *ecc = &userdata->tpm_key.publicArea.unique.ecc;
-      chunk_t ecc_point;
+      asn_buf_t ecc_point;
       uint8_t *pos;
 
       /*
@@ -245,7 +246,7 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
       userdata->key.key_type = CKK_EC;
       
       /* allocate space for bit string */
-      pos = asn1_build_object(&ecc_point, ASN1_BIT_STRING, 2 + ecc->x.size + ecc->y.size);
+      pos = asn_build_object(&ecc_point, ASN1_BIT_STRING, 2 + ecc->x.size + ecc->y.size);
       /* bit string length is a multiple of octets */
       *pos++ = 0x00;
       /* uncompressed ECC point format */
@@ -256,11 +257,11 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
       /* copy y coordinate of ECC point */
       memcpy(pos, ecc->y.buffer, ecc->y.size);
       /* encoding of AIK ECC point */
-      userdata->public_key.ec.ec_point = asn1_wrap(ASN1_SEQUENCE, "m", ecc_point);
+      userdata->public_key.ec.ec_point = asn_wrap(ASN1_SEQUENCE, "m", ecc_point);
       /* encoding of AIK ECC params */
-      userdata->public_key.ec.ec_params = asn1_wrap(ASN1_SEQUENCE, "mm",
-                                            asn1_build_known_oid(OID_EC_PUBLICKEY),
-                                            asn1_build_known_oid(OID_PRIME256V1));
+      userdata->public_key.ec.ec_params = asn_wrap(ASN1_SEQUENCE, "mm",
+                                            asn_build_known_oid(OID_EC_PUBLICKEY),
+                                            asn_build_known_oid(OID_PRIME256V1));
       pObject object = malloc(sizeof(Object));
       if (object == NULL) {
         free(userdata);

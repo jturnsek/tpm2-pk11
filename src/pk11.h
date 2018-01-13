@@ -1,6 +1,6 @@
 /*
  * This file is part of tpm2-pk11.
- * Copyright (C) 2017 Jernej Turnsek
+ * Copyright (C) 2018 Jernej Turnsek
  * Copyright (C) 2017 Iwan Timmer
  *
  * This library is free software; you can redistribute it and/or
@@ -23,7 +23,7 @@
 
 #include <stdint.h>
 #include <p11-kit/pkcs11.h>
-#include "asn1.h"
+#include "asn.h"
 
 #define TPM2_PK11_CONFIG_DIR ".tpm2"
 #define TPM2_PK11_CONFIG_FILE "config"
@@ -64,8 +64,8 @@ typedef struct pkcs_modulus_t {
 } PkcsModulus, *pPkcsModulus;
 
 typedef struct pkcs_ec_public_key_t {
-  chunk_t ec_params;
-  chunk_t ec_point;
+  asn_buf_t ec_params;
+  asn_buf_t ec_point;
 } PkcsECPublicKey, *pPkcsECPublicKey;
 
 typedef union pkcs_public_key_t {
