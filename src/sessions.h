@@ -38,7 +38,7 @@ typedef enum mechanism_type
 } mechanism;
 
 struct session {
-  TSS2_SYS_CONTEXT *context;
+  TSS2_SYS_CONTEXT *sapi_context;
   pObjectList objects;
   TPMI_DH_OBJECT keyHandle;
   pObjectList find_cursor;

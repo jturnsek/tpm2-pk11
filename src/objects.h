@@ -32,6 +32,8 @@ typedef struct object_list_t {
 } ObjectList, *pObjectList;
 
 pObject object_get(pObjectList list, int id);
+pObject object_create(void);
+void object_destroy(pObject object);
 void object_add(pObjectList list, pObject object);
 void object_free(pObjectList list);
 

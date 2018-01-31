@@ -72,7 +72,8 @@ static AttrIndex PUBLIC_KEY_EC_INDEX[] = {
   attr_dynamic_index_of(CKA_EC_POINT, PkcsECPublicKey, ec_point.ptr, ec_point.len)  
 };
 
-pObject object_get(pObjectList list, int id) {
+pObject object_get(pObjectList list, int id)
+{
   while (list != NULL) {
     if (list->object != NULL && list->object->id == id)
       return list->object;
@@ -81,7 +82,8 @@ pObject object_get(pObjectList list, int id) {
   return NULL;
 }
 
-void object_add(pObjectList list, pObject object) {
+void object_add(pObjectList list, pObject object)
+{
   if (list->object == NULL)
     list->object = object;
   else {
@@ -92,7 +94,18 @@ void object_add(pObjectList list, pObject object) {
   }
 }
 
-void object_free(pObjectList list) {
+pObject object_create(void)
+{
+
+}
+
+void object_destroy(pObject object)
+{
+
+}
+
+void object_free(pObjectList list)
+{
   while (list != NULL) {
     pObjectList next = list->next;
     if (list->object != NULL) {
@@ -113,7 +126,8 @@ static inline int hex_to_char(int c)
   return c >= 10 ? c - 10 + 'A' : c + '0';
 }
 
-pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
+pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config)
+{
   pObjectList list = malloc(sizeof(ObjectList));
   list->object = NULL;
   list->next = NULL;
@@ -133,7 +147,7 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config) {
 
     memset(userdata, 0, sizeof(UserdataTpm));
     userdata->name.size = sizeof(TPMU_NAME);
-    rc = tpm_readpublic(ctx, persistent.data.handles.handle[i], &userdata->tpm_key, &userdata->name);
+    rc = tpm_read_public(ctx, persistent.data.handles.handle[i], &userdata->tpm_key, &userdata->name);
     if (rc != TPM2_RC_SUCCESS) {
       free(userdata);
       goto error;

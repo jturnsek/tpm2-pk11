@@ -36,6 +36,91 @@
 
 static struct config pk11_config = {0};
 
+
+static CK_RV extractObjectInformation(CK_ATTRIBUTE_PTR pTemplate,
+              CK_ULONG ulCount,
+              CK_OBJECT_CLASS &objClass,
+              CK_KEY_TYPE &keyType,
+              CK_CERTIFICATE_TYPE &certType,
+              CK_BBOOL &isOnToken,
+              CK_BBOOL &isPrivate,
+              bool bImplicit)
+{
+  bool bHasClass = false;
+  bool bHasKeyType = false;
+  bool bHasCertType = false;
+  bool bHasPrivate = false;
+
+  // Extract object information
+  for (CK_ULONG i = 0; i < ulCount; ++i) {
+    switch (pTemplate[i].type) {
+      case CKA_CLASS:
+        if (pTemplate[i].ulValueLen == sizeof(CK_OBJECT_CLASS)) {
+          objClass = *(CK_OBJECT_CLASS_PTR)pTemplate[i].pValue;
+          bHasClass = true;
+        }
+        break;
+      case CKA_KEY_TYPE:
+        if (pTemplate[i].ulValueLen == sizeof(CK_KEY_TYPE)) {
+          keyType = *(CK_KEY_TYPE*)pTemplate[i].pValue;
+          bHasKeyType = true;
+        }
+        break;
+      case CKA_CERTIFICATE_TYPE:
+        if (pTemplate[i].ulValueLen == sizeof(CK_CERTIFICATE_TYPE)) {
+          certType = *(CK_CERTIFICATE_TYPE*)pTemplate[i].pValue;
+          bHasCertType = true;
+        }
+        break;
+      case CKA_TOKEN:
+        if (pTemplate[i].ulValueLen == sizeof(CK_BBOOL)) {
+          isOnToken = *(CK_BBOOL*)pTemplate[i].pValue;
+        }
+        break;
+      case CKA_PRIVATE:
+        if (pTemplate[i].ulValueLen == sizeof(CK_BBOOL)) {
+          isPrivate = *(CK_BBOOL*)pTemplate[i].pValue;
+          bHasPrivate = true;
+        }
+        break;
+      default:
+        break;
+    }
+  }
+
+  if (bImplicit) {
+    return CKR_OK;
+  }
+
+  if (!bHasClass) {
+    return CKR_TEMPLATE_INCOMPLETE;
+  }
+
+  bool bKeyTypeRequired = (objClass == CKO_PUBLIC_KEY || objClass == CKO_PRIVATE_KEY || objClass == CKO_SECRET_KEY);
+  if (bKeyTypeRequired && !bHasKeyType) {
+     return CKR_TEMPLATE_INCOMPLETE;
+  }
+
+  if (objClass == CKO_CERTIFICATE) {
+    if (!bHasCertType) {
+      return CKR_TEMPLATE_INCOMPLETE;
+    }
+
+    if (!bHasPrivate) {
+      // Change default value for certificates
+      isPrivate = CK_FALSE;
+    }
+  }
+
+  if (objClass == CKO_PUBLIC_KEY && !bHasPrivate) {
+    // Change default value for public keys
+    isPrivate = CK_FALSE;
+  }
+
+  return CKR_OK;
+}
+
+
 CK_RV C_GetInfo(CK_INFO_PTR pInfo) {
   print_log(VERBOSE, "C_GetInfo");
   pInfo->cryptokiVersion.major = CRYPTOKI_VERSION_MAJOR;
@@ -142,7 +227,7 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, 
 CK_RV C_FindObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, CK_ULONG ulMaxObjectCount, CK_ULONG_PTR pulObjectCount) {
   print_log(VERBOSE, "C_FindObjects: session = %x, max = %d", hSession, ulMaxObjectCount);
   TPMS_CAPABILITY_DATA persistent;
-  tpm_list(get_session(hSession)->context, &persistent);
+  tpm_list(get_session(hSession)->sapi_context, &persistent);
   struct session* session = get_session(hSession);
   *pulObjectCount = 0;
   while (session->find_cursor != NULL && *pulObjectCount < ulMaxObjectCount) {
@@ -174,7 +259,7 @@ CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession) {
   return CKR_OK;
 }
 
-CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount) {
+CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTRIBUTE_PT, CK_ULONG ulCount) {
   print_log(VERBOSE, "C_GetAttributeValue: session = %x, object = %x, count = %d", hSession, hObject, ulCount);
   pObject object = (pObject) hObject;
 
@@ -229,10 +314,10 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, 
   unsigned char buffer[sizeof(signature)];
 
   if (session->m == RSA_PKCS) {
-    rc = tpm_rsa_sign(session->context, session->keyHandle, pData, ulDataLen, &signature); 
+    rc = tpm_rsa_sign(session->sapi_context, session->keyHandle, pData, ulDataLen, &signature); 
   }
   else if (session->m == ECDSA) {
-    rc = tpm_ecc_sign(session->context, session->keyHandle, pData, ulDataLen, &signature);
+    rc = tpm_ecc_sign(session->sapi_context, session->keyHandle, pData, ulDataLen, &signature);
   }
   
   if (rc == TPM2_RC_SUCCESS) {
@@ -270,7 +355,7 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pEncryptedData, CK_ULONG
   print_log(VERBOSE, "C_Decrypt: session = %x, len = %d", hSession, ulEncryptedDataLen);
   TPM2B_PUBLIC_KEY_RSA message = { .size = TPM2_MAX_RSA_KEY_BYTES };
   struct session* session = get_session(hSession);
-  TPM2_RC ret = tpm_rsa_decrypt(session->context, session->keyHandle, pEncryptedData, ulEncryptedDataLen, &message);
+  TPM2_RC ret = tpm_rsa_decrypt(session->sapi_context, session->keyHandle, pEncryptedData, ulEncryptedDataLen, &message);
   
   retmem(pData, (size_t*)pulDataLen, message.buffer, message.size);
 
@@ -428,7 +513,7 @@ CK_RV C_Encrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLe
   TPM2B_PUBLIC_KEY_RSA message = { .size = TPM2_MAX_RSA_KEY_BYTES };
   struct session* session = get_session(hSession);
 
-  TPM2_RC ret = tpm_rsa_encrypt(session->context, session->keyHandle, pData, ulDataLen, &message);
+  TPM2_RC ret = tpm_rsa_encrypt(session->sapi_context, session->keyHandle, pData, ulDataLen, &message);
   
   retmem(pEncryptedData, (size_t*)pulEncryptedDataLen, message.buffer, message.size);
 
@@ -521,7 +606,7 @@ CK_RV C_Verify(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen
       return CKR_GENERAL_ERROR;
   }
 
-  rc = tpm_verify(session->context, session->keyHandle, &signature, pData, ulDataLen);
+  rc = tpm_verify(session->sapi_context, session->keyHandle, &signature, pData, ulDataLen);
 
   return rc == TPM2_RC_SUCCESS ? CKR_OK : CKR_SIGNATURE_INVALID;
 }
@@ -573,7 +658,62 @@ CK_RV C_GenerateKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_
 
 CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_PTR pPublicKeyTemplate, CK_ULONG ulPublicKeyAttributeCount, CK_ATTRIBUTE_PTR pPrivateKeyTemplate, CK_ULONG ulPrivateKeyAttributeCount, CK_OBJECT_HANDLE_PTR phPublicKey, CK_OBJECT_HANDLE_PTR phPrivateKey) {
   print_log(VERBOSE, "C_GenerateKeyPair: session = %x, public_count = %d, private_count = %d", hSession, ulPublicKeyAttributeCount, ulPrivateKeyAttributeCount);
-  return CKR_FUNCTION_NOT_SUPPORTED;
+  struct session* session = get_session(hSession);
+
+  if (pMechanism == NULL_PTR) return CKR_ARGUMENTS_BAD;
+  if (phPublicKey == NULL_PTR) return CKR_ARGUMENTS_BAD;
+  if (phPrivateKey == NULL_PTR) return CKR_ARGUMENTS_BAD;
+
+  // Check the mechanism, only accept RSA, EC key pair generation.
+  CK_KEY_TYPE keyType;
+  switch (pMechanism->mechanism) {
+    case CKM_RSA_PKCS_KEY_PAIR_GEN:
+      keyType = CKK_RSA;
+      break;
+    case CKM_EC_KEY_PAIR_GEN:
+      keyType = CKK_EC;
+      break;
+    default:
+      return CKR_MECHANISM_INVALID;
+  }
+
+  CK_CERTIFICATE_TYPE dummy;
+
+  // Extract information from the public key template that is needed to create the object.
+  CK_OBJECT_CLASS publicKeyClass = CKO_PUBLIC_KEY;
+  CK_BBOOL ispublicKeyToken = CK_FALSE;
+  CK_BBOOL ispublicKeyPrivate = CK_FALSE;
+  bool isPublicKeyImplicit = true;
+  extractObjectInformation(pPublicKeyTemplate, ulPublicKeyAttributeCount, publicKeyClass, keyType, dummy, ispublicKeyToken, ispublicKeyPrivate, isPublicKeyImplicit);
+
+  // Report errors caused by accidental template mix-ups in the application using this cryptoki lib.
+  if (publicKeyClass != CKO_PUBLIC_KEY)
+    return CKR_ATTRIBUTE_VALUE_INVALID;
+  if (pMechanism->mechanism == CKM_RSA_PKCS_KEY_PAIR_GEN && keyType != CKK_RSA)
+    return CKR_TEMPLATE_INCONSISTENT;
+  if (pMechanism->mechanism == CKM_EC_KEY_PAIR_GEN && keyType != CKK_EC)
+    return CKR_TEMPLATE_INCONSISTENT;
+
+  // Extract information from the private key template that is needed to create the object.
+  CK_OBJECT_CLASS privateKeyClass = CKO_PRIVATE_KEY;
+  CK_BBOOL isprivateKeyToken = CK_FALSE;
+  CK_BBOOL isprivateKeyPrivate = CK_TRUE;
+  bool isPrivateKeyImplicit = true;
+  extractObjectInformation(pPrivateKeyTemplate, ulPrivateKeyAttributeCount, privateKeyClass, keyType, dummy, isprivateKeyToken, isprivateKeyPrivate, isPrivateKeyImplicit);
+
+  // Report errors caused by accidental template mix-ups in the application using this cryptoki lib.
+  if (privateKeyClass != CKO_PRIVATE_KEY)
+    return CKR_ATTRIBUTE_VALUE_INVALID;
+  if (pMechanism->mechanism == CKM_RSA_PKCS_KEY_PAIR_GEN && keyType != CKK_RSA)
+    return CKR_TEMPLATE_INCONSISTENT;
+  if (pMechanism->mechanism == CKM_EC_KEY_PAIR_GEN && keyType != CKK_EC)
+    return CKR_TEMPLATE_INCONSISTENT;
+
+
+
+
+
+  return CKR_OK;
 }
 
 CK_RV C_WrapKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hWrappingKey, CK_OBJECT_HANDLE hKey,  CK_BYTE_PTR pWrappedKey, CK_ULONG_PTR pulWrappedKeyLen) {
@@ -602,7 +742,7 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pRandomData, CK_U
   struct session* session = get_session(hSession);
   TPM2B_DIGEST random_bytes;
 
-  TPM2_RC rval = Tss2_Sys_GetRandom(session->context, NULL, ulRandomLen, &random_bytes, NULL);
+  TPM2_RC rval = Tss2_Sys_GetRandom(session->sapi_context, NULL, ulRandomLen, &random_bytes, NULL);
   if (rval != TPM2_RC_SUCCESS) {
     return CKR_GENERAL_ERROR;
   }

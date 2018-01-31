@@ -2,7 +2,7 @@ TPM2 PK11
 ==========
 
 TPM2 PK11 provide a PKCS#11 backend for a TPM 2.0 chip.
-This can be used for NSS PKCS#11 token.
+This can also be used for NSS PKCS#11 token.
 
 WARNING: Work in progress!!!
 
