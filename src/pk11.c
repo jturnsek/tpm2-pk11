@@ -664,6 +664,9 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
   if (phPublicKey == NULL_PTR) return CKR_ARGUMENTS_BAD;
   if (phPrivateKey == NULL_PTR) return CKR_ARGUMENTS_BAD;
 
+  *phPublicKey = CK_INVALID_HANDLE;
+  *phPrivateKey = CK_INVALID_HANDLE;
+
   // Check the mechanism, only accept RSA, EC key pair generation.
   CK_KEY_TYPE keyType;
   switch (pMechanism->mechanism) {
@@ -686,7 +689,7 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
   bool isPublicKeyImplicit = true;
   extractObjectInformation(pPublicKeyTemplate, ulPublicKeyAttributeCount, publicKeyClass, keyType, dummy, ispublicKeyToken, ispublicKeyPrivate, isPublicKeyImplicit);
 
-  // Report errors caused by accidental template mix-ups in the application using this cryptoki lib.
+  // Report errors caused by accidental template mix-ups in the application using this lib.
   if (publicKeyClass != CKO_PUBLIC_KEY)
     return CKR_ATTRIBUTE_VALUE_INVALID;
   if (pMechanism->mechanism == CKM_RSA_PKCS_KEY_PAIR_GEN && keyType != CKK_RSA)
@@ -701,7 +704,7 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
   bool isPrivateKeyImplicit = true;
   extractObjectInformation(pPrivateKeyTemplate, ulPrivateKeyAttributeCount, privateKeyClass, keyType, dummy, isprivateKeyToken, isprivateKeyPrivate, isPrivateKeyImplicit);
 
-  // Report errors caused by accidental template mix-ups in the application using this cryptoki lib.
+  // Report errors caused by accidental template mix-ups in the application using this lib.
   if (privateKeyClass != CKO_PRIVATE_KEY)
     return CKR_ATTRIBUTE_VALUE_INVALID;
   if (pMechanism->mechanism == CKM_RSA_PKCS_KEY_PAIR_GEN && keyType != CKK_RSA)
@@ -709,9 +712,15 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
   if (pMechanism->mechanism == CKM_EC_KEY_PAIR_GEN && keyType != CKK_EC)
     return CKR_TEMPLATE_INCONSISTENT;
 
-
-
-
+  pObject object = object_generate_pair(session->sapi_context);
+  if (object == NULL) {
+    return CKR_FUNCTION_FAILED; 
+  }
+  //Add object to list
+  object_add(session->objects, object);
+  *phPublicKey = object;
+  object_add(session->objects, object->opposite);
+  *phPrivateKey = object->opposite;
 
   return CKR_OK;
 }
