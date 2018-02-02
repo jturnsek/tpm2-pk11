@@ -96,6 +96,7 @@ void object_add(pObjectList list, pObject object)
 
 pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx)
 {
+  pObject public_object = NULL;
   pUserdataTpm userdata = malloc(sizeof(UserdataTpm));
   if (userdata == NULL) {
     return NULL;
@@ -161,7 +162,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx)
     object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.rsa, PUBLIC_KEY_RSA_INDEX);
     object->entries[3] = (AttrIndexEntry) attr_index_entry(&userdata->modulus, MODULUS_INDEX);
     
-    pObject public_object = object;
+    public_object = object;
 
     object = malloc(sizeof(Object));
     if (object == NULL) {
@@ -247,7 +248,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx)
     object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
     object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.ec, PUBLIC_KEY_EC_INDEX);
     
-    pObject public_object = object;
+    public_object = object;
 
     object = malloc(sizeof(Object));
     if (object == NULL) {
@@ -272,7 +273,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx)
 
 void object_destroy_pair(TSS2_SYS_CONTEXT *ctx, pObject object)
 {
-  //TODO
+
 }
 
 void object_free(pObjectList list)

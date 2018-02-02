@@ -20,6 +20,8 @@
 
 #include "tpm.h"
 
+#include <stddef.h>
+#include <stdint.h>
 #include <endian.h>
 
 #define TPM2_RC_MASK 0xfff
@@ -44,7 +46,7 @@ const unsigned char oid_sha256[] = {0x30, 0x31, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x
 const unsigned char oid_sha384[] = {0x30, 0x41, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86,0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x02, 0x05,0x00, 0x04, 0x30};
 const unsigned char oid_sha512[] = {0x30, 0x51, 0x30, 0x0d, 0x06, 0x09, 0x60, 0x86,0x48, 0x01, 0x65, 0x03, 0x04, 0x02, 0x03, 0x05,0x00, 0x04, 0x40};
 
-struct tpm2_session_data {
+typedef struct tpm2_session_data {
   TPMI_DH_OBJECT key;
   TPMI_DH_ENTITY bind;
   TPM2B_ENCRYPTED_SECRET encrypted_salt;
@@ -52,9 +54,9 @@ struct tpm2_session_data {
   TPMT_SYM_DEF symmetric;
   TPMI_ALG_HASH authHash;
   TPM2B_NONCE nonce_caller;
-};
+} tpm2_session_data;
 
-struct tpm2_session {
+typedef struct tpm2_session {
   tpm2_session_data* input;
   struct {
     TPMI_SH_AUTH_SESSION session_handle;
@@ -63,7 +65,7 @@ struct tpm2_session {
   struct {
     TPM2B_NONCE nonceNewer;
   } internal;
-};
+} tpm2_session;
 
 uint16_t tpm2_alg_util_get_hash_size(TPMI_ALG_HASH id)
 {
