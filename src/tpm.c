@@ -230,7 +230,7 @@ static generate_key_context ctx = {
     .ak      = TPM2B_EMPTY_INIT,
     .owner   = TPM2B_EMPTY_INIT,
   },
-  .algorithm_type = TPM2_ALG_ECC,
+  .algorithm_type = TPM2_ALG_RSA,
   .digest_alg = TPM2_ALG_SHA256,
   .sign_alg = TPM2_ALG_NULL,
 };
