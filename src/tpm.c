@@ -22,6 +22,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <stdbool.h>
 #include <endian.h>
 
 #define TPM2_RC_MASK 0xfff
