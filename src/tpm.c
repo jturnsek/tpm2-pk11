@@ -28,6 +28,60 @@
 #define TPM2_RC_MASK 0xfff
 #define TPM2_RC_GET(code) (code & TPM2_RC_MASK)
 
+#define UNUSED(x) (void)x
+
+#define ARRAY_LEN(x) (sizeof(x)/sizeof(x[0]))
+
+#define BUFFER_SIZE(type, field) (sizeof((((type *)NULL)->field)))
+
+#define TPM2B_TYPE_INIT(type, field) { .size = BUFFER_SIZE(type, field), }
+#define TPM2B_INIT(xsize) { .size = xsize, }
+#define TPM2B_EMPTY_INIT TPM2B_INIT(0)
+#define TPM2B_SENSITIVE_CREATE_EMPTY_INIT { \
+           .sensitive = { \
+                .data = {   \
+                    .size = 0 \
+                }, \
+                .userAuth = {   \
+                    .size = 0 \
+                } \
+            } \
+    }
+
+#define TPMS_AUTH_COMMAND_INIT(session_handle) { \
+        .sessionHandle = session_handle,\
+      .nonce = TPM2B_EMPTY_INIT, \
+      .sessionAttributes = 0, \
+      .hmac = TPM2B_EMPTY_INIT \
+    }
+
+#define TPMS_AUTH_COMMAND_EMPTY_INIT TPMS_AUTH_COMMAND_INIT(0)
+
+#define TPMT_TK_CREATION_EMPTY_INIT { \
+        .tag = 0, \
+    .hierarchy = 0, \
+    .digest = TPM2B_EMPTY_INIT \
+    }
+
+#define TPML_PCR_SELECTION_EMPTY_INIT { \
+        .count = 0, \
+    } //ignore pcrSelections since count is 0.
+
+#define TPMS_CAPABILITY_DATA_EMPTY_INIT { \
+        .capability = 0, \
+    } // ignore data since capability is 0.
+
+#define TPMT_TK_HASHCHECK_EMPTY_INIT { \
+    .tag = 0, \
+    .hierarchy = 0, \
+    .digest = TPM2B_EMPTY_INIT \
+    }
+
+#define TSS2L_SYS_AUTH_COMMAND_INIT(cnt, array) { \
+        .count = cnt, \
+        .auths = array, \
+    }
+
 /*
  * This macro is useful as a wrapper around SAPI functions to automatically
  * retry function calls when the RC is TPM2_RC_RETRY.
@@ -37,9 +91,11 @@
         TSS2_RC __result = 0;                              \
         do {                                               \
             __result = (expression);                       \
-        } while (TPM2_RC_GET(__result) == TPM2_RC_RETRY); \
+        } while (TPM2_RC_GET(__result) == TPM2_RC_RETRY);  \
         __result;                                          \
     })
+
+
 
 
 const unsigned char oid_sha1[] = {0x30, 0x21, 0x30, 0x09, 0x06, 0x05, 0x2B, 0x0E, 0x03, 0x02, 0x1A, 0x05, 0x00, 0x04, 0x14};
