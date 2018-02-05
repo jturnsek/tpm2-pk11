@@ -23,7 +23,7 @@
 
 #include <sapi/tpm20.h>
 
-TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPM2B_PUBLIC *public, TPM2B_NAME *name);
+TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPM2B_PUBLIC *public, TPM2B_NAME *name, TPMI_DH_OBJECT *handle);
 TPM2_RC tpm_read_public(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, TPM2B_PUBLIC *public, TPM2B_NAME *name);
 TPM2_RC tpm_rsa_sign(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, unsigned char *hash, unsigned long hash_length, TPMT_SIGNATURE *signature);
 TPM2_RC tpm_ecc_sign(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, unsigned char *hash, unsigned long hash_length, TPMT_SIGNATURE *signature);

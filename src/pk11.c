@@ -39,11 +39,11 @@ static struct config pk11_config = {0};
 
 static CK_RV extractObjectInformation(CK_ATTRIBUTE_PTR pTemplate,
               CK_ULONG ulCount,
-              CK_OBJECT_CLASS &objClass,
-              CK_KEY_TYPE &keyType,
-              CK_CERTIFICATE_TYPE &certType,
-              CK_BBOOL &isOnToken,
-              CK_BBOOL &isPrivate,
+              CK_OBJECT_CLASS *objClass,
+              CK_KEY_TYPE *keyType,
+              CK_CERTIFICATE_TYPE *certType,
+              CK_BBOOL *isOnToken,
+              CK_BBOOL *isPrivate,
               bool bImplicit)
 {
   bool bHasClass = false;
@@ -56,30 +56,30 @@ static CK_RV extractObjectInformation(CK_ATTRIBUTE_PTR pTemplate,
     switch (pTemplate[i].type) {
       case CKA_CLASS:
         if (pTemplate[i].ulValueLen == sizeof(CK_OBJECT_CLASS)) {
-          objClass = *(CK_OBJECT_CLASS_PTR)pTemplate[i].pValue;
+          *objClass = *(CK_OBJECT_CLASS_PTR)pTemplate[i].pValue;
           bHasClass = true;
         }
         break;
       case CKA_KEY_TYPE:
         if (pTemplate[i].ulValueLen == sizeof(CK_KEY_TYPE)) {
-          keyType = *(CK_KEY_TYPE*)pTemplate[i].pValue;
+          *keyType = *(CK_KEY_TYPE*)pTemplate[i].pValue;
           bHasKeyType = true;
         }
         break;
       case CKA_CERTIFICATE_TYPE:
         if (pTemplate[i].ulValueLen == sizeof(CK_CERTIFICATE_TYPE)) {
-          certType = *(CK_CERTIFICATE_TYPE*)pTemplate[i].pValue;
+          *certType = *(CK_CERTIFICATE_TYPE*)pTemplate[i].pValue;
           bHasCertType = true;
         }
         break;
       case CKA_TOKEN:
         if (pTemplate[i].ulValueLen == sizeof(CK_BBOOL)) {
-          isOnToken = *(CK_BBOOL*)pTemplate[i].pValue;
+          *isOnToken = *(CK_BBOOL*)pTemplate[i].pValue;
         }
         break;
       case CKA_PRIVATE:
         if (pTemplate[i].ulValueLen == sizeof(CK_BBOOL)) {
-          isPrivate = *(CK_BBOOL*)pTemplate[i].pValue;
+          *isPrivate = *(CK_BBOOL*)pTemplate[i].pValue;
           bHasPrivate = true;
         }
         break;
@@ -96,12 +96,12 @@ static CK_RV extractObjectInformation(CK_ATTRIBUTE_PTR pTemplate,
     return CKR_TEMPLATE_INCOMPLETE;
   }
 
-  bool bKeyTypeRequired = (objClass == CKO_PUBLIC_KEY || objClass == CKO_PRIVATE_KEY || objClass == CKO_SECRET_KEY);
+  bool bKeyTypeRequired = (*objClass == CKO_PUBLIC_KEY || *objClass == CKO_PRIVATE_KEY || *objClass == CKO_SECRET_KEY);
   if (bKeyTypeRequired && !bHasKeyType) {
      return CKR_TEMPLATE_INCOMPLETE;
   }
 
-  if (objClass == CKO_CERTIFICATE) {
+  if (*objClass == CKO_CERTIFICATE) {
     if (!bHasCertType) {
       return CKR_TEMPLATE_INCOMPLETE;
     }
@@ -112,7 +112,7 @@ static CK_RV extractObjectInformation(CK_ATTRIBUTE_PTR pTemplate,
     }
   }
 
-  if (objClass == CKO_PUBLIC_KEY && !bHasPrivate) {
+  if (*objClass == CKO_PUBLIC_KEY && !bHasPrivate) {
     // Change default value for public keys
     isPrivate = CK_FALSE;
   }
@@ -687,7 +687,7 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
   CK_BBOOL ispublicKeyToken = CK_FALSE;
   CK_BBOOL ispublicKeyPrivate = CK_FALSE;
   bool isPublicKeyImplicit = true;
-  extractObjectInformation(pPublicKeyTemplate, ulPublicKeyAttributeCount, publicKeyClass, keyType, dummy, ispublicKeyToken, ispublicKeyPrivate, isPublicKeyImplicit);
+  extractObjectInformation(pPublicKeyTemplate, ulPublicKeyAttributeCount, &publicKeyClass, &keyType, &dummy, &ispublicKeyToken, &ispublicKeyPrivate, isPublicKeyImplicit);
 
   // Report errors caused by accidental template mix-ups in the application using this lib.
   if (publicKeyClass != CKO_PUBLIC_KEY)
@@ -702,7 +702,7 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
   CK_BBOOL isprivateKeyToken = CK_FALSE;
   CK_BBOOL isprivateKeyPrivate = CK_TRUE;
   bool isPrivateKeyImplicit = true;
-  extractObjectInformation(pPrivateKeyTemplate, ulPrivateKeyAttributeCount, privateKeyClass, keyType, dummy, isprivateKeyToken, isprivateKeyPrivate, isPrivateKeyImplicit);
+  extractObjectInformation(pPrivateKeyTemplate, ulPrivateKeyAttributeCount, &privateKeyClass, &keyType, &dummy, &isprivateKeyToken, &isprivateKeyPrivate, isPrivateKeyImplicit);
 
   // Report errors caused by accidental template mix-ups in the application using this lib.
   if (privateKeyClass != CKO_PRIVATE_KEY)
@@ -718,9 +718,9 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
   }
   //Add object to list
   object_add(session->objects, object);
-  *phPublicKey = object;
+  *phPublicKey = (CK_OBJECT_HANDLE)object;
   object_add(session->objects, object->opposite);
-  *phPrivateKey = object->opposite;
+  *phPrivateKey = (CK_OBJECT_HANDLE)object->opposite;
 
   return CKR_OK;
 }

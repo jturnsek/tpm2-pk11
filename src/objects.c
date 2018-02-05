@@ -72,6 +72,11 @@ static AttrIndex PUBLIC_KEY_EC_INDEX[] = {
   attr_dynamic_index_of(CKA_EC_POINT, PkcsECPublicKey, ec_point.ptr, ec_point.len)  
 };
 
+static inline int hex_to_char(int c)
+{
+  return c >= 10 ? c - 10 + 'A' : c + '0';
+}
+
 pObject object_get(pObjectList list, int id)
 {
   while (list != NULL) {
@@ -96,6 +101,7 @@ void object_add(pObjectList list, pObject object)
 
 pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx)
 {
+  TPMI_DH_OBJECT persistent;
   pObject public_object = NULL;
   pUserdataTpm userdata = malloc(sizeof(UserdataTpm));
   if (userdata == NULL) {
@@ -103,7 +109,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx)
   }
   memset(userdata, 0, sizeof(UserdataTpm));
   userdata->name.size = sizeof(TPMU_NAME);
-  rc = tpm_generate_key_pair(ctx, &userdata->tpm_key, &userdata->name);
+  TPM2_RC rc = tpm_generate_key_pair(ctx, &userdata->tpm_key, &userdata->name, &persistent);
   if (rc != TPM2_RC_SUCCESS) {
     free(userdata);
     return NULL;
@@ -171,7 +177,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx)
       return NULL;
     }
 
-    object->tpm_handle = persistent.data.handles.handle[i];
+    object->tpm_handle = persistent;
     object->userdata = NULL;
     object->num_entries = 3;
     object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
@@ -257,7 +263,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx)
       return NULL;
     }
 
-    object->tpm_handle = persistent.data.handles.handle[i];
+    object->tpm_handle = persistent;
     object->userdata = NULL;
     object->num_entries = 2;
     object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
@@ -291,11 +297,6 @@ void object_free(pObjectList list)
     free(list);
     list = next;
   }
-}
-
-static inline int hex_to_char(int c)
-{
-  return c >= 10 ? c - 10 + 'A' : c + '0';
 }
 
 pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config)
