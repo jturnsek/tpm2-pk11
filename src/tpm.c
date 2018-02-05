@@ -314,7 +314,7 @@ static bool set_key_algorithm(TPM2B_PUBLIC *in_public)
   return true;
 }
 
-TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPM2B_PUBLIC *public, TPM2B_NAME *name, TPMI_DH_OBJECT *handle)
+TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPM2B_PUBLIC *public, TPM2B_NAME *name, TPMI_DH_OBJECT *persistent)
 {
   TPML_PCR_SELECTION creation_pcr;
   TSS2L_SYS_AUTH_RESPONSE sessions_data_out;
@@ -466,7 +466,7 @@ TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPM2B_PUBLIC *publ
   }
 
   *public = out_public;
-  *handle = ctx.persistent_handle.ak;
+  *persistent = ctx.persistent_handle.ak;
 
   return TPM2_RC_SUCCESS;
 }

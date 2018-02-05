@@ -259,7 +259,7 @@ CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession) {
   return CKR_OK;
 }
 
-CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTRIBUTE_PT, CK_ULONG ulCount) {
+CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount) {
   print_log(VERBOSE, "C_GetAttributeValue: session = %x, object = %x, count = %d", hSession, hObject, ulCount);
   pObject object = (pObject) hObject;
 
