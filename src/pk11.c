@@ -722,6 +722,7 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
   object_add(session->objects, object->opposite);
   *phPrivateKey = (CK_OBJECT_HANDLE)object->opposite;
 
+  print_log(VERBOSE, "C_GenerateKeyPair: Finished OK");
   return CKR_OK;
 }
 
