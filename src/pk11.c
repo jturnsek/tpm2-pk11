@@ -712,7 +712,7 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
   if (pMechanism->mechanism == CKM_EC_KEY_PAIR_GEN && keyType != CKK_EC)
     return CKR_TEMPLATE_INCONSISTENT;
 
-  pObject object = object_generate_pair(session->sapi_context);
+  pObject object = object_generate_pair(session->sapi_context, algorithm_type);
   if (object == NULL) {
     return CKR_FUNCTION_FAILED; 
   }
