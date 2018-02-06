@@ -289,16 +289,15 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJ
 
   switch(pMechanism->mechanism) {
     case CKM_RSA_X_509:
-      get_session(hSession)->m = RSA;
+      get_session(hSession)->mechanism = CKM_RSA_X_509;
       break;
     case CKM_RSA_PKCS:
-      get_session(hSession)->m = RSA_PKCS;
+      get_session(hSession)->mechanism = CKM_RSA_PKCS;
       break;
     case CKM_ECDSA:
-      get_session(hSession)->m = ECDSA;
+      get_session(hSession)->mechanism = CKM_ECDSA;
       break;
     default:
-      get_session(hSession)->m = Unknown;
       return CKR_MECHANISM_INVALID;
   }
 
@@ -313,10 +312,10 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, 
   size_t offset = 0;
   unsigned char buffer[sizeof(signature)];
 
-  if (session->m == RSA_PKCS) {
+  if (session->mechanism == CKM_RSA_PKCS) {
     rc = tpm_rsa_sign(session->sapi_context, session->keyHandle, pData, ulDataLen, &signature); 
   }
-  else if (session->m == ECDSA) {
+  else if (session->mechanism == CKM_ECDSA) {
     rc = tpm_ecc_sign(session->sapi_context, session->keyHandle, pData, ulDataLen, &signature);
   }
   
@@ -338,13 +337,12 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_
 
   switch(pMechanism->mechanism) {
     case CKM_RSA_X_509:
-      get_session(hSession)->m = RSA;
+      get_session(hSession)->mechanism = CKM_RSA_X_509;
       break;
     case CKM_RSA_PKCS:
-      get_session(hSession)->m = RSA_PKCS;
+      get_session(hSession)->mechanism = CKM_RSA_PKCS;
       break;
     default:
-      get_session(hSession)->m = Unknown;
       return CKR_MECHANISM_INVALID;
   }
 
@@ -495,13 +493,12 @@ CK_RV C_EncryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_
 
   switch(pMechanism->mechanism) {
     case CKM_RSA_X_509:
-      get_session(hSession)->m = RSA;
+      get_session(hSession)->mechanism = CKM_RSA_X_509;
       break;
     case CKM_RSA_PKCS:
-      get_session(hSession)->m = RSA_PKCS;
+      get_session(hSession)->mechanism = CKM_RSA_PKCS;
       break;
     default:
-      get_session(hSession)->m = Unknown;
       return CKR_MECHANISM_INVALID;
   }
 
@@ -659,6 +656,7 @@ CK_RV C_GenerateKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_
 CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_PTR pPublicKeyTemplate, CK_ULONG ulPublicKeyAttributeCount, CK_ATTRIBUTE_PTR pPrivateKeyTemplate, CK_ULONG ulPrivateKeyAttributeCount, CK_OBJECT_HANDLE_PTR phPublicKey, CK_OBJECT_HANDLE_PTR phPrivateKey) {
   print_log(VERBOSE, "C_GenerateKeyPair: session = %x, public_count = %d, private_count = %d", hSession, ulPublicKeyAttributeCount, ulPrivateKeyAttributeCount);
   struct session* session = get_session(hSession);
+  TPM2_ALG_ID algorithm_type;
 
   if (pMechanism == NULL_PTR) return CKR_ARGUMENTS_BAD;
   if (phPublicKey == NULL_PTR) return CKR_ARGUMENTS_BAD;
@@ -672,9 +670,11 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
   switch (pMechanism->mechanism) {
     case CKM_RSA_PKCS_KEY_PAIR_GEN:
       keyType = CKK_RSA;
+      algorithm_type = TPM2_ALG_RSA;
       break;
     case CKM_EC_KEY_PAIR_GEN:
       keyType = CKK_EC;
+      algorithm_type = TPM2_ALG_ECC;
       break;
     default:
       return CKR_MECHANISM_INVALID;

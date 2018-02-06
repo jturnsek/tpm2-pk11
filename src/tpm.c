@@ -314,7 +314,7 @@ static bool set_key_algorithm(TPM2B_PUBLIC *in_public)
   return true;
 }
 
-TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPM2B_PUBLIC *public, TPM2B_NAME *name, TPMI_DH_OBJECT *persistent)
+TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPM2_ALG_ID algorithm, TPM2B_PUBLIC *public, TPM2B_NAME *name, TPMI_DH_OBJECT *persistent)
 {
   TPML_PCR_SELECTION creation_pcr;
   TSS2L_SYS_AUTH_RESPONSE sessions_data_out;
@@ -348,6 +348,8 @@ TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPM2B_PUBLIC *publ
   inSensitive.sensitive.data.size = 0;
   inSensitive.size = inSensitive.sensitive.userAuth.size + 2;
   creation_pcr.count = 0;
+
+  ctx.algorithm_type = algorithm;
 
   memcpy(&inSensitive.sensitive.userAuth, &ctx.passwords.ak, sizeof(ctx.passwords.ak));
 

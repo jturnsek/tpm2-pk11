@@ -99,7 +99,7 @@ void object_add(pObjectList list, pObject object)
   }
 }
 
-pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx)
+pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm)
 {
   TPMI_DH_OBJECT persistent;
   pObject public_object = NULL;
@@ -109,7 +109,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx)
   }
   memset(userdata, 0, sizeof(UserdataTpm));
   userdata->name.size = sizeof(TPMU_NAME);
-  TPM2_RC rc = tpm_generate_key_pair(ctx, &userdata->tpm_key, &userdata->name, &persistent);
+  TPM2_RC rc = tpm_generate_key_pair(ctx, algorithm, &userdata->tpm_key, &userdata->name, &persistent);
   if (rc != TPM2_RC_SUCCESS) {
     free(userdata);
     return NULL;
