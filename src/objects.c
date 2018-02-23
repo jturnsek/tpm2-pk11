@@ -47,7 +47,8 @@ typedef struct userdata_tpm_t {
 static AttrIndex OBJECT_INDEX[] = {
   attr_dynamic_index_of(CKA_ID, PkcsObject, id, id_size),
   attr_dynamic_index_of(CKA_LABEL, PkcsObject, label, label_size),
-  attr_index_of(CKA_CLASS, PkcsObject, class)
+  attr_index_of(CKA_CLASS, PkcsObject, class),
+  attr_index_of(CKA_TOKEN, PkcsObject, token)
 };
 
 static AttrIndex KEY_INDEX[] = {
@@ -138,11 +139,13 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm)
     userdata->public_object.label = userdata->label;
     userdata->public_object.label_size = max_label_size * 2;
     userdata->public_object.class = CKO_PUBLIC_KEY;
+    userdata->public_object.token = CK_TRUE;
     userdata->private_object.id = userdata->name.name;
     userdata->private_object.id_size = userdata->name.size;
     userdata->private_object.label = userdata->label;
     userdata->private_object.label_size = max_label_size * 2;
     userdata->private_object.class = CKO_PRIVATE_KEY;
+    userdata->private_object.token = CK_TRUE;
     userdata->key.sign = CK_TRUE;
     userdata->key.verify = CK_TRUE;
     userdata->key.decrypt = CK_TRUE;
@@ -212,11 +215,13 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm)
     userdata->public_object.label = userdata->label;
     userdata->public_object.label_size = max_label_size * 2;
     userdata->public_object.class = CKO_PUBLIC_KEY;
+    userdata->public_object.token = CK_TRUE;
     userdata->private_object.id = userdata->name.name;
     userdata->private_object.id_size = userdata->name.size;
     userdata->private_object.label = userdata->label;
     userdata->private_object.label_size = max_label_size * 2;
     userdata->private_object.class = CKO_PRIVATE_KEY;
+    userdata->private_object.token = CK_TRUE;
     userdata->key.sign = CK_TRUE;
     userdata->key.verify = CK_TRUE;
     userdata->key.decrypt = CK_FALSE;
@@ -349,11 +354,13 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config)
       userdata->public_object.label = userdata->label;
       userdata->public_object.label_size = max_label_size * 2;
       userdata->public_object.class = CKO_PUBLIC_KEY;
+      userdata->public_object.token = CK_TRUE;
       userdata->private_object.id = userdata->name.name;
       userdata->private_object.id_size = userdata->name.size;
       userdata->private_object.label = userdata->label;
       userdata->private_object.label_size = max_label_size * 2;
       userdata->private_object.class = CKO_PRIVATE_KEY;
+      userdata->private_object.token = CK_TRUE;
       userdata->key.sign = CK_TRUE;
       userdata->key.verify = CK_TRUE;
       userdata->key.decrypt = CK_TRUE;
@@ -421,11 +428,13 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config)
       userdata->public_object.label = userdata->label;
       userdata->public_object.label_size = max_label_size * 2;
       userdata->public_object.class = CKO_PUBLIC_KEY;
+      userdata->public_object.token = CK_TRUE;
       userdata->private_object.id = userdata->name.name;
       userdata->private_object.id_size = userdata->name.size;
       userdata->private_object.label = userdata->label;
       userdata->private_object.label_size = max_label_size * 2;
       userdata->private_object.class = CKO_PRIVATE_KEY;
+      userdata->private_object.token = CK_TRUE;
       userdata->key.sign = CK_TRUE;
       userdata->key.verify = CK_TRUE;
       userdata->key.decrypt = CK_FALSE;

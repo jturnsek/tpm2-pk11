@@ -264,17 +264,65 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, 
   pObject object = (pObject) hObject;
 
   for (int i = 0; i < ulCount; i++) {
+    void* entry_obj = NULL;
+    pAttrIndex entry = NULL;
     for (int j = 0; j < object->num_entries; j++) {
       void *obj = object->entries[j].object;
       pAttrIndex index = object->entries[j].indexes;
       for (int k = 0; k < object->entries[j].num_attrs; k++) {
         if (pTemplate[i].type == index[k].type) {
-          if (index[k].size_offset == 0)
-            retmem(pTemplate[i].pValue, (size_t*)&pTemplate[i].ulValueLen, obj + index[k].offset, index[k].size);
-          else
-            retmem(pTemplate[i].pValue, (size_t*)&pTemplate[i].ulValueLen, *((void**) (obj + index[k].offset)), *((size_t*) (obj + index[k].size_offset)));
+          entry = &index[k];
+          entry_obj = obj;
+          continue;
         }
       }
+      if (entry)
+        continue;
+    }
+    if (!entry) {
+      print_log(DEBUG, " attribute not found: type = %x", pTemplate[i].type);
+      pTemplate[i].ulValueLen = 0;
+    } else if (entry->size_offset == 0) {
+      print_log(DEBUG, " return attribute: type = %x, size = %d, buffer_size = %d", pTemplate[i].type, entry->size, pTemplate[i].ulValueLen);
+      retmem(pTemplate[i].pValue, &pTemplate[i].ulValueLen, entry_obj + entry->offset, entry->size);
+    } else {
+      print_log(DEBUG, " return attribute: type = %x, size = %d, buffer_size = %d", pTemplate[i].type, *((size_t*) (entry_obj + entry->size_offset)), pTemplate[i].ulValueLen);
+      retmem(pTemplate[i].pValue, &pTemplate[i].ulValueLen, *((void**) (entry_obj + entry->offset)), *((size_t*) (entry_obj + entry->size_offset)));
+    }
+  }
+
+  return CKR_OK;
+}
+
+CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount) {
+  print_log(VERBOSE, "C_SetAttributeValue: session = %x, object = %x, count = %d", hSession, hObject, ulCount);
+  pObject object = (pObject) hObject;
+
+  for (int i = 0; i < ulCount; i++) {
+    void* entry_obj = NULL;
+    pAttrIndex entry = NULL;
+    for (int j = 0; j < object->num_entries; j++) {
+      void *obj = object->entries[j].object;
+      pAttrIndex index = object->entries[j].indexes;
+      for (int k = 0; k < object->entries[j].num_attrs; k++) {
+        if (pTemplate[i].type == index[k].type) {
+          entry = &index[k];
+          entry_obj = obj;
+          continue;
+        }
+      }
+      if (entry)
+        continue;
+    }
+    if (!entry) {
+      print_log(DEBUG, " attribute not found: type = %x", pTemplate[i].type);
+      pTemplate[i].ulValueLen = 0;
+    } else if (entry->size_offset == 0) {
+      print_log(DEBUG, " return attribute: type = %x, size = %d, buffer_size = %d", pTemplate[i].type, entry->size, pTemplate[i].ulValueLen);
+      retmem(entry_obj + entry->offset, entry->size, pTemplate[i].pValue, &pTemplate[i].ulValueLen);
+    } else {
+      print_log(DEBUG, " return attribute: type = %x, size = %d, buffer_size = %d", pTemplate[i].type, *((size_t*) (entry_obj + entry->size_offset)), pTemplate[i].ulValueLen);
+      retmem(*((void**) (entry_obj + entry->offset)), *((size_t*) (entry_obj + entry->size_offset)), pTemplate[i].pValue, &pTemplate[i].ulValueLen);
     }
   }
 
@@ -478,11 +526,6 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject) {
 
 CK_RV C_GetObjectSize(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ULONG_PTR pulSize) {
   print_log(VERBOSE, "C_GetObjectSize: session = %x, object = %x", hSession, hObject);
-  return CKR_FUNCTION_NOT_SUPPORTED;
-}
-
-CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount) {
-  print_log(VERBOSE, "C_SetAttributeValue: session = %x, object = %x, count = %d", hSession, hObject, ulCount);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 

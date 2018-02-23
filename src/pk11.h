@@ -43,6 +43,7 @@ typedef struct pkcs_object_t {
   char* label;
   size_t label_size;
   CK_OBJECT_CLASS class;
+  CK_BBOOL token;
 } PkcsObject, *pPkcsObject;
 
 typedef struct pkcs_key_t {
