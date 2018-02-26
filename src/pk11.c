@@ -319,10 +319,14 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, 
       pTemplate[i].ulValueLen = 0;
     } else if (entry->size_offset == 0) {
       print_log(DEBUG, " return attribute: type = %x, size = %d, buffer_size = %d", pTemplate[i].type, entry->size, pTemplate[i].ulValueLen);
-      retmem(entry_obj + entry->offset, entry->size, pTemplate[i].pValue, &pTemplate[i].ulValueLen);
+      if (pTemplate[i].ulValueLen <= entry->size) {
+        memcpy(entry_obj + entry->offset, pTemplate[i].pValue, pTemplate[i].ulValueLen);
+      }
     } else {
       print_log(DEBUG, " return attribute: type = %x, size = %d, buffer_size = %d", pTemplate[i].type, *((size_t*) (entry_obj + entry->size_offset)), pTemplate[i].ulValueLen);
-      retmem(*((void**) (entry_obj + entry->offset)), *((size_t*) (entry_obj + entry->size_offset)), pTemplate[i].pValue, &pTemplate[i].ulValueLen);
+      if (pTemplate[i].ulValueLen <= *((size_t*) (entry_obj + entry->size_offset))) {
+        memcpy(*((void**) (entry_obj + entry->offset)), pTemplate[i].pValue, pTemplate[i].ulValueLen);
+      }
     }
   }
 
@@ -332,7 +336,7 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, 
 CK_RV C_SignInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey) {
   print_log(VERBOSE, "C_SignInit: session = %x, key = %x", hSession, hKey);
   pObject object = (pObject) hKey;
-  get_session(hSession)->keyHandle = object->tpm_handle;
+  get_session(hSession)->handle = object->tpm_handle;
   get_session(hSession)->current_object = object;
 
   switch(pMechanism->mechanism) {
@@ -361,10 +365,10 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, 
   unsigned char buffer[sizeof(signature)];
 
   if (session->mechanism == CKM_RSA_PKCS) {
-    rc = tpm_rsa_sign(session->sapi_context, session->keyHandle, pData, ulDataLen, &signature); 
+    rc = tpm_rsa_sign(session->sapi_context, session->handle, pData, ulDataLen, &signature); 
   }
   else if (session->mechanism == CKM_ECDSA) {
-    rc = tpm_ecc_sign(session->sapi_context, session->keyHandle, pData, ulDataLen, &signature);
+    rc = tpm_ecc_sign(session->sapi_context, session->handle, pData, ulDataLen, &signature);
   }
   
   if (rc == TPM2_RC_SUCCESS) {
@@ -381,7 +385,7 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, 
 CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey) {
   print_log(VERBOSE, "C_DecryptInit: session = %x, key = %x", hSession, hKey);
   pObject object = (pObject) hKey;
-  get_session(hSession)->keyHandle = object->tpm_handle;
+  get_session(hSession)->handle = object->tpm_handle;
 
   switch(pMechanism->mechanism) {
     case CKM_RSA_X_509:
@@ -401,7 +405,7 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pEncryptedData, CK_ULONG
   print_log(VERBOSE, "C_Decrypt: session = %x, len = %d", hSession, ulEncryptedDataLen);
   TPM2B_PUBLIC_KEY_RSA message = { .size = TPM2_MAX_RSA_KEY_BYTES };
   struct session* session = get_session(hSession);
-  TPM2_RC ret = tpm_rsa_decrypt(session->sapi_context, session->keyHandle, pEncryptedData, ulEncryptedDataLen, &message);
+  TPM2_RC ret = tpm_rsa_decrypt(session->sapi_context, session->handle, pEncryptedData, ulEncryptedDataLen, &message);
   
   retmem(pData, (size_t*)pulDataLen, message.buffer, message.size);
 
@@ -532,7 +536,7 @@ CK_RV C_GetObjectSize(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_U
 CK_RV C_EncryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hObject) {
   print_log(VERBOSE, "C_EncryptInit: session = %x, object = %x", hSession, hObject);
   pObject object = (pObject) hObject;
-  get_session(hSession)->keyHandle = object->tpm_handle;
+  get_session(hSession)->handle = object->tpm_handle;
 
   switch(pMechanism->mechanism) {
     case CKM_RSA_X_509:
@@ -553,7 +557,7 @@ CK_RV C_Encrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLe
   TPM2B_PUBLIC_KEY_RSA message = { .size = TPM2_MAX_RSA_KEY_BYTES };
   struct session* session = get_session(hSession);
 
-  TPM2_RC ret = tpm_rsa_encrypt(session->sapi_context, session->keyHandle, pData, ulDataLen, &message);
+  TPM2_RC ret = tpm_rsa_encrypt(session->sapi_context, session->handle, pData, ulDataLen, &message);
   
   retmem(pEncryptedData, (size_t*)pulEncryptedDataLen, message.buffer, message.size);
 
@@ -628,7 +632,7 @@ CK_RV C_SignRecover(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDa
 CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey) {
   print_log(VERBOSE, "C_VerifyInit: session = %x, key = %x", hSession, hKey);
   pObject object = (pObject) hKey;
-  get_session(hSession)->keyHandle = object->tpm_handle;
+  get_session(hSession)->handle = object->tpm_handle;
   get_session(hSession)->current_object = object;
 
   return CKR_OK;
@@ -646,7 +650,7 @@ CK_RV C_Verify(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen
       return CKR_GENERAL_ERROR;
   }
 
-  rc = tpm_verify(session->sapi_context, session->keyHandle, &signature, pData, ulDataLen);
+  rc = tpm_verify(session->sapi_context, session->handle, &signature, pData, ulDataLen);
 
   return rc == TPM2_RC_SUCCESS ? CKR_OK : CKR_SIGNATURE_INVALID;
 }
