@@ -266,6 +266,7 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, 
   for (int i = 0; i < ulCount; i++) {
     void* entry_obj = NULL;
     pAttrIndex entry = NULL;
+    print_log(DEBUG, " pTemplate: type = %x", pTemplate[i].type);
     for (int j = 0; j < object->num_entries; j++) {
       void *obj = object->entries[j].object;
       pAttrIndex index = object->entries[j].indexes;
