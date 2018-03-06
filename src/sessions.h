@@ -29,9 +29,15 @@
 #include <p11-kit/pkcs11.h>
 
 
-struct session {
-  TSS2_SYS_CONTEXT *sapi_context;
+struct token {
+	TSS2_SYS_CONTEXT *sapi_context;
   pObjectList objects;
+};
+
+struct session {
+  struct token *token;
+  //TSS2_SYS_CONTEXT *sapi_context;
+  //pObjectList objects;
   TPMI_DH_OBJECT handle;
   pObjectList find_cursor;
   CK_ATTRIBUTE_PTR filters;
@@ -40,6 +46,8 @@ struct session {
   CK_MECHANISM_TYPE mechanism;
 };
 
+int token_init(struct token* token, struct config *config);
+void token_close(struct token* token);
 int session_init(struct session* session, struct config *config);
 void session_close(struct session* session);
 

@@ -37,8 +37,9 @@
 #define DEFAULT_HOSTNAME "127.0.0.1"
 #define DEFAULT_PORT 2323
 
-int session_init(struct session* session, struct config *config) {
-  session->sapi_context = NULL;
+
+int token_init(struct token* token, struct config *config) {
+  token->sapi_context = NULL;
 
   size_t size = 0;
   TSS2_TCTI_CONTEXT *tcti_ctx = NULL;
@@ -110,8 +111,8 @@ int session_init(struct session* session, struct config *config) {
     goto cleanup;
   
   size = Tss2_Sys_GetContextSize(0);
-  session->sapi_context = (TSS2_SYS_CONTEXT*) calloc(1, size);
-  if (session->sapi_context == NULL)
+  token->sapi_context = (TSS2_SYS_CONTEXT*) calloc(1, size);
+  if (token->sapi_context == NULL)
     goto cleanup;
 
   TSS2_ABI_VERSION abi_version = {
@@ -120,22 +121,34 @@ int session_init(struct session* session, struct config *config) {
     .tssLevel = TSS_SAPI_FIRST_LEVEL,
     .tssVersion = TSS_SAPI_FIRST_VERSION,
   };
-  rc = Tss2_Sys_Initialize(session->sapi_context, size, tcti_ctx, &abi_version);
+  rc = Tss2_Sys_Initialize(token->sapi_context, size, tcti_ctx, &abi_version);
 
-  session->objects = object_load(session->sapi_context, config);
+  token->objects = object_load(token->sapi_context, config);
   return 0;
 
   cleanup:
   if (tcti_ctx != NULL)
     free(tcti_ctx);
 
-  if (session->sapi_context != NULL)
-    free(session->sapi_context);
+  if (token->sapi_context != NULL)
+    free(token->sapi_context);
 
   return -1;
 }
 
+void token_close(struct token* token) {
+  object_free(token->objects);
+  Tss2_Sys_Finalize(token->sapi_context);
+}
+
+int session_init(struct session* session, struct token* token) {
+  if (token) {
+    session->token = token;
+    return 0; 
+  }
+  
+  return -1;
+}
+
 void session_close(struct session* session) {
-  object_free(session->objects);
-  Tss2_Sys_Finalize(session->sapi_context);
 }

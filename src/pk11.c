@@ -35,6 +35,7 @@
 #define get_session(x) ((struct session*) x)
 
 static struct config pk11_config = {0};
+static struct token pk11_token = {0};
 
 
 static CK_RV extractObjectInformation(CK_ATTRIBUTE_PTR pTemplate,
@@ -150,7 +151,7 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID, CK_FLAGS flags, CK_VOID_PTR pApplication,
   if ((void*) *phSession == NULL)
     return CKR_GENERAL_ERROR;
 
-  int ret = session_init((struct session*) *phSession, &pk11_config);
+  int ret = session_init((struct session*) *phSession, &pk11_token);
   print_log(VERBOSE, "C_OpenSession: ret = %d", ret);
   return ret != 0 ? CKR_GENERAL_ERROR : CKR_OK;
 }
@@ -212,6 +213,9 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
 
 CK_RV C_Finalize(CK_VOID_PTR pReserved) {
   print_log(VERBOSE, "C_Finalize");
+
+  token_close(&pk11_token);
+
   return CKR_OK;
 }
 
@@ -227,7 +231,7 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, 
 CK_RV C_FindObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, CK_ULONG ulMaxObjectCount, CK_ULONG_PTR pulObjectCount) {
   print_log(VERBOSE, "C_FindObjects: session = %x, max = %d", hSession, ulMaxObjectCount);
   TPMS_CAPABILITY_DATA persistent;
-  tpm_list(get_session(hSession)->sapi_context, &persistent);
+  tpm_list(get_session(hSession)->token->sapi_context, &persistent);
   struct session* session = get_session(hSession);
   *pulObjectCount = 0;
   while (session->find_cursor != NULL && *pulObjectCount < ulMaxObjectCount) {
@@ -266,7 +270,7 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, 
   for (int i = 0; i < ulCount; i++) {
     void* entry_obj = NULL;
     pAttrIndex entry = NULL;
-    print_log(DEBUG, " pTemplate: type = %x", pTemplate[i].type);
+    
     for (int j = 0; j < object->num_entries; j++) {
       void *obj = object->entries[j].object;
       pAttrIndex index = object->entries[j].indexes;
@@ -366,10 +370,10 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, 
   unsigned char buffer[sizeof(signature)];
 
   if (session->mechanism == CKM_RSA_PKCS) {
-    rc = tpm_rsa_sign(session->sapi_context, session->handle, pData, ulDataLen, &signature); 
+    rc = tpm_rsa_sign(session->token->sapi_context, session->handle, pData, ulDataLen, &signature); 
   }
   else if (session->mechanism == CKM_ECDSA) {
-    rc = tpm_ecc_sign(session->sapi_context, session->handle, pData, ulDataLen, &signature);
+    rc = tpm_ecc_sign(session->token->sapi_context, session->handle, pData, ulDataLen, &signature);
   }
   
   if (rc == TPM2_RC_SUCCESS) {
@@ -406,7 +410,7 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pEncryptedData, CK_ULONG
   print_log(VERBOSE, "C_Decrypt: session = %x, len = %d", hSession, ulEncryptedDataLen);
   TPM2B_PUBLIC_KEY_RSA message = { .size = TPM2_MAX_RSA_KEY_BYTES };
   struct session* session = get_session(hSession);
-  TPM2_RC ret = tpm_rsa_decrypt(session->sapi_context, session->handle, pEncryptedData, ulEncryptedDataLen, &message);
+  TPM2_RC ret = tpm_rsa_decrypt(session->token->sapi_context, session->handle, pEncryptedData, ulEncryptedDataLen, &message);
   
   retmem(pData, (size_t*)pulDataLen, message.buffer, message.size);
 
@@ -421,6 +425,11 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
     return CKR_GENERAL_ERROR;
 
   log_init(pk11_config.log_file, pk11_config.log_level);
+
+  if (token_init(&pk11_token, &pk11_config) < 0) {
+    return CKR_GENERAL_ERROR; 
+  }
+
   return CKR_OK;
 }
 
@@ -558,7 +567,7 @@ CK_RV C_Encrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLe
   TPM2B_PUBLIC_KEY_RSA message = { .size = TPM2_MAX_RSA_KEY_BYTES };
   struct session* session = get_session(hSession);
 
-  TPM2_RC ret = tpm_rsa_encrypt(session->sapi_context, session->handle, pData, ulDataLen, &message);
+  TPM2_RC ret = tpm_rsa_encrypt(session->token->sapi_context, session->handle, pData, ulDataLen, &message);
   
   retmem(pEncryptedData, (size_t*)pulEncryptedDataLen, message.buffer, message.size);
 
@@ -651,7 +660,7 @@ CK_RV C_Verify(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen
       return CKR_GENERAL_ERROR;
   }
 
-  rc = tpm_verify(session->sapi_context, session->handle, &signature, pData, ulDataLen);
+  rc = tpm_verify(session->token->sapi_context, session->handle, &signature, pData, ulDataLen);
 
   return rc == TPM2_RC_SUCCESS ? CKR_OK : CKR_SIGNATURE_INVALID;
 }
@@ -760,7 +769,7 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
   if (pMechanism->mechanism == CKM_EC_KEY_PAIR_GEN && keyType != CKK_EC)
     return CKR_TEMPLATE_INCONSISTENT;
 
-  pObject object = object_generate_pair(session->sapi_context, algorithm_type);
+  pObject object = object_generate_pair(session->token->sapi_context, algorithm_type);
   if (object == NULL) {
     return CKR_FUNCTION_FAILED; 
   }
@@ -800,7 +809,7 @@ CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pRandomData, CK_U
   struct session* session = get_session(hSession);
   TPM2B_DIGEST random_bytes;
 
-  TPM2_RC rval = Tss2_Sys_GetRandom(session->sapi_context, NULL, ulRandomLen, &random_bytes, NULL);
+  TPM2_RC rval = Tss2_Sys_GetRandom(session->token->sapi_context, NULL, ulRandomLen, &random_bytes, NULL);
   if (rval != TPM2_RC_SUCCESS) {
     return CKR_GENERAL_ERROR;
   }
