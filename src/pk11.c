@@ -222,7 +222,7 @@ CK_RV C_Finalize(CK_VOID_PTR pReserved) {
 CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount) {
   print_log(VERBOSE, "C_FindObjectsInit: session = %x, template =%x, count = %d", hSession, pTemplate, ulCount);
   struct session *session = get_session(hSession);
-  session->find_cursor = session->objects;
+  session->find_cursor = pk11_token.objects;
   session->filters = pTemplate;
   session->num_filters = ulCount;
   return CKR_OK;
@@ -774,9 +774,9 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
     return CKR_FUNCTION_FAILED; 
   }
   //Add object to list
-  object_add(session->objects, object);
+  object_add(pk11_token.objects, object);
   *phPublicKey = (CK_OBJECT_HANDLE)object;
-  object_add(session->objects, object->opposite);
+  object_add(pk11_token.objects, object->opposite);
   *phPrivateKey = (CK_OBJECT_HANDLE)object->opposite;
 
   print_log(VERBOSE, "C_GenerateKeyPair: Finished OK");
