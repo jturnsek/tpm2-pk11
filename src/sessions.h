@@ -48,7 +48,7 @@ struct session {
 
 int token_init(struct token* token, struct config *config);
 void token_close(struct token* token);
-int session_init(struct session* session, struct config *config);
+int session_init(struct session* session, struct token* token)
 void session_close(struct session* session);
 
 #endif /** SESSIONS_H_ */
