@@ -141,13 +141,8 @@ void token_close(struct token* token) {
   Tss2_Sys_Finalize(token->sapi_context);
 }
 
-int session_init(struct session* session, struct token* token) {
-  if (token) {
-    session->token = token;
-    return 0; 
-  }
-  
-  return -1;
+int session_init(struct session* session) { 
+  return 0;
 }
 
 void session_close(struct session* session) {

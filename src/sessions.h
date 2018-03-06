@@ -35,7 +35,6 @@ struct token {
 };
 
 struct session {
-  struct token *token;
   //TSS2_SYS_CONTEXT *sapi_context;
   //pObjectList objects;
   TPMI_DH_OBJECT handle;
@@ -48,7 +47,7 @@ struct session {
 
 int token_init(struct token* token, struct config *config);
 void token_close(struct token* token);
-int session_init(struct session* session, struct token* token);
+int session_init(struct session* session);
 void session_close(struct session* session);
 
 #endif /** SESSIONS_H_ */
