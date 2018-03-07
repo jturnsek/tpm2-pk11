@@ -596,17 +596,17 @@ CK_RV C_DecryptFinal(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG_PTR
 
 CK_RV C_DigestInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism) {
   print_log(VERBOSE, "C_DigestInit: session = %x", hSession);
-  return CKR_GENERAL_ERROR;
+  return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 CK_RV C_Digest(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pDigest, CK_ULONG_PTR pulDigestLen) {
   print_log(VERBOSE, "C_Digest: session = %x, len = %x", hSession, ulDataLen);
-  return CKR_GENERAL_ERROR;
+  return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 CK_RV C_DigestUpdate(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pPart, CK_ULONG ulPartLen) {
   print_log(VERBOSE, "C_DigestUpdate: session = %x, len = %x", hSession, ulPartLen);
-  return CKR_GENERAL_ERROR;
+  return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 CK_RV C_DigestKey(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject) {
@@ -616,7 +616,7 @@ CK_RV C_DigestKey(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject) {
 
 CK_RV C_DigestFinal(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pDigest, CK_ULONG_PTR pulDigestLen) {
   print_log(VERBOSE, "C_DigestFinal: session = %x", hSession);
-  return CKR_GENERAL_ERROR;
+  return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
 CK_RV C_SignUpdate(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pPart, CK_ULONG ulPartLen) {
