@@ -36,8 +36,6 @@
 
 static struct config pk11_config = {0};
 static struct token pk11_token = {0};
-static int pk11_session_count = 0;
-
 
 static CK_RV extractObjectInformation(CK_ATTRIBUTE_PTR pTemplate,
               CK_ULONG ulCount,
@@ -152,14 +150,6 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID, CK_FLAGS flags, CK_VOID_PTR pApplication,
   if ((void*) *phSession == NULL)
     return CKR_GENERAL_ERROR;
 
-  if (!pk11_session_count) {
-    int ret = token_init(&pk11_token, &pk11_config);
-    if (ret != 0) {
-      return CKR_GENERAL_ERROR;
-    }
-  }
-  pk11_session_count++;
-
   int ret = session_init((struct session*) *phSession);
   print_log(VERBOSE, "C_OpenSession: ret = %d", ret);
   return ret != 0 ? CKR_GENERAL_ERROR : CKR_OK;
@@ -168,11 +158,6 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID, CK_FLAGS flags, CK_VOID_PTR pApplication,
 CK_RV C_CloseSession(CK_SESSION_HANDLE hSession) {
   print_log(VERBOSE, "C_CloseSession: session = %x", hSession);
   session_close(get_session(hSession));
-
-  pk11_session_count--;
-  if (!pk11_session_count) {
-    token_close(&pk11_token); 
-  }
 
   free(get_session(hSession));
   return CKR_OK;
@@ -228,6 +213,9 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
 
 CK_RV C_Finalize(CK_VOID_PTR pReserved) {
   print_log(VERBOSE, "C_Finalize");
+
+  token_close(&pk11_token);
+
   return CKR_OK;
 }
 
@@ -436,11 +424,11 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   if (config_load(configfile_path, &pk11_config) < 0)
     return CKR_GENERAL_ERROR;
 
-  log_init(pk11_config.log_file, pk11_config.log_level);
-
   if (token_init(&pk11_token, &pk11_config) < 0) {
     return CKR_GENERAL_ERROR; 
   }
+
+  log_init(pk11_config.log_file, pk11_config.log_level);
 
   return CKR_OK;
 }
