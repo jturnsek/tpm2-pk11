@@ -35,7 +35,6 @@ struct config {
   char* log_file;
   int log_level;
   unsigned int port;
-  bool sign_using_encrypt;
 };
 
 int config_load(char* filename, struct config *config);

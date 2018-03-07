@@ -366,22 +366,18 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, 
   struct session* session = get_session(hSession);
   TPM2_RC rc = CKR_GENERAL_ERROR;
   TPMT_SIGNATURE signature = {0};
-  size_t offset = 0;
-  unsigned char buffer[sizeof(signature)];
 
   if (session->mechanism == CKM_RSA_PKCS) {
-    rc = tpm_rsa_sign(pk11_token.sapi_context, session->handle, pData, ulDataLen, &signature); 
+    rc = tpm_rsa_sign(pk11_token.sapi_context, session->handle, pData, ulDataLen, &signature);
+    if (rc == TPM2_RC_SUCCESS) {
+      retmem(signature, (size_t*)pulSignatureLen, sign.signature.rsassa.sig.buffer, sign.signature.rsassa.sig.size);
+    } 
   }
   else if (session->mechanism == CKM_ECDSA) {
     rc = tpm_ecc_sign(pk11_token.sapi_context, session->handle, pData, ulDataLen, &signature);
-  }
-  
-  if (rc == TPM2_RC_SUCCESS) {
-    rc = Tss2_MU_TPMT_SIGNATURE_Marshal(&signature, buffer, sizeof(buffer), &offset); //jturnsek: should be in tpm file
-    if (rc != TPM2_RC_SUCCESS) { 
-      return CKR_GENERAL_ERROR; 
-    }  
-    retmem(pSignature, (size_t*)pulSignatureLen, buffer, sizeof(buffer));
+    if (rc == TPM2_RC_SUCCESS) {
+      //TODO
+    } 
   }
   
   return rc == TPM2_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
