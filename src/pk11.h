@@ -23,7 +23,6 @@
 
 #include <stdint.h>
 #include <p11-kit/pkcs11.h>
-#include "asn.h"
 
 #define TPM2_PK11_CONFIG_DIR ".tpm2"
 #define TPM2_PK11_CONFIG_FILE "config"
