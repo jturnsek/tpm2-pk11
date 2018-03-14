@@ -61,6 +61,62 @@ typedef struct object_t {
   struct object_t *opposite;
 } Object, *pObject;
 
+typedef struct pkcs_object_t {
+  void* id;
+  size_t id_size;
+  char* label;
+  size_t label_size;
+  CK_OBJECT_CLASS class;
+  CK_BBOOL token;
+} PkcsObject, *pPkcsObject;
+
+typedef struct pkcs_key_t {
+  CK_BBOOL sign;
+  CK_BBOOL verify;
+  CK_BBOOL decrypt;
+  CK_BBOOL encrypt;
+  CK_KEY_TYPE key_type;
+} PkcsKey, *pPkcsKey;
+
+typedef struct pkcs_rsa_public_key_t {
+  uint32_t exponent;
+} PkcsRSAPublicKey, *pPkcsRSAPublicKey;
+
+typedef struct pkcs_modulus_t {
+  void* modulus;
+  size_t modulus_size;
+  CK_ULONG bits;
+} PkcsModulus, *pPkcsModulus;
+
+typedef struct pkcs_ec_public_key_t {
+  asn_buf_t ec_params;
+  asn_buf_t ec_point;
+} PkcsECPublicKey, *pPkcsECPublicKey;
+
+typedef union pkcs_public_key_t {
+  PkcsRSAPublicKey rsa; 
+  PkcsECPublicKey ec;
+} PkcsPublicKey, *pPkcsPublicKey;
+
+typedef struct pkcs_x509_t {
+  char* value;
+  size_t value_size;
+  char* subject;
+  size_t subject_size;
+  char* issuer;
+  size_t issuer_size;
+  char* serial;
+  size_t serial_size;
+  CK_CERTIFICATE_TYPE cert_type;
+} PkcsX509, *pPkcsX509;
+
+extern AttrIndex OBJECT_INDEX[4];
+extern AttrIndex KEY_INDEX[5];
+extern AttrIndex PUBLIC_KEY_RSA_INDEX[1];
+extern AttrIndex MODULUS_INDEX[2];
+extern AttrIndex PUBLIC_KEY_EC_INDEX[2];
+extern AttrIndex CERTIFICATE_INDEX[5];
+
 void* attr_get(pObject object, CK_ATTRIBUTE_TYPE type, size_t *size);
 
 #endif /** OBJECT_H_ */

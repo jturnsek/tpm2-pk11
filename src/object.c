@@ -20,6 +20,43 @@
 
 #include "object.h"
 
+AttrIndex OBJECT_INDEX[] = {
+  attr_dynamic_index_of(CKA_ID, PkcsObject, id, id_size),
+  attr_dynamic_index_of(CKA_LABEL, PkcsObject, label, label_size),
+  attr_index_of(CKA_CLASS, PkcsObject, class),
+  attr_index_of(CKA_TOKEN, PkcsObject, token)
+};
+
+AttrIndex KEY_INDEX[] = {
+  attr_index_of(CKA_SIGN, PkcsKey, sign),
+  attr_index_of(CKA_VERIFY, PkcsKey, verify),
+  attr_index_of(CKA_DECRYPT, PkcsKey, decrypt),
+  attr_index_of(CKA_ENCRYPT, PkcsKey, encrypt),
+  attr_index_of(CKA_KEY_TYPE, PkcsKey, key_type)
+};
+
+AttrIndex PUBLIC_KEY_RSA_INDEX[] = {
+  attr_index_of(CKA_PUBLIC_EXPONENT, PkcsRSAPublicKey, exponent)
+};
+
+AttrIndex MODULUS_INDEX[] = {
+  attr_dynamic_index_of(CKA_MODULUS, PkcsModulus, modulus, modulus_size),
+  attr_index_of(CKA_MODULUS_BITS, PkcsModulus, bits)
+};
+
+AttrIndex PUBLIC_KEY_EC_INDEX[] = {
+  attr_dynamic_index_of(CKA_EC_PARAMS, PkcsECPublicKey, ec_params.ptr, ec_params.len),
+  attr_dynamic_index_of(CKA_EC_POINT, PkcsECPublicKey, ec_point.ptr, ec_point.len)  
+};
+
+AttrIndex CERTIFICATE_INDEX[] = {
+  attr_dynamic_index_of(CKA_VALUE, PkcsX509, value, value_size),
+  attr_dynamic_index_of(CKA_SUBJECT, PkcsX509, subject, subject_size),
+  attr_dynamic_index_of(CKA_ISSUER, PkcsX509, issuer, issuer_size),
+  attr_dynamic_index_of(CKA_SERIAL_NUMBER, PkcsX509, serial, serial_size),
+  attr_index_of(CKA_CERTIFICATE_TYPE, PkcsX509, cert_type),
+};
+
 void* attr_get(pObject object, CK_ATTRIBUTE_TYPE type, size_t *size) {
   if (!object) {
     return NULL;
