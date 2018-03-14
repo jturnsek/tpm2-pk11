@@ -73,6 +73,14 @@ static AttrIndex PUBLIC_KEY_EC_INDEX[] = {
   attr_dynamic_index_of(CKA_EC_POINT, PkcsECPublicKey, ec_point.ptr, ec_point.len)  
 };
 
+static AttrIndex CERTIFICATE_INDEX[] = {
+  attr_dynamic_index_of(CKA_VALUE, PkcsX509, value, value_size),
+  attr_dynamic_index_of(CKA_SUBJECT, PkcsX509, subject, subject_size),
+  attr_dynamic_index_of(CKA_ISSUER, PkcsX509, issuer, issuer_size),
+  attr_dynamic_index_of(CKA_SERIAL_NUMBER, PkcsX509, serial, serial_size),
+  attr_index_of(CKA_CERTIFICATE_TYPE, PkcsX509, cert_type),
+};
+
 static inline int hex_to_char(int c)
 {
   return c >= 10 ? c - 10 + 'A' : c + '0';

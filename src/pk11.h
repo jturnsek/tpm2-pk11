@@ -77,6 +77,13 @@ typedef union pkcs_public_key_t {
 typedef struct pkcs_x509_t {
   char* value;
   size_t value_size;
+  char* subject;
+  size_t subject_size;
+  char* issuer;
+  size_t issuer_size;
+  char* serial;
+  size_t serial_size;
+  CK_CERTIFICATE_TYPE cert_type;
 } PkcsX509, *pPkcsX509;
 
 #endif /** PK11_H_ */

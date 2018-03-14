@@ -25,24 +25,21 @@
 
 #include <stdio.h>
 #include <string.h>
-#include <libgen.h>
+
 
 #define MAX_ID_BITS 512
+#define MAX_DER_LENGTH 256
 
 typedef struct userdata_certificate_t {
-  char id[MAX_ID_BITS / 4];
+  CK_BYTE id[MAX_ID_BITS / 4];
+  CK_UTF8CHAR label[MAX_ID_BITS / 2];
+  CK_BYTE subject[MAX_DER_LENGTH];
+  CK_BYTE issuer[MAX_DER_LENGTH];
+  CK_BYTE serial[MAX_DER_LENGTH];
   PkcsObject object;
   PkcsX509 certificate;
 } UserdataCertificate, *pUserdataCertificate;
 
-static AttrIndex OBJECT_INDEX[] = {
-  attr_dynamic_index_of(CKA_ID, PkcsObject, id, id_size),
-  attr_index_of(CKA_CLASS, PkcsObject, class)
-};
-
-static AttrIndex CERTIFICATE_INDEX[] = {
-  attr_dynamic_index_of(CKA_VALUE, PkcsX509, value, value_size),
-};
 
 pObject certificate_read(const char* pathname) {
   pObject object = malloc(sizeof(Object));
@@ -60,16 +57,31 @@ pObject certificate_read(const char* pathname) {
   userdata->object.token = CK_TRUE;
   userdata->object.id = userdata->id;
   userdata->object.id_size = 0;
-  char* filename = basename((char*)pathname);
+  userdata->object.label = userdata->label;
+  char* filename = basename(pathname);
   while (userdata->object.id_size < sizeof(userdata->id)) {
     if (sscanf(filename + (userdata->object.id_size * 2), "%2hhx", userdata->id + userdata->object.id_size) != 1)
       break;
-    else
-      userdata->object.id_size++;
+
+    sprintf((char*) userdata->label + userdata->object.id_size * 2, "%02X", userdata->id[userdata->object.id_size]);
+    userdata->object.id_size++;
   }
+
+  userdata->object.label_size = userdata->object.id_size * 2;
 
   userdata->certificate.value_size = size;
   userdata->certificate.value = ((char*) userdata) + sizeof(UserdataCertificate);
+  userdata->certificate.cert_type = CKC_X_509;
+  userdata->certificate.subject = userdata->subject;
+  userdata->certificate.subject_size = 0;
+  userdata->certificate.issuer = userdata->issuer;
+  userdata->certificate.issuer_size = 0;
+  userdata->certificate.serial = userdata->serial;
+  userdata->certificate.serial_size = 0;
+
+
+  //TODO: ASN encoding
+
 
   object->userdata = userdata;
   object->num_entries = 2;
@@ -78,4 +90,8 @@ pObject certificate_read(const char* pathname) {
   object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->certificate, CERTIFICATE_INDEX);
 
   return object;
+}
+
+void certificate_write(const char* pathname, pObject object) {
+
 }

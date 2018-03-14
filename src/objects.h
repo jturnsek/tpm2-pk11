@@ -26,6 +26,13 @@
 
 #include <sapi/tpm20.h>
 
+extern AttrIndex OBJECT_INDEX[4];
+extern AttrIndex KEY_INDEX[5];
+extern AttrIndex PUBLIC_KEY_RSA_INDEX[1];
+extern AttrIndex MODULUS_INDEX[2];
+extern AttrIndex PUBLIC_KEY_EC_INDEX[2];
+extern AttrIndex CERTIFICATE_INDEX[5];
+
 typedef struct object_list_t {
   pObject object;
   struct object_list_t* next;

@@ -376,7 +376,8 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, 
   else if (session->mechanism == CKM_ECDSA) {
     rc = tpm_ecc_sign(pk11_token.sapi_context, session->handle, pData, ulDataLen, &sign);
     if (rc == TPM2_RC_SUCCESS) {
-      //TODO
+      memcpy(pSignature, sign.signature.ecdsa.signatureR.buffer, sign.signature.ecdsa.signatureR.size);
+      memcpy(pSignature + sign.signature.ecdsa.signatureR.size, sign.signature.ecdsa.signatureS.buffer, sign.signature.ecdsa.signatureS.size);
     } 
   }
   
@@ -414,7 +415,6 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pEncryptedData, CK_ULONG
 }
 
 CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
-  print_log(VERBOSE, "C_Initialize");
   char configfile_path[256];
   snprintf(configfile_path, sizeof(configfile_path), "%s/" TPM2_PK11_CONFIG_DIR "/" TPM2_PK11_CONFIG_FILE, getenv("HOME"));
   if (config_load(configfile_path, &pk11_config) < 0)
@@ -425,6 +425,8 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   }
 
   log_init(pk11_config.log_file, pk11_config.log_level);
+
+  print_log(VERBOSE, "C_Initialize");
 
   return CKR_OK;
 }
@@ -641,22 +643,44 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_O
   get_session(hSession)->handle = object->tpm_handle;
   get_session(hSession)->current_object = object;
 
+  switch(pMechanism->mechanism) {
+    case CKM_RSA_X_509:
+      get_session(hSession)->mechanism = CKM_RSA_X_509;
+      break;
+    case CKM_RSA_PKCS:
+      get_session(hSession)->mechanism = CKM_RSA_PKCS;
+      break;
+    case CKM_ECDSA:
+      get_session(hSession)->mechanism = CKM_ECDSA;
+      break;
+    default:
+      return CKR_MECHANISM_INVALID;
+  }
+
   return CKR_OK;
 }
 
 CK_RV C_Verify(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG ulSignatureLen) {
   print_log(VERBOSE, "C_Verify: session = %x, len = %d", hSession, ulDataLen);
   struct session* session = get_session(hSession);
-  TPMT_SIGNATURE signature = {0};
+  TPMT_SIGNATURE sign = {0};
   TPM2_RC rc;
-  size_t offset = 0;
-        
-  rc = Tss2_MU_TPMT_SIGNATURE_Unmarshal(pSignature, ulSignatureLen, &offset, &signature); //jturnsek: should be in tpm file
-  if (rc != TPM2_RC_SUCCESS) {
-      return CKR_GENERAL_ERROR;
+  
+  if (session->mechanism == CKM_RSA_PKCS) {
+    memcpy(sign.signature.rsassa.sig.buffer, pSignature, (size_t)ulSignatureLen);
+    sign.signature.rsassa.sig.size = ulSignatureLen;
+  }
+  else if (session->mechanism == CKM_ECDSA) {
+    memcpy(sign.signature.ecdsa.signatureR.buffer, pSignature, (size_t)ulSignatureLen/2);
+    sign.signature.ecdsa.signatureR.size = ulSignatureLen/2;
+    memcpy(sign.signature.ecdsa.signatureS.buffer, pSignature + sign.signature.ecdsa.signatureR.size, (size_t)ulSignatureLen/2);
+    sign.signature.ecdsa.signatureS.size = ulSignatureLen/2;  
+  }
+  else {
+    return CKR_GENERAL_ERROR;  
   }
 
-  rc = tpm_verify(pk11_token.sapi_context, session->handle, &signature, pData, ulDataLen);
+  rc = tpm_verify(pk11_token.sapi_context, session->handle, &sign, pData, ulDataLen);
 
   return rc == TPM2_RC_SUCCESS ? CKR_OK : CKR_SIGNATURE_INVALID;
 }
