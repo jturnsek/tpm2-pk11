@@ -27,6 +27,7 @@
 
 void strncpy_pad(char *dest, const char *src, size_t n);
 void retmem(void* dest, size_t* size, const void* src, size_t n);
-void* read_file(const char* filename, size_t* length);
+void* alloc_userdata_and_read_file(const char* filename, size_t* length);
+int write_file(const char* filename, const void* src, size_t length);
 
 #endif /** UTILS_H_ */

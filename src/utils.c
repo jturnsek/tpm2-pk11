@@ -41,7 +41,7 @@ void retmem(void* dest, size_t* size, const void* src, size_t n) {
   *size = n;
 }
 
-void* read_file(const char* filename, size_t* length) {
+void* alloc_userdata_and_read_file(const char* filename, size_t* length) {
   int fd = open(filename, O_RDONLY);
   if (fd < 0) {
     *length = 0;
@@ -65,5 +65,20 @@ void* read_file(const char* filename, size_t* length) {
   cleanup:
   close(fd);
   return buffer;
+}
+
+int write_file(const char* filename, const void* src, size_t length)
+{
+  int fd = open(filename, O_RDWR | O_EXCL | O_CREAT);
+  if (fd < 0) {
+    return -1;
+  }
+
+  int ret = write(fd, src, length);
+  if (ret < 0) {
+    return -1;
+  }
+
+  return 0;
 }
 

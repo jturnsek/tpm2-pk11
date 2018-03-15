@@ -26,6 +26,8 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <libtasn1.h>
+
 
 #define MAX_ID_BITS 512
 #define MAX_DER_LENGTH 256
@@ -47,7 +49,7 @@ pObject certificate_read(const char* pathname) {
     return NULL;
 
   size_t size = sizeof(UserdataCertificate);
-  pUserdataCertificate userdata = (pUserdataCertificate) read_file(pathname, &size);
+  pUserdataCertificate userdata = (pUserdataCertificate) alloc_userdata_and_read_file(pathname, &size);
   if (!userdata) {
     free(object);
     return NULL;
@@ -79,9 +81,32 @@ pObject certificate_read(const char* pathname) {
   userdata->certificate.serial = userdata->serial;
   userdata->certificate.serial_size = 0;
 
+  ASN1_TYPE definition = ASN1_TYPE_EMPTY;
+  ASN1_TYPE element = ASN1_TYPE_EMPTY;
+  char errorDescription[ASN1_MAX_ERROR_DESCRIPTION_SIZE];
 
-  //TODO: ASN encoding
+  asn1_array2tree(pkix_asn1_tab, &definition, errorDescription);
+  asn1_create_element(definition, "PKIX1.Certificate", &element);
+  if (asn1_der_decoding(&element, userdata->certificate.value, userdata->certificate.value_size, errorDescription) != ASN1_SUCCESS) {
+    free(object);
+    free(userdata);
+    return NULL;
+  }
 
+  int length = MAX_DER_LENGTH;
+  if (asn1_der_coding(element, "tbsCertificate.subject", userdata->subject, &length, errorDescription) == ASN1_SUCCESS)
+    userdata->certificate.subject_size = length;
+
+  length = MAX_DER_LENGTH;
+  if (asn1_der_coding(element, "tbsCertificate.issuer", userdata->issuer, &length, errorDescription) == ASN1_SUCCESS)
+    userdata->certificate.issuer_size = length;
+
+  length = MAX_DER_LENGTH;
+  if (asn1_der_coding(element, "tbsCertificate.serialNumber", userdata->serial, &length, errorDescription) == ASN1_SUCCESS)
+    userdata->certificate.serial_size = length;
+
+  asn1_delete_structure(&definition);
+  asn1_delete_structure(&element);
 
   object->userdata = userdata;
   object->num_entries = 2;
