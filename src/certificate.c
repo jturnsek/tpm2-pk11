@@ -32,6 +32,8 @@
 #define MAX_ID_BITS 512
 #define MAX_DER_LENGTH 256
 
+extern const asn1_static_node pkix_asn1_tab[];
+
 typedef struct userdata_certificate_t {
   CK_BYTE id[MAX_ID_BITS / 4];
   CK_UTF8CHAR label[MAX_ID_BITS / 2];
