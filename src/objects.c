@@ -254,12 +254,12 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm)
   return public_object;
 }
 
-void object_destroy_pair(TSS2_SYS_CONTEXT *ctx, pObject object)
+void object_destroy(TSS2_SYS_CONTEXT *ctx, pObject object)
 {
 
 }
 
-void object_free(pObjectList list)
+void object_free_list(pObjectList list)
 {
   while (list != NULL) {
     pObjectList next = list->next;
@@ -276,7 +276,7 @@ void object_free(pObjectList list)
   }
 }
 
-pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config)
+pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
 {
   pObjectList list = malloc(sizeof(ObjectList));
   list->object = NULL;
@@ -479,6 +479,11 @@ pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config)
   return list;
 
 error:
-  object_free(list);
+  object_free_list(list);
   return NULL;
+}
+
+void object_store(struct config *config, pObject object)
+{
+
 }

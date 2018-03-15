@@ -34,10 +34,10 @@ typedef struct object_list_t {
 
 pObject object_get(pObjectList list, int id);
 void object_add(pObjectList list, pObject object);
-void object_free(pObjectList list);
-
-pObjectList object_load(TSS2_SYS_CONTEXT *ctx, struct config *config);
+void object_free_list(pObjectList list);
+pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config);
+void object_store(struct config *config, pObject object);
 pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm);
-void object_destroy_pair(TSS2_SYS_CONTEXT *ctx, pObject object);
+void object_destroy(TSS2_SYS_CONTEXT *ctx, pObject object);
 
 #endif /** OBJECTS_H_ */
