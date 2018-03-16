@@ -24,5 +24,6 @@
 #include "object.h"
 
 pObject certificate_read(const char* pathname);
+pObject certificate_write(const char* pathname);
 
 #endif /** CERTIFICATE_H_ */

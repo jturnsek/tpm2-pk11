@@ -523,7 +523,53 @@ CK_RV C_Logout(CK_SESSION_HANDLE hSession) {
 
 CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_OBJECT_HANDLE_PTR phObject) {
   print_log(VERBOSE, "C_CreateObject: session = %x, count = %d", hSession, ulCount);
-  return CKR_FUNCTION_NOT_SUPPORTED;
+  
+  *phObject = CK_INVALID_HANDLE;
+
+  for (CK_ULONG i = 0; i < ulCount; ++i) {
+    switch (pTemplate[i].type) {
+      case CKA_CLASS:
+        if (pTemplate[i].ulValueLen == sizeof(CK_OBJECT_CLASS)) {
+          CK_OBJECT_CLASS objClass = *(CK_OBJECT_CLASS_PTR)pTemplate[i].pValue;
+          if (objClass != CKO_CERTIFICATE) {
+            /* Currently only Certificates are supported! */
+            return CKR_GENERAL_ERROR;  
+          }
+        }
+        break;
+      case CKA_CERTIFICATE_TYPE:
+        if (pTemplate[i].ulValueLen == sizeof(CK_CERTIFICATE_TYPE)) {
+          CK_CERTIFICATE_TYPE certType = *(CK_CERTIFICATE_TYPE*)pTemplate[i].pValue;
+          if (certType != CKC_X_509) {
+            /* Currently only X509 type is supported! */
+            return CKR_GENERAL_ERROR;
+          }
+        }
+        break;
+      case CKA_TOKEN:
+        if (pTemplate[i].ulValueLen == sizeof(CK_BBOOL)) {
+          *isOnToken = *(CK_BBOOL*)pTemplate[i].pValue;
+        }
+        break;
+      case CKA_ID:
+        break;
+      case CKA_LABEL:
+        break;
+      case CKA_VALUE:
+        break;
+      case CKA_ISSUER:
+        break;
+      case CKA_SUBJECT:
+        break;
+      case CKA_SERIAL_NUMBER:
+        break;
+      default:
+        break;
+    }
+  }
+
+
+  return CKR_OK;
 }
 
 CK_RV C_CopyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_OBJECT_HANDLE_PTR phNewObject) {

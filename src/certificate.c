@@ -119,6 +119,8 @@ pObject certificate_read(const char* pathname) {
   return object;
 }
 
-void certificate_write(const char* pathname, pObject object) {
-
+pObject certificate_write(const char* pathname) {
+  pObject object = malloc(sizeof(Object));
+  if (!object)
+    return NULL;
 }

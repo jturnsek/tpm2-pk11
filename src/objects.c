@@ -483,7 +483,7 @@ error:
   return NULL;
 }
 
-void object_store(struct config *config, pObject object)
+int object_store(struct config *config, pObjectList list)
 {
 
 }
