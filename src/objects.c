@@ -466,7 +466,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
   if (config->certificates) {
     glob_t results;
     char search_path[PATH_MAX];
-    snprintf(search_path, PATH_MAX, "%s/*.der", config->certificates);
+    snprintf(search_path, PATH_MAX, "%s/*", config->certificates);
     if (glob(search_path, GLOB_TILDE, NULL, &results) == 0) {
       for (int i = 0; i < results.gl_pathc; i++) {
         pObject object = certificate_read(results.gl_pathv[i]);
@@ -481,9 +481,4 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
 error:
   object_free_list(list);
   return NULL;
-}
-
-int object_store(struct config *config, pObjectList list)
-{
-
 }

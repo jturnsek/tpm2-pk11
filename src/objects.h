@@ -36,7 +36,6 @@ pObject object_get(pObjectList list, int id);
 void object_add(pObjectList list, pObject object);
 void object_free_list(pObjectList list);
 pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config);
-int object_store(struct config *config, pObjectList list);
 pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm);
 void object_destroy(TSS2_SYS_CONTEXT *ctx, pObject object);
 

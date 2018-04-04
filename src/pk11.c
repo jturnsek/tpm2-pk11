@@ -32,6 +32,10 @@
 
 #define SLOT_ID 0x1234
 
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
+
 #define get_session(x) ((struct session*) x)
 
 static struct config pk11_config = {0};
@@ -522,10 +526,14 @@ CK_RV C_Logout(CK_SESSION_HANDLE hSession) {
 }
 
 CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_OBJECT_HANDLE_PTR phObject) {
+  char filename[256];
+  char file_path[PATH_MAX];
+
   print_log(VERBOSE, "C_CreateObject: session = %x, count = %d", hSession, ulCount);
   
   *phObject = CK_INVALID_HANDLE;
-
+  filename[0] = 0;
+  
   for (CK_ULONG i = 0; i < ulCount; ++i) {
     switch (pTemplate[i].type) {
       case CKA_CLASS:
@@ -548,32 +556,38 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
         break;
       case CKA_ID:
         {
-          char filename[256];
           int j;
           for (j = 0; j < pTemplate[i].ulValueLen; j++) {
-            print_log(VERBOSE, "C_CreateObject: id byte = %x", *((unsigned char*)pTemplate[i].pValue + j));
             sprintf((char*) filename + j * 2, "%02X", *((unsigned char*)pTemplate[i].pValue + j));
           }
-          filename[j] = 0;
+          filename[j * 2] = 0;
           print_log(VERBOSE, "C_CreateObject: filename = %s", filename);
+
+          
         }
         break;
       case CKA_VALUE:
+        if (pk11_config.certificates) { 
+          file_path[0] = 0;
+          strcpy(file_path, pk11_config.certificates);
+          strcat(file_path, "/");
+          strcat(file_path, filename);
+          certificate_write(file_path, pTemplate[i].pValue, pTemplate[i].ulValueLen);
+        }
         break;
       default:
         break;
     }
   }
-#if 0
+
   if (pk11_config.certificates) {
-    char search_path[PATH_MAX];
-    snprintf(search_path, PATH_MAX, "%s/*.der", pk11_config.certificates);
-    pObject object = certificate_read(results.gl_pathv[i]);
-    if (object) {
-      object_add(list, object);
+    pObject object = certificate_read(file_path);
+    if (!object) {
+      return CKR_GENERAL_ERROR;   
     }
+    object_add(pk11_token.objects, object);
   }
-#endif
+
   return CKR_OK;
 }
 
