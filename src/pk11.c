@@ -552,7 +552,7 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
           int j;
           for (j = 0; j < pTemplate[i].ulValueLen; j++) {
             print_log(VERBOSE, "C_CreateObject: id byte = %x", *((unsigned char*)pTemplate[i].pValue + j));
-            sprintf((char*) filename + j * 2, "%02X", (unsigned char)pTemplate[i].pValue + j);
+            sprintf((char*) filename + j * 2, "%02X", *((unsigned char*)pTemplate[i].pValue + j));
           }
           filename[j] = 0;
           print_log(VERBOSE, "C_CreateObject: filename = %s", filename);
