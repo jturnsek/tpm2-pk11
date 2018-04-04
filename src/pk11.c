@@ -546,29 +546,26 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
           }
         }
         break;
-      case CKA_TOKEN:
-        if (pTemplate[i].ulValueLen == sizeof(CK_BBOOL)) {
-          *isOnToken = *(CK_BBOOL*)pTemplate[i].pValue;
-        }
-        break;
       case CKA_ID:
         break;
       case CKA_LABEL:
         break;
       case CKA_VALUE:
         break;
-      case CKA_ISSUER:
-        break;
-      case CKA_SUBJECT:
-        break;
-      case CKA_SERIAL_NUMBER:
-        break;
       default:
         break;
     }
   }
-
-
+#if 0
+  if (pk11_config.certificates) {
+    char search_path[PATH_MAX];
+    snprintf(search_path, PATH_MAX, "%s/*.der", pk11_config.certificates);
+    pObject object = certificate_read(results.gl_pathv[i]);
+    if (object) {
+      object_add(list, object);
+    }
+  }
+#endif
   return CKR_OK;
 }
 

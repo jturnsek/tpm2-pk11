@@ -79,6 +79,9 @@ int write_file(const char* filename, const void* src, size_t length)
     return -1;
   }
 
+  
+  close(fd);
+  
   return 0;
 }
 
