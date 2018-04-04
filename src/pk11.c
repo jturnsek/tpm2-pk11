@@ -547,8 +547,16 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
         }
         break;
       case CKA_ID:
-        break;
-      case CKA_LABEL:
+        {
+          char filename[256];
+          int j;
+          for (j = 0; j < pTemplate[i].ulValueLen, j++) {
+            print_log(VERBOSE, "C_CreateObject: id byte = %x", pTemplate[i].pValue + j);
+            sprintf((char*) filename + j * 2, "%02X", (unsigned char)pTemplate[i].pValue + j);
+          }
+          filename[j] = 0;
+          print_log(VERBOSE, "C_CreateObject: filename = %s", filename);
+        }
         break;
       case CKA_VALUE:
         break;
