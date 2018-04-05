@@ -8,4 +8,4 @@ port 2321
 device /dev/tpm0
 log-level 2
 log stdout
-certificates=~/.tpm2/certs
+certificates /home/root/.tpm2/certs

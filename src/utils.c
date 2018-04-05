@@ -69,18 +69,24 @@ void* alloc_userdata_and_read_file(const char* filename, size_t* length) {
 
 int write_file(const char* filename, const void* src, size_t length)
 {
-  int fd = open(filename, O_RDWR | O_EXCL | O_CREAT);
-  if (fd < 0) {
-    return -1;
+  glob_t results;
+
+  if (glob(filename, GLOB_TILDE, NULL, &results) == 0) {
+    int fd = open(results.gl_pathv[0], O_RDWR | O_EXCL | O_CREAT);
+    if (fd < 0) {
+      return -1;
+    }
+
+    int ret = write(fd, src, length);
+    if (ret < 0) {
+      return -1;
+    }
+
+    close(fd);
+
+    return 0;
   }
 
-  int ret = write(fd, src, length);
-  if (ret < 0) {
-    return -1;
-  }
-
-  close(fd);
-
-  return 0;
+  return -1;
 }
 

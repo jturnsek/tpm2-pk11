@@ -33,7 +33,7 @@
 #define SLOT_ID 0x1234
 
 #ifndef PATH_MAX
-#define PATH_MAX 4096
+#define PATH_MAX 256
 #endif
 
 #define get_session(x) ((struct session*) x)
@@ -526,7 +526,7 @@ CK_RV C_Logout(CK_SESSION_HANDLE hSession) {
 }
 
 CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_OBJECT_HANDLE_PTR phObject) {
-  char filename[256];
+  char filename[PATH_MAX/2];
   char file_path[PATH_MAX];
 
   print_log(VERBOSE, "C_CreateObject: session = %x, count = %d", hSession, ulCount);
@@ -581,11 +581,14 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
   }
 
   if (pk11_config.certificates) {
-    pObject object = certificate_read(file_path);
-    if (!object) {
-      return CKR_GENERAL_ERROR;   
+    glob_t results;
+    if (glob(file_path, GLOB_TILDE, NULL, &results) == 0) {
+      pObject object = certificate_read(results.gl_pathv[0]);
+      if (!object) {
+        return CKR_GENERAL_ERROR;   
+      }
+      object_add(pk11_token.objects, object);
     }
-    object_add(pk11_token.objects, object);
   }
 
   return CKR_OK;
