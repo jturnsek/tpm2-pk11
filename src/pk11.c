@@ -25,6 +25,7 @@
 #include "tpm.h"
 #include "object.h"
 #include "log.h"
+#include "certificate.h"
 
 #include <sys/mman.h>
 #include <string.h>
@@ -588,10 +589,10 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
         return CKR_GENERAL_ERROR;   
       }
       object_add(pk11_token.objects, object);
+
+      *phObject = (CK_OBJECT_HANDLE)object;
     }
   }
-
-  *phObject = (CK_OBJECT_HANDLE)object;
 
   return CKR_OK;
 }
