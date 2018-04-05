@@ -25,6 +25,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
+#include "utils.h"
 
 
 void strncpy_pad(char *dest, const char *src, size_t n) {
