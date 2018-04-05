@@ -591,6 +591,8 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
     }
   }
 
+  *phObject = (CK_OBJECT_HANDLE)object;
+
   return CKR_OK;
 }
 
