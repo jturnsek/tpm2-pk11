@@ -25,7 +25,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-#include "utils.h"
+#include <glob.h>
 
 
 void strncpy_pad(char *dest, const char *src, size_t n) {
@@ -72,8 +72,9 @@ int write_file(const char* filename, const void* src, size_t length)
 {
   glob_t results;
 
-  if (glob(filename, GLOB_TILDE, NULL, &results) == 0) {
+  if (glob(filename, GLOB_TILDE | GLOB_NOCHECK, NULL, &results) == 0) {
     int fd = open(results.gl_pathv[0], O_RDWR | O_EXCL | O_CREAT);
+    globfree();
     if (fd < 0) {
       return -1;
     }

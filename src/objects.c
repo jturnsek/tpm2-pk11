@@ -467,12 +467,13 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
     glob_t results;
     char search_path[PATH_MAX];
     snprintf(search_path, PATH_MAX, "%s/*", config->certificates);
-    if (glob(search_path, GLOB_TILDE, NULL, &results) == 0) {
+    if (glob(search_path, GLOB_TILDE | GLOB_NOCHECK, NULL, &results) == 0) {
       for (int i = 0; i < results.gl_pathc; i++) {
         pObject object = certificate_read(results.gl_pathv[i]);
         if (object)
           object_add(list, object);
       }
+      globfree();
     }
   }
 
