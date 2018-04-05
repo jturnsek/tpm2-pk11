@@ -584,11 +584,12 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
   if (pk11_config.certificates) {
     glob_t results;
     if (glob(file_path, GLOB_TILDE | GLOB_NOCHECK, NULL, &results) == 0) {
-      globfree();
       pObject object = certificate_read(results.gl_pathv[0]);
       if (!object) {
+        globfree(&results);
         return CKR_GENERAL_ERROR;   
       }
+      globfree(&results);
       object_add(pk11_token.objects, object);
 
       *phObject = (CK_OBJECT_HANDLE)object;

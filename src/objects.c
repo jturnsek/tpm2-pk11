@@ -473,7 +473,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
         if (object)
           object_add(list, object);
       }
-      globfree();
+      globfree(&results);
     }
   }
 

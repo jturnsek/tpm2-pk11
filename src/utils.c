@@ -74,7 +74,7 @@ int write_file(const char* filename, const void* src, size_t length)
 
   if (glob(filename, GLOB_TILDE | GLOB_NOCHECK, NULL, &results) == 0) {
     int fd = open(results.gl_pathv[0], O_RDWR | O_EXCL | O_CREAT);
-    globfree();
+    globfree(&results);
     if (fd < 0) {
       return -1;
     }
