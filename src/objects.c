@@ -22,7 +22,6 @@
 #include "certificate.h"
 #include "tpm.h"
 #include "pk11.h"
-#include "asn.h"
 #include "log.h"
 
 #include <stdio.h>

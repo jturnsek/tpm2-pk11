@@ -25,7 +25,6 @@
 
 #include <p11-kit/pkcs11.h>
 #include <sapi/tpm20.h>
-#include "asn.h"
 
 #define NELEMS(x) (sizeof(x) / sizeof((x)[0]))
 
