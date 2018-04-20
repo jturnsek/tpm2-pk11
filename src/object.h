@@ -90,8 +90,10 @@ typedef struct pkcs_modulus_t {
 } PkcsModulus, *pPkcsModulus;
 
 typedef struct pkcs_ec_public_key_t {
-  asn_buf_t ec_params;
-  asn_buf_t ec_point;
+  void* ec_params;
+  size_t ec_params_len;
+  void* ec_point;
+  size_t ec_point_len;
 } PkcsECPublicKey, *pPkcsECPublicKey;
 
 typedef union pkcs_public_key_t {

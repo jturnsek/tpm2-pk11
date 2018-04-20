@@ -33,6 +33,7 @@
 #endif
 #include <glob.h>
 
+CK_BYTE oidP256[] = { 0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07 };
 
 typedef struct userdata_tpm_t {
   TPM2B_PUBLIC tpm_key;
@@ -167,7 +168,6 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm)
   }
   else if (userdata->tpm_key.publicArea.type == TPM2_ALG_ECC) {
     TPMS_ECC_POINT *ecc = &userdata->tpm_key.publicArea.unique.ecc;
-    asn_buf_t ecc_point;
     uint8_t *pos;
     /*
      * fill the label with the same value as the name (they both have
@@ -202,23 +202,23 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm)
     userdata->key.encrypt = CK_FALSE;
     userdata->key.key_type = CKK_EC;
     
-    /* allocate space for bit string */
-    pos = asn_build_object(&ecc_point, ASN1_BIT_STRING, 2 + ecc->x.size + ecc->y.size);
-    /* bit string length is a multiple of octets */
-    *pos++ = 0x00;
-    /* uncompressed ECC point format */
-    *pos++ = 0x04;
+    /* allocate space for octet string */
+    pos = (uint8_t*)malloc(2 + ecc->x.size + ecc->y.size);
+    pos[0] = 0x04; /* ASN1_OCTET_STRING */
+    pos[1] = (ecc->x.size + ecc->y.size) & 0x7f/* length less then 0x7f */
     /* copy x coordinate of ECC point */
-    memcpy(pos, ecc->x.buffer, ecc->x.size);
-    pos += ecc->x.size;
+    memcpy(&pos[2], ecc->x.buffer, ecc->x.size);
     /* copy y coordinate of ECC point */
-    memcpy(pos, ecc->y.buffer, ecc->y.size);
-    /* encoding of AIK ECC point */
-    userdata->public_key.ec.ec_point = asn_wrap(ASN1_SEQUENCE, "m", ecc_point);
+    memcpy(&pos[2+ecc->x.size], ecc->y.buffer, ecc->y.size);
+    userdata->public_key.ec.ec_point = pos;
+    userdata->public_key.ec.ec_point_len = 2 + ecc->x.size + ecc->y.size;
+    
     /* encoding of AIK ECC params */
-    userdata->public_key.ec.ec_params = asn_build_known_oid(OID_PRIME256V1);
+    userdata->public_key.ec.ec_params = oidP256;
+    userdata->public_key.ec.ec_params_len = sizeof(oidP256);
     pObject object = malloc(sizeof(Object));
     if (object == NULL) {
+      free pos;
       free(userdata);
       return NULL;
     }
@@ -378,7 +378,6 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
     }
     else if (userdata->tpm_key.publicArea.type == TPM2_ALG_ECC) {
       TPMS_ECC_POINT *ecc = &userdata->tpm_key.publicArea.unique.ecc;
-      asn_buf_t ecc_point;
       uint8_t *pos;
 
       /*
@@ -413,21 +412,20 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       userdata->key.encrypt = CK_FALSE;
       userdata->key.key_type = CKK_EC;
       
-      /* allocate space for bit string */
-      pos = asn_build_object(&ecc_point, ASN1_BIT_STRING, 2 + ecc->x.size + ecc->y.size);
-      /* bit string length is a multiple of octets */
-      *pos++ = 0x00;
-      /* uncompressed ECC point format */
-      *pos++ = 0x04;
+      /* allocate space for octet string */
+      pos = (uint8_t*)malloc(2 + ecc->x.size + ecc->y.size);
+      pos[0] = 0x04; /* ASN1_OCTET_STRING */
+      pos[1] = (ecc->x.size + ecc->y.size) & 0x7f/* length less then 0x7f */
       /* copy x coordinate of ECC point */
-      memcpy(pos, ecc->x.buffer, ecc->x.size);
-      pos += ecc->x.size;
+      memcpy(&pos[2], ecc->x.buffer, ecc->x.size);
       /* copy y coordinate of ECC point */
-      memcpy(pos, ecc->y.buffer, ecc->y.size);
-      /* encoding of AIK ECC point */
-      userdata->public_key.ec.ec_point = asn_wrap(ASN1_SEQUENCE, "m", ecc_point);
+      memcpy(&pos[2+ecc->x.size], ecc->y.buffer, ecc->y.size);
+      userdata->public_key.ec.ec_point = pos;
+      userdata->public_key.ec.ec_point_len = 2 + ecc->x.size + ecc->y.size;
+
       /* encoding of AIK ECC params */
-      userdata->public_key.ec.ec_params = asn_build_known_oid(OID_PRIME256V1);
+      userdata->public_key.ec.ec_params = oidP256;
+      userdata->public_key.ec.ec_params_len = sizeof(oidP256);
       pObject object = malloc(sizeof(Object));
       if (object == NULL) {
         free(userdata);

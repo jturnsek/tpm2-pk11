@@ -45,8 +45,8 @@ AttrIndex MODULUS_INDEX[] = {
 };
 
 AttrIndex PUBLIC_KEY_EC_INDEX[] = {
-  attr_dynamic_index_of(CKA_EC_PARAMS, PkcsECPublicKey, ec_params.ptr, ec_params.len),
-  attr_dynamic_index_of(CKA_EC_POINT, PkcsECPublicKey, ec_point.ptr, ec_point.len)  
+  attr_dynamic_index_of(CKA_EC_PARAMS, PkcsECPublicKey, ec_params, ec_params_len),
+  attr_dynamic_index_of(CKA_EC_POINT, PkcsECPublicKey, ec_point, ec_point_len)  
 };
 
 AttrIndex CERTIFICATE_INDEX[] = {
