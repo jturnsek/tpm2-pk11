@@ -217,7 +217,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm)
     userdata->public_key.ec.ec_params_len = sizeof(oidP256);
     pObject object = malloc(sizeof(Object));
     if (object == NULL) {
-      free pos;
+      free(pos);
       free(userdata);
       return NULL;
     }
@@ -427,6 +427,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       userdata->public_key.ec.ec_params_len = sizeof(oidP256);
       pObject object = malloc(sizeof(Object));
       if (object == NULL) {
+        free(pos);
         free(userdata);
         goto error;
       }
