@@ -98,6 +98,8 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm)
      * transform the binary name into a hexadecimal string.
      */
     size_t max_label_size = userdata->name.size;
+
+    
     if (max_label_size >= sizeof(userdata->label) / 2) {
       max_label_size = sizeof(userdata->label) / 2;
     }
@@ -214,9 +216,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm)
     /* encoding of AIK ECC point */
     userdata->public_key.ec.ec_point = asn_wrap(ASN1_SEQUENCE, "m", ecc_point);
     /* encoding of AIK ECC params */
-    userdata->public_key.ec.ec_params = asn_wrap(ASN1_SEQUENCE, "mm",
-                                          asn_build_known_oid(OID_EC_PUBLICKEY),
-                                          asn_build_known_oid(OID_PRIME256V1));
+    userdata->public_key.ec.ec_params = asn_wrap(ASN1_SEQUENCE, "m", asn_build_known_oid(OID_PRIME256V1));
     pObject object = malloc(sizeof(Object));
     if (object == NULL) {
       free(userdata);
@@ -427,9 +427,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       /* encoding of AIK ECC point */
       userdata->public_key.ec.ec_point = asn_wrap(ASN1_SEQUENCE, "m", ecc_point);
       /* encoding of AIK ECC params */
-      userdata->public_key.ec.ec_params = asn_wrap(ASN1_SEQUENCE, "mm",
-                                            asn_build_known_oid(OID_EC_PUBLICKEY),
-                                            asn_build_known_oid(OID_PRIME256V1));
+      userdata->public_key.ec.ec_params = asn_wrap(ASN1_SEQUENCE, "m", asn_build_known_oid(OID_PRIME256V1));
       pObject object = malloc(sizeof(Object));
       if (object == NULL) {
         free(userdata);
