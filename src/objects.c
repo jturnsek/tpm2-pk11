@@ -204,7 +204,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm)
     /* allocate space for octet string */
     pos = (uint8_t*)malloc(2 + ecc->x.size + ecc->y.size);
     pos[0] = 0x04; /* ASN1_OCTET_STRING */
-    pos[1] = (ecc->x.size + ecc->y.size) & 0x7f/* length less then 0x7f */
+    pos[1] = (ecc->x.size + ecc->y.size) & 0x7f; /* length less then 0x7f */
     /* copy x coordinate of ECC point */
     memcpy(&pos[2], ecc->x.buffer, ecc->x.size);
     /* copy y coordinate of ECC point */
@@ -414,7 +414,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       /* allocate space for octet string */
       pos = (uint8_t*)malloc(2 + ecc->x.size + ecc->y.size);
       pos[0] = 0x04; /* ASN1_OCTET_STRING */
-      pos[1] = (ecc->x.size + ecc->y.size) & 0x7f/* length less then 0x7f */
+      pos[1] = (ecc->x.size + ecc->y.size) & 0x7f; /* length less then 0x7f */
       /* copy x coordinate of ECC point */
       memcpy(&pos[2], ecc->x.buffer, ecc->x.size);
       /* copy y coordinate of ECC point */
