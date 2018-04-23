@@ -95,10 +95,19 @@ typedef struct pkcs_ec_public_key_t {
   size_t ec_point_len;
 } PkcsECPublicKey, *pPkcsECPublicKey;
 
+typedef struct pkcs_ec_private_key_t {
+  void* ec_params;
+  size_t ec_params_len;
+} PkcsECPrivateKey, *pPkcsECPrivateKey;
+
 typedef union pkcs_public_key_t {
   PkcsRSAPublicKey rsa; 
   PkcsECPublicKey ec;
 } PkcsPublicKey, *pPkcsPublicKey;
+
+typedef union pkcs_private_key_t { 
+  PkcsECPrivateKey ec;
+} PkcsPrivateKey, *pPkcsPrivateKey;
 
 typedef struct pkcs_x509_t {
   char* value;
@@ -117,6 +126,7 @@ extern AttrIndex KEY_INDEX[5];
 extern AttrIndex PUBLIC_KEY_RSA_INDEX[1];
 extern AttrIndex MODULUS_INDEX[2];
 extern AttrIndex PUBLIC_KEY_EC_INDEX[2];
+extern AttrIndex PRIVATE_KEY_EC_INDEX[1];
 extern AttrIndex CERTIFICATE_INDEX[5];
 
 void* attr_get(pObject object, CK_ATTRIBUTE_TYPE type, size_t *size);

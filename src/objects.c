@@ -41,6 +41,7 @@ typedef struct userdata_tpm_t {
   PkcsObject public_object, private_object;
   PkcsKey key;
   PkcsPublicKey public_key;
+  PkcsPrivateKey private_key;
   PkcsModulus modulus;
 } UserdataTpm, *pUserdataTpm;
 
@@ -214,6 +215,8 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm)
     /* encoding of AIK ECC params */
     userdata->public_key.ec.ec_params = oidP256;
     userdata->public_key.ec.ec_params_len = sizeof(oidP256);
+    userdata->private_key.ec.ec_params = oidP256;
+    userdata->private_key.ec.ec_params_len = sizeof(oidP256);
     pObject object = malloc(sizeof(Object));
     if (object == NULL) {
       free(pos);
@@ -240,10 +243,11 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm)
 
     object->tpm_handle = persistent;
     object->userdata = NULL;
-    object->num_entries = 2;
+    object->num_entries = 3;
     object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
     object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
     object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
+    object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->private_key.ec, PRIVATE_KEY_EC_INDEX);
 
     public_object->opposite = object;
     object->opposite = public_object;
@@ -423,6 +427,8 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       /* encoding of AIK ECC params */
       userdata->public_key.ec.ec_params = oidP256;
       userdata->public_key.ec.ec_params_len = sizeof(oidP256);
+      userdata->private_key.ec.ec_params = oidP256;
+      userdata->private_key.ec.ec_params_len = sizeof(oidP256);
       pObject object = malloc(sizeof(Object));
       if (object == NULL) {
         free(pos);
@@ -446,10 +452,11 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
 
       object->tpm_handle = persistent.data.handles.handle[i];
       object->userdata = NULL;
-      object->num_entries = 2;
+      object->num_entries = 3;
       object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
       object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
       object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
+      object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->private_key.ec, PRIVATE_KEY_EC_INDEX);
       object_add(list, object);
 
       public_object->opposite = object;

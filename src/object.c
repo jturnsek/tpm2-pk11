@@ -49,6 +49,10 @@ AttrIndex PUBLIC_KEY_EC_INDEX[] = {
   attr_dynamic_index_of(CKA_EC_POINT, PkcsECPublicKey, ec_point, ec_point_len)  
 };
 
+AttrIndex PRIVATE_KEY_EC_INDEX[] = {
+  attr_dynamic_index_of(CKA_EC_PARAMS, PkcsECPrivateKey, ec_params, ec_params_len)  
+};
+
 AttrIndex CERTIFICATE_INDEX[] = {
   attr_dynamic_index_of(CKA_VALUE, PkcsX509, value, value_size),
   attr_dynamic_index_of(CKA_SUBJECT, PkcsX509, subject, subject_size),
