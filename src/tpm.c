@@ -528,7 +528,7 @@ TPM2_RC tpm_ecc_sign(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, unsi
     .count = 1,
     .auths[0] = { .sessionHandle = TPM2_RS_PW },
   };
-
+  int digestSize;
   TSS2L_SYS_AUTH_RESPONSE sessions_data_out = { .count = 1 };
 
   TPMT_TK_HASHCHECK validation = {0};
@@ -537,20 +537,11 @@ TPM2_RC tpm_ecc_sign(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, unsi
 
   TPMT_SIG_SCHEME scheme;
   scheme.scheme = TPM2_ALG_ECDSA;
-
-  int digestSize;
-  if (memcmp(hash, oid_sha1, sizeof(oid_sha1)) == 0) {
-    scheme.details.ecdsa.hashAlg = TPM2_ALG_SHA1;
-    digestSize = TPM2_SHA1_DIGEST_SIZE;
-  } else if (memcmp(hash, oid_sha256, sizeof(oid_sha256)) == 0) {
-    scheme.details.ecdsa.hashAlg = TPM2_ALG_SHA256;
-    digestSize = TPM2_SHA256_DIGEST_SIZE;
-  } else
-    return TPM2_RC_FAILURE;
-
-  TPM2B_DIGEST digest = { .size = digestSize };
+  scheme.details.ecdsa.hashAlg = TPM2_ALG_SHA1;
+  
+  TPM2B_DIGEST digest = { .size = hash_length };
   // Remove OID from hash if provided
-  memcpy(digest.buffer, hash - digestSize + hash_length, digestSize);
+  memcpy(digest.buffer, hash, hash_length);
 
   TSS2_RC rval = TSS2_RETRY_EXP(Tss2_Sys_Sign(sapi_context, handle, &sessions_data, &digest, &scheme, &validation, signature, &sessions_data_out));
 

@@ -383,6 +383,7 @@ CK_RV C_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, 
     if (rc == TPM2_RC_SUCCESS) {
       memcpy(pSignature, sign.signature.ecdsa.signatureR.buffer, sign.signature.ecdsa.signatureR.size);
       memcpy(pSignature + sign.signature.ecdsa.signatureR.size, sign.signature.ecdsa.signatureS.buffer, sign.signature.ecdsa.signatureS.size);
+      *pulSignatureLen = sign.signature.ecdsa.signatureR.size + sign.signature.ecdsa.signatureS.size;
     } 
   }
   
