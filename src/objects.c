@@ -202,15 +202,14 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm)
     userdata->key.key_type = CKK_EC;
     
     /* allocate space for octet string */
-    pos = (uint8_t*)malloc(2 + ecc->x.size + ecc->y.size);
+    pos = (uint8_t*)malloc(1 + ecc->x.size + ecc->y.size);
     pos[0] = 0x04; /* ASN1_OCTET_STRING */
-    pos[1] = (ecc->x.size + ecc->y.size) & 0x7f; /* length less then 0x7f */
     /* copy x coordinate of ECC point */
-    memcpy(&pos[2], ecc->x.buffer, ecc->x.size);
+    memcpy(&pos[1], ecc->x.buffer, ecc->x.size);
     /* copy y coordinate of ECC point */
-    memcpy(&pos[2+ecc->x.size], ecc->y.buffer, ecc->y.size);
+    memcpy(&pos[1+ecc->x.size], ecc->y.buffer, ecc->y.size);
     userdata->public_key.ec.ec_point = pos;
-    userdata->public_key.ec.ec_point_len = 2 + ecc->x.size + ecc->y.size;
+    userdata->public_key.ec.ec_point_len = 1 + ecc->x.size + ecc->y.size;
     
     /* encoding of AIK ECC params */
     userdata->public_key.ec.ec_params = oidP256;
@@ -412,15 +411,14 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       userdata->key.key_type = CKK_EC;
       
       /* allocate space for octet string */
-      pos = (uint8_t*)malloc(2 + ecc->x.size + ecc->y.size);
+      pos = (uint8_t*)malloc(1 + ecc->x.size + ecc->y.size);
       pos[0] = 0x04; /* ASN1_OCTET_STRING */
-      pos[1] = (ecc->x.size + ecc->y.size) & 0x7f; /* length less then 0x7f */
       /* copy x coordinate of ECC point */
-      memcpy(&pos[2], ecc->x.buffer, ecc->x.size);
+      memcpy(&pos[1], ecc->x.buffer, ecc->x.size);
       /* copy y coordinate of ECC point */
-      memcpy(&pos[2+ecc->x.size], ecc->y.buffer, ecc->y.size);
+      memcpy(&pos[1+ecc->x.size], ecc->y.buffer, ecc->y.size);
       userdata->public_key.ec.ec_point = pos;
-      userdata->public_key.ec.ec_point_len = 2 + ecc->x.size + ecc->y.size;
+      userdata->public_key.ec.ec_point_len = 1 + ecc->x.size + ecc->y.size;
 
       /* encoding of AIK ECC params */
       userdata->public_key.ec.ec_params = oidP256;
