@@ -145,7 +145,7 @@ tpm2_session_data *tpm2_session_data_new(TPM2_SE type)
     d->key = TPM2_RH_NULL;
     d->bind = TPM2_RH_NULL;
     d->session_type = type;
-    d->authHash = TPM2_ALG_SHA256;
+    d->authHash = TPM2_ALG_SHA1; //TPM2_ALG_SHA256;
     d->nonce_caller.size = tpm2_alg_util_get_hash_size(TPM2_ALG_SHA1);
   }
   return d;
@@ -231,7 +231,7 @@ static generate_key_context ctx = {
     .owner   = TPM2B_EMPTY_INIT,
   },
   .algorithm_type = TPM2_ALG_RSA,
-  .digest_alg = TPM2_ALG_SHA256,
+  .digest_alg = TPM2_ALG_SHA1, //TPM2_ALG_SHA256,
   .sign_alg = TPM2_ALG_NULL,
 };
 
@@ -275,7 +275,7 @@ static bool set_ecc_signing_algorithm(uint32_t sign_alg, uint32_t digest_alg, TP
 
 static bool set_key_algorithm(TPM2B_PUBLIC *in_public)
 {
-  in_public->publicArea.nameAlg = TPM2_ALG_SHA256;
+  in_public->publicArea.nameAlg = TPM2_ALG_SHA1; //TPM2_ALG_SHA256;
   // First clear attributes bit field.
   in_public->publicArea.objectAttributes = 0;
   /*in_public->publicArea.objectAttributes |= TPMA_OBJECT_RESTRICTED;*//* jturnsek: no need to use tickets */ 
