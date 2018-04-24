@@ -540,8 +540,8 @@ TPM2_RC tpm_ecc_sign(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, unsi
 
   int digestSize;
   //if (memcmp(hash, oid_sha1, sizeof(oid_sha1)) == 0) {
-    scheme.details.ecdsa.hashAlg = TPM2_ALG_SHA1;
-    digestSize = TPM2_SHA1_DIGEST_SIZE;
+    scheme.details.ecdsa.hashAlg = TPM2_ALG_SHA256;
+    digestSize = TPM2_SHA256_DIGEST_SIZE;
   //} else if (memcmp(hash, oid_sha256, sizeof(oid_sha256)) == 0) {
   //  scheme.details.ecdsa.hashAlg = TPM2_ALG_SHA256;
   //  digestSize = TPM2_SHA256_DIGEST_SIZE;
