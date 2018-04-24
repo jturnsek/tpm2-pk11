@@ -86,6 +86,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
 
   handle = (TPMI_DH_OBJECT)TPM_DEFAULT_EK_HANDLE;
   while (list != NULL) {   
+    print_log(VERBOSE, "object_generate_pair: tpm_handle = %x", list->object->tpm_handle);
     if (list->object != NULL && list->object->tpm_handle == handle) {
       handle++;
     }
