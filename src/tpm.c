@@ -537,21 +537,11 @@ TPM2_RC tpm_ecc_sign(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, unsi
 
   TPMT_SIG_SCHEME scheme;
   scheme.scheme = TPM2_ALG_ECDSA;
-
-  int digestSize;
-  //if (memcmp(hash, oid_sha1, sizeof(oid_sha1)) == 0) {
-    scheme.details.ecdsa.hashAlg = TPM2_ALG_SHA256;
-    digestSize = TPM2_SHA256_DIGEST_SIZE;
-  //} else if (memcmp(hash, oid_sha256, sizeof(oid_sha256)) == 0) {
-  //  scheme.details.ecdsa.hashAlg = TPM2_ALG_SHA256;
-  //  digestSize = TPM2_SHA256_DIGEST_SIZE;
-  //} else
-  //  return TPM2_RC_FAILURE;
-
-  TPM2B_DIGEST digest = { .size = digestSize };
-  // Remove OID from hash if provided
-  //memcpy(digest.buffer, hash - digestSize + hash_length, digestSize);
-  memcpy(digest.buffer, hash, digestSize);
+  scheme.details.ecdsa.hashAlg = TPM2_ALG_SHA256;
+  
+  TPM2B_DIGEST digest = { .size = TPM2_SHA256_DIGEST_SIZE };
+ 
+  memcpy(digest.buffer, hash, TPM2_SHA256_DIGEST_SIZE);
 
   TSS2_RC rval = TSS2_RETRY_EXP(Tss2_Sys_Sign(sapi_context, handle, &sessions_data, &digest, &scheme, &validation, signature, &sessions_data_out));
 
