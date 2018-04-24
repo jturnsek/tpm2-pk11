@@ -88,7 +88,9 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
 
   while (i-- > 0) {
     while (list != NULL) {   
+      print_log(VERBOSE, "object_generate_pair: tpm_handle = %x", list->object->tpm_handle);
       if (list->object != NULL && list->object->tpm_handle == handle) {
+        print_log(VERBOSE, "object_generate_pair: handle = %x", handle);
         handle++;
         break; 
       }
@@ -100,6 +102,8 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     free(userdata);
     return NULL;
   }
+
+  print_log(VERBOSE, "object_generate_pair: final handle = %x", handle);
   
   TPM2_RC rc = tpm_generate_key_pair(ctx, handle, algorithm, &userdata->tpm_key, &userdata->name);
   if (rc != TPM2_RC_SUCCESS) {
