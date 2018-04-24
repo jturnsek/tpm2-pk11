@@ -75,7 +75,6 @@ void object_add(pObjectList list, pObject object)
 
 pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObjectList list)
 {
-  TPMI_DH_OBJECT handle;
   pObject public_object = NULL;
   pUserdataTpm userdata = malloc(sizeof(UserdataTpm));
   if (userdata == NULL) {
@@ -84,20 +83,24 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
   memset(userdata, 0, sizeof(UserdataTpm));
   userdata->name.size = sizeof(TPMU_NAME);
 
-  handle = (TPMI_DH_OBJECT)TPM_DEFAULT_EK_HANDLE;
-  while (list != NULL) {   
-    print_log(VERBOSE, "object_generate_pair: tpm_handle = %x", list->object->tpm_handle);
-    if (list->object != NULL && list->object->tpm_handle == handle) {
-      handle++;
+  TPMI_DH_OBJECT handle = (TPMI_DH_OBJECT)TPM_DEFAULT_EK_HANDLE;
+  int i = TPM_MAX_NUM_OF_AK_HANDLES;
+
+  while (i-- > 0) {
+    while (list != NULL) {   
+      if (list->object != NULL && list->object->tpm_handle == handle) {
+        handle++;
+        break; 
+      }
+      list = list->next;
     }
-    list = list->next;
   }
-  if (handle == TPM_DEFAULT_EK_HANDLE) {
-    /* No endorsement key present */
+  if (handle == (TPMI_DH_OBJECT)TPM_DEFAULT_EK_HANDLE || i == 0) {
+    /* No EK handle or no more space */
     free(userdata);
     return NULL;
   }
-
+  
   TPM2_RC rc = tpm_generate_key_pair(ctx, handle, algorithm, &userdata->tpm_key, &userdata->name);
   if (rc != TPM2_RC_SUCCESS) {
     free(userdata);
