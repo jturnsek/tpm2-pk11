@@ -35,8 +35,6 @@ struct token {
 };
 
 struct session {
-  //TSS2_SYS_CONTEXT *sapi_context;
-  //pObjectList objects;
   TPMI_DH_OBJECT handle;
   pObjectList find_cursor;
   CK_ATTRIBUTE_PTR filters;

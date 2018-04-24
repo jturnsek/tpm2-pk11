@@ -73,9 +73,9 @@ void object_add(pObjectList list, pObject object)
   }
 }
 
-pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm)
+pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObjectList list)
 {
-  TPMI_DH_OBJECT persistent;
+  TPMI_DH_OBJECT handle;
   pObject public_object = NULL;
   pUserdataTpm userdata = malloc(sizeof(UserdataTpm));
   if (userdata == NULL) {
@@ -83,7 +83,21 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm)
   }
   memset(userdata, 0, sizeof(UserdataTpm));
   userdata->name.size = sizeof(TPMU_NAME);
-  TPM2_RC rc = tpm_generate_key_pair(ctx, algorithm, &userdata->tpm_key, &userdata->name, &persistent);
+
+  handle = (TPMI_DH_OBJECT)TPM_DEFAULT_EK_HANDLE;
+  while (list != NULL) {   
+    if (list->object != NULL && list->object->tpm_handle == handle) {
+      handle++;
+    }
+    list = list->next;
+  }
+  if (handle == TPM_DEFAULT_EK_HANDLE) {
+    /* No endorsement key present */
+    free(userdata);
+    return NULL;
+  }
+
+  TPM2_RC rc = tpm_generate_key_pair(ctx, algorithm, handle, &userdata->tpm_key, &userdata->name);
   if (rc != TPM2_RC_SUCCESS) {
     free(userdata);
     return NULL;
@@ -155,7 +169,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm)
       return NULL;
     }
 
-    object->tpm_handle = persistent;
+    object->tpm_handle = handle;
     object->userdata = NULL;
     object->num_entries = 3;
     object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
@@ -204,7 +218,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm)
     
     /* allocate space for octet string */
     pos = (uint8_t*)malloc(1 + ecc->x.size + ecc->y.size);
-    pos[0] = 0x04; /* ASN1_OCTET_STRING */
+    pos[0] = 0x04; /* EC_POINT_FORM_UNCOMPRESSED */
     /* copy x coordinate of ECC point */
     memcpy(&pos[1], ecc->x.buffer, ecc->x.size);
     /* copy y coordinate of ECC point */
@@ -236,12 +250,13 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm)
 
     object = malloc(sizeof(Object));
     if (object == NULL) {
+      free(pos);
       free(userdata);
       free(public_object);
       return NULL;
     }
 
-    object->tpm_handle = persistent;
+    object->tpm_handle = handle;
     object->userdata = NULL;
     object->num_entries = 3;
     object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
@@ -363,8 +378,11 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       pObject public_object = object;
 
       object = malloc(sizeof(Object));
-      if (object == NULL)
+      if (object == NULL) {
+        free(userdata);
+        free(public_object);
         goto error;
+      }
 
       object->tpm_handle = persistent.data.handles.handle[i];
       object->userdata = NULL;
@@ -416,7 +434,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       
       /* allocate space for octet string */
       pos = (uint8_t*)malloc(1 + ecc->x.size + ecc->y.size);
-      pos[0] = 0x04; /* ASN1_OCTET_STRING */
+      pos[0] = 0x04; /* EC_POINT_FORM_UNCOMPRESSED */
       /* copy x coordinate of ECC point */
       memcpy(&pos[1], ecc->x.buffer, ecc->x.size);
       /* copy y coordinate of ECC point */
@@ -447,8 +465,12 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       pObject public_object = object;
 
       object = malloc(sizeof(Object));
-      if (object == NULL)
+      if (object == NULL) {
+        free(pos);
+        free(userdata);
+        free(public_object);
         goto error;
+      }
 
       object->tpm_handle = persistent.data.handles.handle[i];
       object->userdata = NULL;

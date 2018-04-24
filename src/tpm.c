@@ -202,14 +202,9 @@ tpm2_session *tpm2_session_new(TSS2_SYS_CONTEXT *sapi_context, tpm2_session_data
   return session;
 }
 
-#define MAX_PERSISTENT_HANDLES  4
-
 typedef struct generate_key_context generate_key_context;
 struct generate_key_context {
-  struct {
-    TPM2_HANDLE ek;
-    TPM2_HANDLE ak;/*[MAX_PERSISTENT_HANDLES];*/
-  } persistent_handle;
+  TPMI_DH_OBJECT handle_ek;
   struct {
     TPM2B_AUTH endorse;
     TPM2B_AUTH ak;
@@ -221,16 +216,13 @@ struct generate_key_context {
 };
 
 static generate_key_context ctx = {
-  .persistent_handle = {
-    .ek = 0x81010000, // default EK handle
-    .ak = 0x81010001,
-  },
+  .handle_ek = TPM_DEFAULT_EK_HANDLE,
   .passwords = {
     .endorse = TPM2B_EMPTY_INIT,
     .ak      = TPM2B_EMPTY_INIT,
     .owner   = TPM2B_EMPTY_INIT,
   },
-  .algorithm_type = TPM2_ALG_RSA,
+  .algorithm_type = TPM2_ALG_ECC,
   .digest_alg = TPM2_ALG_SHA256,
   .sign_alg = TPM2_ALG_NULL,
 };
@@ -314,7 +306,7 @@ static bool set_key_algorithm(TPM2B_PUBLIC *in_public)
   return true;
 }
 
-TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPM2_ALG_ID algorithm, TPM2B_PUBLIC *public, TPM2B_NAME *name, TPMI_DH_OBJECT *persistent)
+TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle_ak, TPM2_ALG_ID algorithm, TPM2B_PUBLIC *public, TPM2B_NAME *name)
 {
   TPML_PCR_SELECTION creation_pcr;
   TSS2L_SYS_AUTH_RESPONSE sessions_data_out;
@@ -342,8 +334,6 @@ TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPM2_ALG_ID algori
   TPM2B_PRIVATE out_private = TPM2B_TYPE_INIT(TPM2B_PRIVATE, buffer);
 
   TPM2B_DIGEST creation_hash = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
-
-  TPM2_HANDLE handle_ek = ctx.persistent_handle.ek;
 
   inSensitive.sensitive.data.size = 0;
   inSensitive.size = inSensitive.sensitive.userAuth.size + 2;
@@ -394,7 +384,7 @@ TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPM2_ALG_ID algori
   sessions_data.auths[0].sessionAttributes |= TPMA_SESSION_CONTINUESESSION;
   sessions_data.auths[0].hmac.size = 0;
 
-  rval = TSS2_RETRY_EXP(Tss2_Sys_Create(sapi_context, handle_ek, &sessions_data,
+  rval = TSS2_RETRY_EXP(Tss2_Sys_Create(sapi_context, ctx.handle_ek, &sessions_data,
           &inSensitive, &inPublic, &outsideInfo, &creation_pcr, &out_private,
           &out_public, &creation_data, &creation_hash, &creation_ticket,
           &sessions_data_out));
@@ -437,8 +427,8 @@ TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPM2_ALG_ID algori
   sessions_data.auths[0].sessionAttributes |= TPMA_SESSION_CONTINUESESSION;
   sessions_data.auths[0].hmac.size = 0;
 
-  TPM2_HANDLE loaded_key_handle;
-  rval = TSS2_RETRY_EXP(Tss2_Sys_Load(sapi_context, handle_ek, &sessions_data, &out_private,
+  TPMI_DH_OBJECT loaded_key_handle;
+  rval = TSS2_RETRY_EXP(Tss2_Sys_Load(sapi_context, ctx.handle_ek, &sessions_data, &out_private,
           &out_public, &loaded_key_handle, name, &sessions_data_out));
   if (rval != TPM2_RC_SUCCESS) {
     return rval;
@@ -457,7 +447,7 @@ TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPM2_ALG_ID algori
   memcpy(&sessions_data.auths[0].hmac, &ctx.passwords.owner, sizeof(ctx.passwords.owner));
 
   rval = TSS2_RETRY_EXP(Tss2_Sys_EvictControl(sapi_context, TPM2_RH_OWNER, loaded_key_handle,
-          &sessions_data, ctx.persistent_handle.ak, &sessions_data_out));
+          &sessions_data, handle_ak, &sessions_data_out));
   if (rval != TPM2_RC_SUCCESS) {
     return rval;
   }
@@ -468,7 +458,6 @@ TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPM2_ALG_ID algori
   }
 
   *public = out_public;
-  *persistent = ctx.persistent_handle.ak;
 
   return TPM2_RC_SUCCESS;
 }
