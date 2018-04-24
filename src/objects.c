@@ -85,16 +85,19 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
 
   TPMI_DH_OBJECT handle = (TPMI_DH_OBJECT)TPM_DEFAULT_EK_HANDLE;
   int i = TPM_MAX_NUM_OF_AK_HANDLES;
+  pObjectList tmplist = list;
 
   while (i-- > 0) {
-    while (list != NULL) {   
-      print_log(VERBOSE, "object_generate_pair: tpm_handle = %x", list->object->tpm_handle);
-      if (list->object != NULL && list->object->tpm_handle == handle) {
-        print_log(VERBOSE, "object_generate_pair: handle = %x", handle);
+    while (tmplist != NULL) {   
+      if (tmplist->object != NULL && tmplist->object->tpm_handle == handle) {
         handle++;
+        tmplist = list;
         break; 
       }
-      list = list->next;
+      tmplist = tmplist->next;
+    }
+    if (tmplist == NULL) {
+      break;
     }
   }
   if (handle == (TPMI_DH_OBJECT)TPM_DEFAULT_EK_HANDLE || i == 0) {

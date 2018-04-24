@@ -24,7 +24,7 @@
 #include <sapi/tpm20.h>
 
 #define TPM_DEFAULT_EK_HANDLE 		0x81010000
-#define TPM_MAX_NUM_OF_AK_HANDLES	16
+#define TPM_MAX_NUM_OF_AK_HANDLES	8
 
 TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle_ak, TPM2_ALG_ID algorithm, TPM2B_PUBLIC *public, TPM2B_NAME *name);
 TPM2_RC tpm_read_public(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, TPM2B_PUBLIC *public, TPM2B_NAME *name);
