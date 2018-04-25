@@ -35,6 +35,7 @@ struct token {
 };
 
 struct session {
+  bool have_write;
   TPMI_DH_OBJECT handle;
   pObjectList find_cursor;
   CK_ATTRIBUTE_PTR filters;
@@ -45,7 +46,7 @@ struct session {
 
 int token_init(struct token* token, struct config *config);
 void token_close(struct token* token);
-int session_init(struct session* session);
+int session_init(struct session* session, bool have_write);
 void session_close(struct session* session);
 
 #endif /** SESSIONS_H_ */

@@ -155,7 +155,7 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID, CK_FLAGS flags, CK_VOID_PTR pApplication,
   if ((void*) *phSession == NULL)
     return CKR_GENERAL_ERROR;
 
-  int ret = session_init((struct session*) *phSession);
+  int ret = session_init((struct session*) *phSession, flags & CKF_RW_SESSION ? true : false);
   print_log(VERBOSE, "C_OpenSession: ret = %d", ret);
   return ret != 0 ? CKR_GENERAL_ERROR : CKR_OK;
 }
@@ -307,6 +307,10 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, 
 CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount) {
   print_log(VERBOSE, "C_SetAttributeValue: session = %x, object = %x, count = %d", hSession, hObject, ulCount);
   pObject object = (pObject) hObject;
+
+  if (get_session(hSession)->have_write == false) {
+    return CKR_SESSION_READ_ONLY;
+  }
 
   for (int i = 0; i < ulCount; i++) {
     void* entry_obj = NULL;
@@ -533,6 +537,10 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
 
   print_log(VERBOSE, "C_CreateObject: session = %x, count = %d", hSession, ulCount);
   
+  if (get_session(hSession)->have_write == false) {
+    return CKR_SESSION_READ_ONLY;
+  }
+
   *phObject = CK_INVALID_HANDLE;
   filename[0] = 0;
   
@@ -607,6 +615,11 @@ CK_RV C_CopyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTR
 
 CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject) {
   print_log(VERBOSE, "C_DestroyObject: session = %x, object = %x", hSession, hObject);
+  
+  if (get_session(hSession)->have_write == false) {
+    return CKR_SESSION_READ_ONLY;
+  }
+
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
@@ -812,6 +825,10 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
   if (pMechanism == NULL_PTR) return CKR_ARGUMENTS_BAD;
   if (phPublicKey == NULL_PTR) return CKR_ARGUMENTS_BAD;
   if (phPrivateKey == NULL_PTR) return CKR_ARGUMENTS_BAD;
+
+  if (get_session(hSession)->have_write == false) {
+    return CKR_SESSION_READ_ONLY;
+  }
 
   *phPublicKey = CK_INVALID_HANDLE;
   *phPrivateKey = CK_INVALID_HANDLE;

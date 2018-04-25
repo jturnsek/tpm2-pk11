@@ -53,7 +53,6 @@ typedef struct attr_map_t {
 } AttrMap, *pAttrMap;
 
 typedef struct object_t {
-  int id;
   void* userdata;
   pAttrIndexEntry entries;
   size_t num_entries;

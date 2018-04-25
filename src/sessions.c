@@ -141,7 +141,8 @@ void token_close(struct token* token) {
   Tss2_Sys_Finalize(token->sapi_context);
 }
 
-int session_init(struct session* session) { 
+int session_init(struct session* session, bool have_write) {
+  session->have_write = have_write; 
   return 0;
 }
 

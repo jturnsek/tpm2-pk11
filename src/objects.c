@@ -51,15 +51,6 @@ static inline int hex_to_char(int c)
   return c >= 10 ? c - 10 + 'A' : c + '0';
 }
 
-pObject object_get(pObjectList list, int id)
-{
-  while (list != NULL) {
-    if (list->object != NULL && list->object->id == id)
-      return list->object;
-    list = list->next;
-  }
-  return NULL;
-}
 
 void object_add(pObjectList list, pObject object)
 {
@@ -280,11 +271,6 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
   }
 
   return public_object;
-}
-
-void object_destroy(TSS2_SYS_CONTEXT *ctx, pObject object)
-{
-
 }
 
 void object_free_list(pObjectList list)
