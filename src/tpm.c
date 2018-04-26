@@ -596,3 +596,25 @@ TPM2_RC tpm_list(TSS2_SYS_CONTEXT *sapi_context, TPMS_CAPABILITY_DATA* capabilit
 
   return rval;
 }
+
+TPM2_RC tpm_evict_control(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT object) {
+  TSS2L_SYS_AUTH_COMMAND sessions_data;
+  TSS2L_SYS_AUTH_RESPONSE sessions_data_out;
+
+  sessions_data.count = 1;
+  sessions_data.auths[0] = TPMS_AUTH_COMMAND_EMPTY_INIT;
+
+  TPMI_DH_OBJECT persist;
+
+  if (ctx.handle.object >> TPM2_HR_SHIFT == TPM2_HT_PERSISTENT) {
+    persist = object;
+  }
+  else {
+    return TPM2_RC_FAILURE;
+  }
+
+  TSS2_RC rval = TSS2_RETRY_EXP(Tss2_Sys_EvictControl(sapi_context, TPM2_RH_OWNER, object,
+                                  &sessions_data, persist, &sessions_data_out));
+
+  return rval;
+}

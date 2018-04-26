@@ -33,6 +33,7 @@ typedef struct object_list_t {
 } ObjectList, *pObjectList;
 
 void object_add(pObjectList list, pObject object);
+void object_remove(pObjectList *list, pObject object);
 void object_free_list(pObjectList list);
 pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config);
 pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObjectList list);

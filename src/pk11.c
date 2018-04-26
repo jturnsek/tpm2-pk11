@@ -615,12 +615,31 @@ CK_RV C_CopyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTR
 
 CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject) {
   print_log(VERBOSE, "C_DestroyObject: session = %x, object = %x", hSession, hObject);
-  
+  pObject object = (pObject) hObject;    
+
   if (get_session(hSession)->have_write == false) {
     return CKR_SESSION_READ_ONLY;
   }
 
-  return CKR_FUNCTION_NOT_SUPPORTED;
+  if (object) {
+    if (object->tpm_handle) {
+      TPM2_RC ret = tpm_evict_control(pk11_token.sapi_context, object->tpm_handle); 
+      return ret == TPM2_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR; 
+    }
+
+    if (object->userdata) {
+      free(object->userdata);
+    }  
+  }
+  else {
+    return CKR_GENERAL_ERROR;  
+  }
+
+  object_remove(&pk11_token.objects, object);
+
+  free(object);
+
+  return CKR_OK;
 }
 
 CK_RV C_GetObjectSize(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ULONG_PTR pulSize) {

@@ -64,6 +64,27 @@ void object_add(pObjectList list, pObject object)
   }
 }
 
+void object_remove(pObjectList *list, pObject object)
+{
+  pObjectList currlist = *list;
+  pObjectList prevlist = *list;
+  while (currlist != NULL) {
+    if (currlist->object != NULL && currlist->object == object) {
+      /* kill object list entry */
+      if (prevlist == currlist) {
+        *list = currlist->next;
+      }
+      else {
+        prevlist->next = currlist->next;
+      }
+      free(currlist);  
+      break;  
+    }
+    prevlist = currlist;
+    currlist = currlist->next;
+  }
+}
+
 pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObjectList list)
 {
   pObject public_object = NULL;
