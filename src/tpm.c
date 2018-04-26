@@ -606,7 +606,7 @@ TPM2_RC tpm_evict_control(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT object)
 
   TPMI_DH_OBJECT persist;
 
-  if (ctx.handle.object >> TPM2_HR_SHIFT == TPM2_HT_PERSISTENT) {
+  if (object >> TPM2_HR_SHIFT == TPM2_HT_PERSISTENT) {
     persist = object;
   }
   else {
