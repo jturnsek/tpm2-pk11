@@ -598,11 +598,18 @@ TPM2_RC tpm_list(TSS2_SYS_CONTEXT *sapi_context, TPMS_CAPABILITY_DATA* capabilit
 }
 
 TPM2_RC tpm_evict_control(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT object) {
-  TSS2L_SYS_AUTH_COMMAND sessions_data;
   TSS2L_SYS_AUTH_RESPONSE sessions_data_out;
-
-  sessions_data.count = 1;
-  sessions_data.auths[0] = TPMS_AUTH_COMMAND_EMPTY_INIT;
+  TSS2L_SYS_AUTH_COMMAND sessions_data = {
+    1, 
+    {
+      {
+        .sessionHandle = 0,
+        .nonce = TPM2B_EMPTY_INIT,
+        .hmac = TPM2B_EMPTY_INIT,
+        .sessionAttributes = 0,
+      }
+    }
+  };
 
   TPMI_DH_OBJECT persist;
 
