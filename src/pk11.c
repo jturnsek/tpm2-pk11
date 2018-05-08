@@ -339,8 +339,9 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, 
       }
     } else {
       print_log(DEBUG, " return attribute2: type = %x, size = %d, buffer_size = %d", pTemplate[i].type, *((size_t*) (entry_obj + entry->size_offset)), pTemplate[i].ulValueLen);
-      if (pTemplate[i].ulValueLen <= *((size_t*) (entry_obj + entry->size_offset))) {
+      if ((pTemplate[i].ulValueLen + *((size_t*) (entry_obj + entry->size_offset))) <= 256) {
         memcpy(*((void**) (entry_obj + entry->offset)), pTemplate[i].pValue, pTemplate[i].ulValueLen);
+        *((size_t*) (entry_obj + entry->size_offset)) += pTemplate[i].ulValueLen;
       }
     }
   }
