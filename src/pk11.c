@@ -333,15 +333,15 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, 
       pTemplate[i].ulValueLen = 0;
     } else if (entry->size_offset == 0) {
       print_log(DEBUG, " return attribute: type = %x, size = %d, buffer_size = %d", pTemplate[i].type, entry->size, pTemplate[i].ulValueLen);
-      if ((pTemplate[i].ulValueLen + entry->size) <= 256) {
+      if (pTemplate[i].ulValueLen <= 256) {
         memcpy(entry_obj + entry->offset, pTemplate[i].pValue, pTemplate[i].ulValueLen);
-        entry->size += pTemplate[i].ulValueLen;
+        entry->size = pTemplate[i].ulValueLen;
       }
     } else {
       print_log(DEBUG, " return attribute2: type = %x, size = %d, buffer_size = %d", pTemplate[i].type, *((size_t*) (entry_obj + entry->size_offset)), pTemplate[i].ulValueLen);
-      if ((pTemplate[i].ulValueLen + *((size_t*) (entry_obj + entry->size_offset))) <= 256) {
+      if (pTemplate[i].ulValueLen <= 256) {
         memcpy(*((void**) (entry_obj + entry->offset)), pTemplate[i].pValue, pTemplate[i].ulValueLen);
-        *((size_t*) (entry_obj + entry->size_offset)) += pTemplate[i].ulValueLen;
+        *((size_t*) (entry_obj + entry->size_offset)) = pTemplate[i].ulValueLen;
       }
     }
   }
