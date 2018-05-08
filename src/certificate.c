@@ -71,7 +71,7 @@ pObject certificate_read(const char* pathname) {
     userdata->object.id_size++;
   }
 
-  userdata->object.label_size = 0; //userdata->object.id_size * 2;
+  userdata->object.label_size = userdata->object.id_size * 2;
 
   userdata->certificate.value_size = size;
   userdata->certificate.value = ((char*) userdata) + sizeof(UserdataCertificate);
