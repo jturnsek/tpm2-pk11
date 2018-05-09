@@ -602,7 +602,7 @@ TPM2_RC tpm_evict_control(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT object)
   TSS2L_SYS_AUTH_COMMAND sessions_data = {
     .count = 1, 
     .auths[0] = {
-      .sessionHandle = 0,
+      .sessionHandle = TPM2_RS_PW,
       .nonce = TPM2B_EMPTY_INIT,
       .hmac = TPM2B_EMPTY_INIT,
       .sessionAttributes = 0,
