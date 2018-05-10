@@ -30,6 +30,7 @@
 #include <sys/mman.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #define SLOT_ID 0x1234
 
