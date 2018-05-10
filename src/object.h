@@ -22,6 +22,7 @@
 #define OBJECT_H_
 
 #include <stddef.h>
+#include <stdbool.h>
 
 #include <p11-kit/pkcs11.h>
 #include <sapi/tpm20.h>
