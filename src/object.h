@@ -58,6 +58,7 @@ typedef struct object_t {
   size_t num_entries;
   TPMI_DH_OBJECT tpm_handle;
   struct object_t *opposite;
+  bool is_certificate;
 } Object, *pObject;
 
 typedef struct pkcs_object_t {

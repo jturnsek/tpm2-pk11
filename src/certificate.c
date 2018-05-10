@@ -116,6 +116,8 @@ pObject certificate_read(const char* pathname) {
   object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->object, OBJECT_INDEX);
   object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->certificate, CERTIFICATE_INDEX);
 
+  object->is_certificate = true;
+
   return object;
 }
 

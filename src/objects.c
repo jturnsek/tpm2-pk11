@@ -129,33 +129,17 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
   if (userdata->tpm_key.publicArea.type == TPM2_ALG_RSA) {
     TPM2B_PUBLIC_KEY_RSA *rsa_key = &userdata->tpm_key.publicArea.unique.rsa;
     TPMS_RSA_PARMS *rsa_key_parms = &userdata->tpm_key.publicArea.parameters.rsaDetail;
-    /*
-     * fill the label with the same value as the name (they both have
-     * different uses ; some application never display the id but only
-     * the label). Since the label is an UTF8 string, we need to
-     * transform the binary name into a hexadecimal string.
-     */
-    size_t max_label_size = userdata->name.size;
-
-    
-    if (max_label_size >= sizeof(userdata->label) / 2) {
-      max_label_size = sizeof(userdata->label) / 2;
-    }
-    for (size_t n = 0; n < max_label_size; ++n) {
-      userdata->label[2 * n + 0] = hex_to_char(userdata->name.name[n] >> 4);
-      userdata->label[2 * n + 1] = hex_to_char(userdata->name.name[n] & 0x0f);
-    }
 
     userdata->public_object.id = userdata->name.name;
     userdata->public_object.id_size = userdata->name.size;
     userdata->public_object.label = userdata->label;
-    userdata->public_object.label_size = 0; //max_label_size * 2;
+    userdata->public_object.label_size = 0;
     userdata->public_object.class = CKO_PUBLIC_KEY;
     userdata->public_object.token = CK_TRUE;
     userdata->private_object.id = userdata->name.name;
     userdata->private_object.id_size = userdata->name.size;
     userdata->private_object.label = userdata->label;
-    userdata->private_object.label_size = 0; //max_label_size * 2;
+    userdata->private_object.label_size = 0;
     userdata->private_object.class = CKO_PRIVATE_KEY;
     userdata->private_object.token = CK_TRUE;
     userdata->key.sign = CK_TRUE;
@@ -182,7 +166,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
     object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.rsa, PUBLIC_KEY_RSA_INDEX);
     object->entries[3] = (AttrIndexEntry) attr_index_entry(&userdata->modulus, MODULUS_INDEX);
-    
+    object->is_certificate = false;
     public_object = object;
 
     object = malloc(sizeof(Object));
@@ -199,38 +183,24 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
     object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
     object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->modulus, MODULUS_INDEX);
-
+    object->is_certificate = false;
     public_object->opposite = object;
     object->opposite = public_object;
   }
   else if (userdata->tpm_key.publicArea.type == TPM2_ALG_ECC) {
     TPMS_ECC_POINT *ecc = &userdata->tpm_key.publicArea.unique.ecc;
     uint8_t *pos;
-    /*
-     * fill the label with the same value as the name (they both have
-     * different uses ; some application never display the id but only
-     * the label). Since the label is an UTF8 string, we need to
-     * transform the binary name into a hexadecimal string.
-     */
-    size_t max_label_size = userdata->name.size;
-    if (max_label_size >= sizeof(userdata->label) / 2) {
-      max_label_size = sizeof(userdata->label) / 2;
-    }
-    for (size_t n = 0; n < max_label_size; ++n) {
-      userdata->label[2 * n + 0] = hex_to_char(userdata->name.name[n] >> 4);
-      userdata->label[2 * n + 1] = hex_to_char(userdata->name.name[n] & 0x0f);
-    }
 
     userdata->public_object.id = userdata->name.name;
     userdata->public_object.id_size = userdata->name.size;
     userdata->public_object.label = userdata->label;
-    userdata->public_object.label_size = 0; //max_label_size * 2;
+    userdata->public_object.label_size = 0;
     userdata->public_object.class = CKO_PUBLIC_KEY;
     userdata->public_object.token = CK_TRUE;
     userdata->private_object.id = userdata->name.name;
     userdata->private_object.id_size = userdata->name.size;
     userdata->private_object.label = userdata->label;
-    userdata->private_object.label_size = 0; //max_label_size * 2;
+    userdata->private_object.label_size = 0;
     userdata->private_object.class = CKO_PRIVATE_KEY;
     userdata->private_object.token = CK_TRUE;
     userdata->key.sign = CK_TRUE;
@@ -268,7 +238,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->public_object, OBJECT_INDEX);
     object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
     object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.ec, PUBLIC_KEY_EC_INDEX);
-    
+    object->is_certificate = false;
     public_object = object;
 
     object = malloc(sizeof(Object));
@@ -286,7 +256,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
     object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
     object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->private_key.ec, PRIVATE_KEY_EC_INDEX);
-
+    object->is_certificate = false;
     public_object->opposite = object;
     object->opposite = public_object;
   }
@@ -342,30 +312,16 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       TPM2B_PUBLIC_KEY_RSA *rsa_key = &userdata->tpm_key.publicArea.unique.rsa;
       TPMS_RSA_PARMS *rsa_key_parms = &userdata->tpm_key.publicArea.parameters.rsaDetail;
 
-      /*
-       * fill the label with the same value as the name (they both have
-       * different uses ; some application never display the id but only
-       * the label). Since the label is an UTF8 string, we need to
-       * transform the binary name into a hexadecimal string.
-       */
-      size_t max_label_size = userdata->name.size;
-      if (max_label_size >= sizeof(userdata->label) / 2)
-        max_label_size = sizeof(userdata->label) / 2;
-      for (size_t n = 0; n < max_label_size; ++n) {
-        userdata->label[2 * n + 0] = hex_to_char(userdata->name.name[n] >> 4);
-        userdata->label[2 * n + 1] = hex_to_char(userdata->name.name[n] & 0x0f);
-      }
-
       userdata->public_object.id = userdata->name.name;
       userdata->public_object.id_size = userdata->name.size;
       userdata->public_object.label = userdata->label;
-      userdata->public_object.label_size = 0; //max_label_size * 2;
+      userdata->public_object.label_size = 0;
       userdata->public_object.class = CKO_PUBLIC_KEY;
       userdata->public_object.token = CK_TRUE;
       userdata->private_object.id = userdata->name.name;
       userdata->private_object.id_size = userdata->name.size;
       userdata->private_object.label = userdata->label;
-      userdata->private_object.label_size = 0; //max_label_size * 2;
+      userdata->private_object.label_size = 0;
       userdata->private_object.class = CKO_PRIVATE_KEY;
       userdata->private_object.token = CK_TRUE;
       userdata->key.sign = CK_TRUE;
@@ -392,6 +348,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
       object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.rsa, PUBLIC_KEY_RSA_INDEX);
       object->entries[3] = (AttrIndexEntry) attr_index_entry(&userdata->modulus, MODULUS_INDEX);
+      object->is_certificate = false;
       object_add(list, object);
       pObject public_object = object;
 
@@ -409,6 +366,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
       object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
       object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->modulus, MODULUS_INDEX);
+      object->is_certificate = false;
       object_add(list, object);
 
       public_object->opposite = object;
@@ -418,30 +376,16 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       TPMS_ECC_POINT *ecc = &userdata->tpm_key.publicArea.unique.ecc;
       uint8_t *pos;
 
-      /*
-       * fill the label with the same value as the name (they both have
-       * different uses ; some application never display the id but only
-       * the label). Since the label is an UTF8 string, we need to
-       * transform the binary name into a hexadecimal string.
-       */
-      size_t max_label_size = userdata->name.size;
-      if (max_label_size >= sizeof(userdata->label) / 2)
-        max_label_size = sizeof(userdata->label) / 2;
-      for (size_t n = 0; n < max_label_size; ++n) {
-        userdata->label[2 * n + 0] = hex_to_char(userdata->name.name[n] >> 4);
-        userdata->label[2 * n + 1] = hex_to_char(userdata->name.name[n] & 0x0f);
-      }
-
       userdata->public_object.id = userdata->name.name;
       userdata->public_object.id_size = userdata->name.size;
       userdata->public_object.label = userdata->label;
-      userdata->public_object.label_size = 0; //max_label_size * 2;
+      userdata->public_object.label_size = 0;
       userdata->public_object.class = CKO_PUBLIC_KEY;
       userdata->public_object.token = CK_TRUE;
       userdata->private_object.id = userdata->name.name;
       userdata->private_object.id_size = userdata->name.size;
       userdata->private_object.label = userdata->label;
-      userdata->private_object.label_size = 0; //max_label_size * 2;
+      userdata->private_object.label_size = 0;
       userdata->private_object.class = CKO_PRIVATE_KEY;
       userdata->private_object.token = CK_TRUE;
       userdata->key.sign = CK_TRUE;
@@ -479,6 +423,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->public_object, OBJECT_INDEX);
       object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
       object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.ec, PUBLIC_KEY_EC_INDEX);
+      object->is_certificate = false;
       object_add(list, object);
       pObject public_object = object;
 
@@ -497,6 +442,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
       object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
       object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->private_key.ec, PRIVATE_KEY_EC_INDEX);
+      object->is_certificate = false;
       object_add(list, object);
 
       public_object->opposite = object;

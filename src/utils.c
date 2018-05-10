@@ -92,3 +92,18 @@ int write_file(const char* filename, const void* src, size_t length)
   return -1;
 }
 
+int remove_file(const char* filename)
+{
+  glob_t results;
+
+  if (glob(filename, GLOB_TILDE | GLOB_NOCHECK, NULL, &results) == 0) {
+    if (!remove(results.gl_pathv[0])) {
+      globfree(&results);    
+      return 0;
+    }
+    globfree(&results);   
+  }
+
+  return -1;
+}
+
