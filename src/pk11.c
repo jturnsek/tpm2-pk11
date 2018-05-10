@@ -631,9 +631,7 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject) {
     else if (object->is_certificate) {
       char filename[PATH_MAX] = "";
       strcpy(filename, pk11_config.certificates);
-      strcat(filename, "/");
-      strncat(filename, object->userdata->label, object->userdata->object.label_size);
-      remove_file(filename);    
+      certificate_remove(filename, object);   
     }
 
     if (object->userdata) {

@@ -25,5 +25,6 @@
 
 pObject certificate_read(const char* pathname);
 int certificate_write(const char* pathname, void* value, size_t length);
+void certificate_remove(char* pathname, pObject object);
 
 #endif /** CERTIFICATE_H_ */

@@ -125,3 +125,11 @@ int certificate_write(const char* pathname, void* value, size_t length)
 {
   return write_file(pathname, value, length);  
 }
+
+void certificate_remove(char* pathname, pObject object)
+{
+  pUserdataCertificate userdata = (pUserdataCertificate)object->userdata;
+  strcat(pathname, "/");
+  strncat(pathname, userdata->label, userdata->object.label_size);
+  remove_file(pathname); 
+}
