@@ -9,3 +9,4 @@ device /dev/tpm0
 log-level 2
 log stdout
 certificates /home/root/.tpm2/certs
+keys /home/root/.tpm2/keys

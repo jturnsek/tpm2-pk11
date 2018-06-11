@@ -32,6 +32,7 @@ struct config {
   char* device;
   char* hostname;
   char* certificates;
+  char* keys;
   char* log_file;
   int log_level;
   unsigned int port;

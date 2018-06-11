@@ -35,8 +35,8 @@
 extern const asn1_static_node pkix_asn1_tab[];
 
 typedef struct userdata_certificate_t {
-  CK_BYTE id[MAX_ID_BITS / 4];
-  CK_UTF8CHAR label[MAX_ID_BITS / 2];
+  CK_BYTE id[TPM2_SHA1_DIGEST_SIZE];
+  CK_UTF8CHAR label[256];
   CK_BYTE subject[MAX_DER_LENGTH];
   CK_BYTE issuer[MAX_DER_LENGTH];
   CK_BYTE serial[MAX_DER_LENGTH];

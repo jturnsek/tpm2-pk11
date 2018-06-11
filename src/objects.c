@@ -36,7 +36,7 @@ CK_BYTE oidP256[] = { 0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07
 
 typedef struct userdata_tpm_t {
   TPM2B_PUBLIC tpm_key;
-  TPM2B_NAME name;
+  CK_BYTE name[TPM2_SHA1_DIGEST_SIZE];
   CK_UTF8CHAR label[256];
   PkcsObject public_object, private_object;
   PkcsKey key;
@@ -119,8 +119,16 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
   }
 
   print_log(VERBOSE, "object_generate_pair: final handle = %x", handle);
+
+  TPM2B_NAME name;
   
-  TPM2_RC rc = tpm_generate_key_pair(ctx, handle, algorithm, &userdata->tpm_key, &userdata->name);
+  TPM2_RC rc = tpm_generate_key_pair(ctx, handle, algorithm, &userdata->tpm_key, &name);
+  if (rc != TPM2_RC_SUCCESS) {
+    free(userdata);
+    return NULL;
+  }
+
+  rc = tpm_hash_sha1(ctx, name.name, name.size, userdata->name);
   if (rc != TPM2_RC_SUCCESS) {
     free(userdata);
     return NULL;
@@ -130,14 +138,14 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     TPM2B_PUBLIC_KEY_RSA *rsa_key = &userdata->tpm_key.publicArea.unique.rsa;
     TPMS_RSA_PARMS *rsa_key_parms = &userdata->tpm_key.publicArea.parameters.rsaDetail;
 
-    userdata->public_object.id = userdata->name.name;
-    userdata->public_object.id_size = userdata->name.size;
+    userdata->public_object.id = userdata->name;
+    userdata->public_object.id_size = TPM2_SHA1_DIGEST_SIZE;
     userdata->public_object.label = userdata->label;
     userdata->public_object.label_size = 0;
     userdata->public_object.class = CKO_PUBLIC_KEY;
     userdata->public_object.token = CK_TRUE;
-    userdata->private_object.id = userdata->name.name;
-    userdata->private_object.id_size = userdata->name.size;
+    userdata->private_object.id = userdata->name;
+    userdata->private_object.id_size = TPM2_SHA1_DIGEST_SIZE;
     userdata->private_object.label = userdata->label;
     userdata->private_object.label_size = 0;
     userdata->private_object.class = CKO_PRIVATE_KEY;
@@ -191,14 +199,14 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     TPMS_ECC_POINT *ecc = &userdata->tpm_key.publicArea.unique.ecc;
     uint8_t *pos;
 
-    userdata->public_object.id = userdata->name.name;
-    userdata->public_object.id_size = userdata->name.size;
+    userdata->public_object.id = userdata->name;
+    userdata->public_object.id_size = TPM2_SHA1_DIGEST_SIZE;
     userdata->public_object.label = userdata->label;
     userdata->public_object.label_size = 0;
     userdata->public_object.class = CKO_PUBLIC_KEY;
     userdata->public_object.token = CK_TRUE;
-    userdata->private_object.id = userdata->name.name;
-    userdata->private_object.id_size = userdata->name.size;
+    userdata->private_object.id = userdata->name;
+    userdata->private_object.id_size = TPM2_SHA1_DIGEST_SIZE;
     userdata->private_object.label = userdata->label;
     userdata->private_object.label_size = 0;
     userdata->private_object.class = CKO_PRIVATE_KEY;
@@ -291,6 +299,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
     goto error;
   
   TPMS_CAPABILITY_DATA persistent;
+  TPM2B_NAME name;
   TPM2_RC rc = tpm_list(ctx, &persistent);
   if (rc != TPM2_RC_SUCCESS)
     goto error;
@@ -301,8 +310,13 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       goto error;
 
     memset(userdata, 0, sizeof(UserdataTpm));
-    userdata->name.size = sizeof(TPMU_NAME);
-    rc = tpm_read_public(ctx, persistent.data.handles.handle[i], &userdata->tpm_key, &userdata->name);
+    rc = tpm_read_public(ctx, persistent.data.handles.handle[i], &userdata->tpm_key, &name);
+    if (rc != TPM2_RC_SUCCESS) {
+      free(userdata);
+      goto error;
+    }
+
+    rc = tpm_hash_sha1(ctx, name.name, name.size, userdata->name);
     if (rc != TPM2_RC_SUCCESS) {
       free(userdata);
       goto error;
@@ -312,14 +326,14 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       TPM2B_PUBLIC_KEY_RSA *rsa_key = &userdata->tpm_key.publicArea.unique.rsa;
       TPMS_RSA_PARMS *rsa_key_parms = &userdata->tpm_key.publicArea.parameters.rsaDetail;
 
-      userdata->public_object.id = userdata->name.name;
-      userdata->public_object.id_size = userdata->name.size;
+      userdata->public_object.id = userdata->name;
+      userdata->public_object.id_size = TPM2_SHA1_DIGEST_SIZE;
       userdata->public_object.label = userdata->label;
       userdata->public_object.label_size = 0;
       userdata->public_object.class = CKO_PUBLIC_KEY;
       userdata->public_object.token = CK_TRUE;
-      userdata->private_object.id = userdata->name.name;
-      userdata->private_object.id_size = userdata->name.size;
+      userdata->private_object.id = userdata->name;
+      userdata->private_object.id_size = TPM2_SHA1_DIGEST_SIZE;
       userdata->private_object.label = userdata->label;
       userdata->private_object.label_size = 0;
       userdata->private_object.class = CKO_PRIVATE_KEY;
@@ -376,14 +390,14 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       TPMS_ECC_POINT *ecc = &userdata->tpm_key.publicArea.unique.ecc;
       uint8_t *pos;
 
-      userdata->public_object.id = userdata->name.name;
-      userdata->public_object.id_size = userdata->name.size;
+      userdata->public_object.id = userdata->name;
+      userdata->public_object.id_size = TPM2_SHA1_DIGEST_SIZE;
       userdata->public_object.label = userdata->label;
       userdata->public_object.label_size = 0;
       userdata->public_object.class = CKO_PUBLIC_KEY;
       userdata->public_object.token = CK_TRUE;
-      userdata->private_object.id = userdata->name.name;
-      userdata->private_object.id_size = userdata->name.size;
+      userdata->private_object.id = userdata->name;
+      userdata->private_object.id_size = TPM2_SHA1_DIGEST_SIZE;
       userdata->private_object.label = userdata->label;
       userdata->private_object.label_size = 0;
       userdata->private_object.class = CKO_PRIVATE_KEY;
