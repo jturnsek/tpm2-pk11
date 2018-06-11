@@ -93,7 +93,6 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     return NULL;
   }
   memset(userdata, 0, sizeof(UserdataTpm));
-  userdata->name.size = sizeof(TPMU_NAME);
 
   TPMI_DH_OBJECT handle = (TPMI_DH_OBJECT)TPM_DEFAULT_EK_HANDLE;
   int i = TPM_MAX_NUM_OF_AK_HANDLES;
