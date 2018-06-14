@@ -168,78 +168,14 @@ int attr_set(pObject object, CK_ATTRIBUTE_TYPE type, void* value, size_t size)
 
 int attr_read(pObject object, CK_ATTRIBUTE_TYPE type)
 {
-  #if 0
-  pUserdataTpm userdata = (pUserdataTpm)object->userdata;
-  size_t size = userdata->name.size;
-  const char* attr1 = "id";
-  const char* attr2 = "label"
-  char *attr;
   
-  if (type == CKA_ID) {
-    attr = (char*)attr1;
-  }
-  else if (type == CKA_LABEL) {
-     attr = (char*)attr2;
-  }
-  else {
-    return -ENOENT;  
-  }
 
-  char filename[64] = {0};
-  char pathname[256] = {0};
-
-  if (size >= sizeof(filename) / 2)
-    size = sizeof(filename) / 2;
-  for (size_t n = 0; n < size; ++n) {
-    filename[2 * n + 0] = hex_to_char(userdata->name.name[n] >> 4);
-    filename[2 * n + 1] = hex_to_char(userdata->name.name[n] & 0x0f);
-  }
-
-  if (config->keys) { 
-    strcpy(pathname, config->keys);
-    strcat(pathname, "/");
-    strcat(pathname, filename);
-  }
-  else {
-    return -ENOENT;
-  }
-
-  FILE* fd = fopen(pathname, "r");
-
-  if (fd == NULL) {
-    return -ENOENT;
-  }
-
-  char *line = NULL;
-  size_t len = 0;
-
-  while (getline(&line, &len, fd) != -1) {
-    char *key = NULL, *value = NULL;
-    if (sscanf(line, "%ms %m[^\n]", &key, &value) == 2) {
-      if (strcmp(key, attr) == 0) {
-        attr_set(object, type, value, sizeof(value));
-      }
-    }
-    if (key != NULL)
-      free(key);
-
-    if (value != NULL)
-      free(value);
-  }
-
-  if (line != NULL)
-    free(line);
-
-  fclose(fd);
-  #endif
   return 0;
 }
 
 int attr_write(pObject object, CK_ATTRIBUTE_TYPE type)
 {
-  #if 0
-
-  #endif
+ 
   return 0; 
 }
 
