@@ -23,20 +23,37 @@
 #include "tpm.h"
 #include "pk11.h"
 #include "log.h"
+#include "config.h"
 
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <strings.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <stdbool.h>
 #include <endian.h>
 #include <limits.h>
+
 #ifndef PATH_MAX
 #define PATH_MAX 256
 #endif
 #include <glob.h>
 
+static inline int hex_to_char(int c)
+{
+  return c >= 10 ? c - 10 + 'A' : c + '0';
+}
+
 CK_BYTE oidP256[] = { 0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07 };
 
 typedef struct userdata_tpm_t {
   TPM2B_PUBLIC tpm_key;
-  CK_BYTE name[TPM2_SHA1_DIGEST_SIZE];
+  TPM2B_NAME name;
+  CK_BYTE id[256];
   CK_UTF8CHAR label[256];
   PkcsObject public_object, private_object;
   PkcsKey key;
@@ -46,9 +63,183 @@ typedef struct userdata_tpm_t {
 } UserdataTpm, *pUserdataTpm;
 
 
-static inline int hex_to_char(int c)
+AttrIndex OBJECT_INDEX[] = {
+  attr_dynamic_index_of(CKA_ID, PkcsObject, id, id_size),
+  attr_dynamic_index_of(CKA_LABEL, PkcsObject, label, label_size),
+  attr_index_of(CKA_CLASS, PkcsObject, class),
+  attr_index_of(CKA_TOKEN, PkcsObject, token)
+};
+
+AttrIndex KEY_INDEX[] = {
+  attr_index_of(CKA_SIGN, PkcsKey, sign),
+  attr_index_of(CKA_VERIFY, PkcsKey, verify),
+  attr_index_of(CKA_DECRYPT, PkcsKey, decrypt),
+  attr_index_of(CKA_ENCRYPT, PkcsKey, encrypt),
+  attr_index_of(CKA_KEY_TYPE, PkcsKey, key_type)
+};
+
+AttrIndex PUBLIC_KEY_RSA_INDEX[] = {
+  attr_index_of(CKA_PUBLIC_EXPONENT, PkcsRSAPublicKey, exponent)
+};
+
+AttrIndex MODULUS_INDEX[] = {
+  attr_dynamic_index_of(CKA_MODULUS, PkcsModulus, modulus, modulus_size),
+  attr_index_of(CKA_MODULUS_BITS, PkcsModulus, bits)
+};
+
+AttrIndex PUBLIC_KEY_EC_INDEX[] = {
+  attr_dynamic_index_of(CKA_EC_PARAMS, PkcsECPublicKey, ec_params, ec_params_len),
+  attr_dynamic_index_of(CKA_EC_POINT, PkcsECPublicKey, ec_point, ec_point_len)  
+};
+
+AttrIndex PRIVATE_KEY_EC_INDEX[] = {
+  attr_dynamic_index_of(CKA_EC_PARAMS, PkcsECPrivateKey, ec_params, ec_params_len)  
+};
+
+AttrIndex CERTIFICATE_INDEX[] = {
+  attr_dynamic_index_of(CKA_VALUE, PkcsX509, value, value_size),
+  attr_dynamic_index_of(CKA_SUBJECT, PkcsX509, subject, subject_size),
+  attr_dynamic_index_of(CKA_ISSUER, PkcsX509, issuer, issuer_size),
+  attr_dynamic_index_of(CKA_SERIAL_NUMBER, PkcsX509, serial, serial_size),
+  attr_index_of(CKA_CERTIFICATE_TYPE, PkcsX509, cert_type),
+};
+
+void* attr_get(pObject object, CK_ATTRIBUTE_TYPE type, size_t *size)
 {
-  return c >= 10 ? c - 10 + 'A' : c + '0';
+  if (!object) {
+    print_log(DEBUG, "attribute get: null object");
+    return NULL;
+  }
+
+  for (int i = 0; i < object->num_entries; i++) {
+    pAttrIndexEntry entries = &object->entries[i];
+    for (int j = 0; j < entries->num_attrs; j++) {
+      if (type == entries->indexes[j].type) {
+        pAttrIndex index = &entries->indexes[j];
+        if (index->size_offset == 0) {
+          if (size) {
+            *size = index->size;
+          }
+          print_log(DEBUG, "attribute get (1): type = 0x%x, size = %d", type, *size);
+          return entries->object + index->offset;
+        } else {
+          if (size) {
+            *size = *((size_t*) (entries->object + index->size_offset));
+          }
+          print_log(DEBUG, "attribute get (2): type = 0x%x, size = %d", type, *size);
+          return *((void**) (entries->object + index->offset));
+        }
+      }
+    }
+  }
+
+  print_log(DEBUG, "attribute not found: type = 0x%x", pTemplate[i].type);
+  return NULL;
+}
+
+int attr_set(pObject object, CK_ATTRIBUTE_TYPE type, void* value, size_t size)
+{
+  if (!object) {
+    print_log(DEBUG, "attribute set: null object");
+    return -1;
+  }
+
+  for (int i = 0; i < object->num_entries; i++) {
+    pAttrIndexEntry entries = &object->entries[i];
+    for (int j = 0; j < entries->num_attrs; j++) {
+      if (type == entries->indexes[j].type) {
+        pAttrIndex index = &entries->indexes[j];
+        if (index->size_offset == 0) {
+          print_log(DEBUG, "attribute set (1): type = 0x%x, size = %d", type,  size);
+          memcpy(entries->object + index->offset, value, size);
+          index->size = size;
+        } else {
+          print_log(DEBUG, "attribute set (2): type = 0x%x, size = %d", type, size);
+          memcpy(*((void**) (entries->object + index->offset)), value, size);
+          *((size_t*) (entries->object + index->size_offset)) = size;
+        }
+      }
+    }
+  }
+
+  return 0;
+}
+
+int attr_read(pObject object, CK_ATTRIBUTE_TYPE type)
+{
+  #if 0
+  pUserdataTpm userdata = (pUserdataTpm)object->userdata;
+  size_t size = userdata->name.size;
+  const char* attr1 = "id";
+  const char* attr2 = "label"
+  char *attr;
+  
+  if (type == CKA_ID) {
+    attr = (char*)attr1;
+  }
+  else if (type == CKA_LABEL) {
+     attr = (char*)attr2;
+  }
+  else {
+    return -ENOENT;  
+  }
+
+  char filename[64] = {0};
+  char pathname[256] = {0};
+
+  if (size >= sizeof(filename) / 2)
+    size = sizeof(filename) / 2;
+  for (size_t n = 0; n < size; ++n) {
+    filename[2 * n + 0] = hex_to_char(userdata->name.name[n] >> 4);
+    filename[2 * n + 1] = hex_to_char(userdata->name.name[n] & 0x0f);
+  }
+
+  if (config->keys) { 
+    strcpy(pathname, config->keys);
+    strcat(pathname, "/");
+    strcat(pathname, filename);
+  }
+  else {
+    return -ENOENT;
+  }
+
+  FILE* fd = fopen(pathname, "r");
+
+  if (fd == NULL) {
+    return -ENOENT;
+  }
+
+  char *line = NULL;
+  size_t len = 0;
+
+  while (getline(&line, &len, fd) != -1) {
+    char *key = NULL, *value = NULL;
+    if (sscanf(line, "%ms %m[^\n]", &key, &value) == 2) {
+      if (strcmp(key, attr) == 0) {
+        attr_set(object, type, value, sizeof(value));
+      }
+    }
+    if (key != NULL)
+      free(key);
+
+    if (value != NULL)
+      free(value);
+  }
+
+  if (line != NULL)
+    free(line);
+
+  fclose(fd);
+  #endif
+  return 0;
+}
+
+int attr_write(pObject object, CK_ATTRIBUTE_TYPE type)
+{
+  #if 0
+
+  #endif
+  return 0; 
 }
 
 
@@ -85,7 +276,7 @@ void object_remove(pObjectList *list, pObject object)
   }
 }
 
-pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObjectList list)
+pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObjectList list, struct config *config)
 {
   pObject public_object = NULL;
   pUserdataTpm userdata = malloc(sizeof(UserdataTpm));
@@ -93,7 +284,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     return NULL;
   }
   memset(userdata, 0, sizeof(UserdataTpm));
-
+  userdata->name.size = sizeof(TPMU_NAME);
   TPMI_DH_OBJECT handle = (TPMI_DH_OBJECT)TPM_DEFAULT_EK_HANDLE;
   int i = TPM_MAX_NUM_OF_AK_HANDLES;
   pObjectList tmplist = list;
@@ -118,16 +309,8 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
   }
 
   print_log(VERBOSE, "object_generate_pair: final handle = %x", handle);
-
-  TPM2B_NAME name;
   
-  TPM2_RC rc = tpm_generate_key_pair(ctx, handle, algorithm, &userdata->tpm_key, &name);
-  if (rc != TPM2_RC_SUCCESS) {
-    free(userdata);
-    return NULL;
-  }
-
-  rc = tpm_hash_sha1(ctx, name.name, name.size, userdata->name);
+  TPM2_RC rc = tpm_generate_key_pair(ctx, handle, algorithm, &userdata->tpm_key, &userdata->name);
   if (rc != TPM2_RC_SUCCESS) {
     free(userdata);
     return NULL;
@@ -137,14 +320,14 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     TPM2B_PUBLIC_KEY_RSA *rsa_key = &userdata->tpm_key.publicArea.unique.rsa;
     TPMS_RSA_PARMS *rsa_key_parms = &userdata->tpm_key.publicArea.parameters.rsaDetail;
 
-    userdata->public_object.id = userdata->name;
-    userdata->public_object.id_size = TPM2_SHA1_DIGEST_SIZE;
+    userdata->public_object.id = userdata->id;
+    userdata->public_object.id_size = 0;
     userdata->public_object.label = userdata->label;
     userdata->public_object.label_size = 0;
     userdata->public_object.class = CKO_PUBLIC_KEY;
     userdata->public_object.token = CK_TRUE;
-    userdata->private_object.id = userdata->name;
-    userdata->private_object.id_size = TPM2_SHA1_DIGEST_SIZE;
+    userdata->private_object.id = userdata->id;
+    userdata->private_object.id_size = 0;
     userdata->private_object.label = userdata->label;
     userdata->private_object.label_size = 0;
     userdata->private_object.class = CKO_PRIVATE_KEY;
@@ -193,19 +376,21 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     object->is_certificate = false;
     public_object->opposite = object;
     object->opposite = public_object;
+
+    attr_write(object, CKA_ID);
+    attr_write(object, CKA_LABEL);
   }
   else if (userdata->tpm_key.publicArea.type == TPM2_ALG_ECC) {
     TPMS_ECC_POINT *ecc = &userdata->tpm_key.publicArea.unique.ecc;
-    uint8_t *pos;
 
-    userdata->public_object.id = userdata->name;
-    userdata->public_object.id_size = TPM2_SHA1_DIGEST_SIZE;
+    userdata->public_object.id = userdata->id;
+    userdata->public_object.id_size = 0;
     userdata->public_object.label = userdata->label;
     userdata->public_object.label_size = 0;
     userdata->public_object.class = CKO_PUBLIC_KEY;
     userdata->public_object.token = CK_TRUE;
-    userdata->private_object.id = userdata->name;
-    userdata->private_object.id_size = TPM2_SHA1_DIGEST_SIZE;
+    userdata->private_object.id = userdata->id;
+    userdata->private_object.id_size = 0;
     userdata->private_object.label = userdata->label;
     userdata->private_object.label_size = 0;
     userdata->private_object.class = CKO_PRIVATE_KEY;
@@ -217,13 +402,11 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     userdata->key.key_type = CKK_EC;
     
     /* allocate space for octet string */
-    pos = (uint8_t*)malloc(1 + ecc->x.size + ecc->y.size);
-    pos[0] = 0x04; /* EC_POINT_FORM_UNCOMPRESSED */
+    userdata->public_key.ec.ec_point[0] = 0x04; /* EC_POINT_FORM_UNCOMPRESSED */
     /* copy x coordinate of ECC point */
-    memcpy(&pos[1], ecc->x.buffer, ecc->x.size);
+    memcpy(&userdata->public_key.ec.ec_point[1], ecc->x.buffer, ecc->x.size);
     /* copy y coordinate of ECC point */
-    memcpy(&pos[1+ecc->x.size], ecc->y.buffer, ecc->y.size);
-    userdata->public_key.ec.ec_point = pos;
+    memcpy(&userdata->public_key.ec.ec_point[1 + ecc->x.size], ecc->y.buffer, ecc->y.size);
     userdata->public_key.ec.ec_point_len = 1 + ecc->x.size + ecc->y.size;
     
     /* encoding of AIK ECC params */
@@ -266,6 +449,9 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     object->is_certificate = false;
     public_object->opposite = object;
     object->opposite = public_object;
+
+    attr_write(object, CKA_ID);
+    attr_write(object, CKA_LABEL);
   }
 
   return public_object;
@@ -298,7 +484,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
     goto error;
   
   TPMS_CAPABILITY_DATA persistent;
-  TPM2B_NAME name;
+  
   TPM2_RC rc = tpm_list(ctx, &persistent);
   if (rc != TPM2_RC_SUCCESS)
     goto error;
@@ -309,13 +495,8 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       goto error;
 
     memset(userdata, 0, sizeof(UserdataTpm));
-    rc = tpm_read_public(ctx, persistent.data.handles.handle[i], &userdata->tpm_key, &name);
-    if (rc != TPM2_RC_SUCCESS) {
-      free(userdata);
-      goto error;
-    }
-
-    rc = tpm_hash_sha1(ctx, name.name, name.size, userdata->name);
+    userdata->name.size = sizeof(TPMU_NAME);
+    rc = tpm_read_public(ctx, persistent.data.handles.handle[i], &userdata->tpm_key, &userdata->name);
     if (rc != TPM2_RC_SUCCESS) {
       free(userdata);
       goto error;
@@ -325,14 +506,14 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       TPM2B_PUBLIC_KEY_RSA *rsa_key = &userdata->tpm_key.publicArea.unique.rsa;
       TPMS_RSA_PARMS *rsa_key_parms = &userdata->tpm_key.publicArea.parameters.rsaDetail;
 
-      userdata->public_object.id = userdata->name;
-      userdata->public_object.id_size = TPM2_SHA1_DIGEST_SIZE;
+      userdata->public_object.id = userdata->id;
+      userdata->public_object.id_size = 0;
       userdata->public_object.label = userdata->label;
       userdata->public_object.label_size = 0;
       userdata->public_object.class = CKO_PUBLIC_KEY;
       userdata->public_object.token = CK_TRUE;
-      userdata->private_object.id = userdata->name;
-      userdata->private_object.id_size = TPM2_SHA1_DIGEST_SIZE;
+      userdata->private_object.id = userdata->id;
+      userdata->private_object.id_size = 0;
       userdata->private_object.label = userdata->label;
       userdata->private_object.label_size = 0;
       userdata->private_object.class = CKO_PRIVATE_KEY;
@@ -384,19 +565,21 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
 
       public_object->opposite = object;
       object->opposite = public_object;
+
+      attr_read(object, CKA_ID);
+      attr_read(object, CKA_LABEL);
     }
     else if (userdata->tpm_key.publicArea.type == TPM2_ALG_ECC) {
       TPMS_ECC_POINT *ecc = &userdata->tpm_key.publicArea.unique.ecc;
-      uint8_t *pos;
 
-      userdata->public_object.id = userdata->name;
-      userdata->public_object.id_size = TPM2_SHA1_DIGEST_SIZE;
+      userdata->public_object.id = userdata->id;
+      userdata->public_object.id_size = 0;
       userdata->public_object.label = userdata->label;
       userdata->public_object.label_size = 0;
       userdata->public_object.class = CKO_PUBLIC_KEY;
       userdata->public_object.token = CK_TRUE;
-      userdata->private_object.id = userdata->name;
-      userdata->private_object.id_size = TPM2_SHA1_DIGEST_SIZE;
+      userdata->private_object.id = userdata->id;
+      userdata->private_object.id_size = 0;
       userdata->private_object.label = userdata->label;
       userdata->private_object.label_size = 0;
       userdata->private_object.class = CKO_PRIVATE_KEY;
@@ -408,13 +591,11 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       userdata->key.key_type = CKK_EC;
       
       /* allocate space for octet string */
-      pos = (uint8_t*)malloc(1 + ecc->x.size + ecc->y.size);
-      pos[0] = 0x04; /* EC_POINT_FORM_UNCOMPRESSED */
+      userdata->public_key.ec.ec_point[0] = 0x04; /* EC_POINT_FORM_UNCOMPRESSED */
       /* copy x coordinate of ECC point */
-      memcpy(&pos[1], ecc->x.buffer, ecc->x.size);
+      memcpy(&userdata->public_key.ec.ec_point[1], ecc->x.buffer, ecc->x.size);
       /* copy y coordinate of ECC point */
-      memcpy(&pos[1+ecc->x.size], ecc->y.buffer, ecc->y.size);
-      userdata->public_key.ec.ec_point = pos;
+      memcpy(&userdata->public_key.ec.ec_point[1 + ecc->x.size], ecc->y.buffer, ecc->y.size);
       userdata->public_key.ec.ec_point_len = 1 + ecc->x.size + ecc->y.size;
 
       /* encoding of AIK ECC params */
@@ -460,6 +641,9 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
 
       public_object->opposite = object;
       object->opposite = public_object;
+
+      attr_read(object, CKA_ID);
+      attr_read(object, CKA_LABEL);
     }
   }
 

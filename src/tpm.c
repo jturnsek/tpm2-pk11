@@ -624,28 +624,3 @@ TPM2_RC tpm_evict_control(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT object)
   return rval;
 }
 
-TPM2_RC tpm_hash_sha1(TSS2_SYS_CONTEXT *sapi_context, unsigned char *data, unsigned long data_length, unsigned char *hash)
-{
-  TPM2B_DIGEST outHash = TPM2B_TYPE_INIT(TPM2B_DIGEST, buffer);
-  TPMT_TK_HASHCHECK validation;
-  TSS2L_SYS_AUTH_COMMAND cmdAuthArray = { 
-    .count = 1, 
-    .auths[0] = {
-      .sessionHandle = TPM2_RS_PW, 
-      .nonce = TPM2B_EMPTY_INIT,
-      .hmac = TPM2B_EMPTY_INIT,
-      .sessionAttributes = 0, 
-    },
-  };
-
-  TPM2B_MAX_BUFFER buffer = { .size = data_length };
-
-  memcpy(buffer.buffer, data, data_length);
-
-  TSS2_RC rval = Tss2_Sys_Hash(sapi_context, NULL, &buffer, TPM2_ALG_SHA1,
-                                  TPM2_RH_OWNER, &outHash, &validation, NULL);
-
-  memcpy(hash, outHash.buffer, outHash.size);
-
-  return rval;
-}

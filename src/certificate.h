@@ -21,7 +21,7 @@
 #ifndef CERTIFICATE_H_
 #define CERTIFICATE_H_
 
-#include "object.h"
+#include "objects.h"
 
 pObject certificate_read(const char* pathname);
 int certificate_write(const char* pathname, void* value, size_t length);

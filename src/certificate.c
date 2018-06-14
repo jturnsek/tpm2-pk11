@@ -18,7 +18,6 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
 
-#include "object.h"
 #include "objects.h"
 #include "pk11.h"
 #include "utils.h"
@@ -35,7 +34,7 @@
 extern const asn1_static_node pkix_asn1_tab[];
 
 typedef struct userdata_certificate_t {
-  CK_BYTE id[TPM2_SHA1_DIGEST_SIZE];
+  CK_BYTE id[256];
   CK_UTF8CHAR label[256];
   CK_BYTE subject[MAX_DER_LENGTH];
   CK_BYTE issuer[MAX_DER_LENGTH];
