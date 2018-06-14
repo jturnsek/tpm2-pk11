@@ -85,7 +85,7 @@ typedef struct pkcs_modulus_t {
 typedef struct pkcs_ec_public_key_t {
   void* ec_params;
   size_t ec_params_len;
-  unsigned char ec_point[65];
+  void* ec_point;
   size_t ec_point_len;
 } PkcsECPublicKey, *pPkcsECPublicKey;
 

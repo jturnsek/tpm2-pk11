@@ -55,6 +55,7 @@ typedef struct userdata_tpm_t {
   TPM2B_NAME name;
   CK_BYTE id[256];
   CK_UTF8CHAR label[256];
+  CK_BYTE ec_point[128];
   PkcsObject public_object, private_object;
   PkcsKey key;
   PkcsPublicKey public_key;
@@ -402,11 +403,13 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     userdata->key.key_type = CKK_EC;
     
     /* allocate space for octet string */
-    userdata->public_key.ec.ec_point[0] = 0x04; /* EC_POINT_FORM_UNCOMPRESSED */
+    uint8_t* pos = (uint8_t*)userdata->ec_point;
+    pos[0] = 0x04; /* EC_POINT_FORM_UNCOMPRESSED */
     /* copy x coordinate of ECC point */
-    memcpy(&userdata->public_key.ec.ec_point[1], ecc->x.buffer, ecc->x.size);
+    memcpy(&pos[1], ecc->x.buffer, ecc->x.size);
     /* copy y coordinate of ECC point */
-    memcpy(&userdata->public_key.ec.ec_point[1 + ecc->x.size], ecc->y.buffer, ecc->y.size);
+    memcpy(&pos[1 + ecc->x.size], ecc->y.buffer, ecc->y.size);
+    userdata->public_key.ec.ec_point = pos;
     userdata->public_key.ec.ec_point_len = 1 + ecc->x.size + ecc->y.size;
     
     /* encoding of AIK ECC params */
@@ -589,11 +592,13 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       userdata->key.key_type = CKK_EC;
       
       /* allocate space for octet string */
-      userdata->public_key.ec.ec_point[0] = 0x04; /* EC_POINT_FORM_UNCOMPRESSED */
+      uint8_t* pos = (uint8_t*)userdata->ec_point;
+      pos[0] = 0x04; /* EC_POINT_FORM_UNCOMPRESSED */
       /* copy x coordinate of ECC point */
-      memcpy(&userdata->public_key.ec.ec_point[1], ecc->x.buffer, ecc->x.size);
+      memcpy(&pos[1], ecc->x.buffer, ecc->x.size);
       /* copy y coordinate of ECC point */
-      memcpy(&userdata->public_key.ec.ec_point[1 + ecc->x.size], ecc->y.buffer, ecc->y.size);
+      memcpy(&pos[1 + ecc->x.size], ecc->y.buffer, ecc->y.size);
+      userdata->public_key.ec.ec_point = pos;
       userdata->public_key.ec.ec_point_len = 1 + ecc->x.size + ecc->y.size;
 
       /* encoding of AIK ECC params */
