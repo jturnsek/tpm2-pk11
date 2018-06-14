@@ -133,7 +133,7 @@ void* attr_get(pObject object, CK_ATTRIBUTE_TYPE type, size_t *size)
     }
   }
 
-  print_log(DEBUG, "attribute not found: type = 0x%x", pTemplate[i].type);
+  print_log(DEBUG, "attribute not found: type = 0x%x", type);
   return NULL;
 }
 
@@ -416,7 +416,6 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     userdata->private_key.ec.ec_params_len = sizeof(oidP256);
     pObject object = malloc(sizeof(Object));
     if (object == NULL) {
-      free(pos);
       free(userdata);
       return NULL;
     }
@@ -433,7 +432,6 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
 
     object = malloc(sizeof(Object));
     if (object == NULL) {
-      free(pos);
       free(userdata);
       free(public_object);
       return NULL;
@@ -605,7 +603,6 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       userdata->private_key.ec.ec_params_len = sizeof(oidP256);
       pObject object = malloc(sizeof(Object));
       if (object == NULL) {
-        free(pos);
         free(userdata);
         goto error;
       }
@@ -623,7 +620,6 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
 
       object = malloc(sizeof(Object));
       if (object == NULL) {
-        free(pos);
         free(userdata);
         free(public_object);
         goto error;
