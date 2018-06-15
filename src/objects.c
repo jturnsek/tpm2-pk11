@@ -351,7 +351,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     userdata->private_object.id = userdata->persistent.id;
     userdata->private_object.id_size = userdata->persistent.id_size;
     userdata->private_object.label = userdata->persistent.label;
-    userdata->private_object.label_size = userdata->persistent.label_size;q
+    userdata->private_object.label_size = userdata->persistent.label_size;
     userdata->private_object.class = CKO_PRIVATE_KEY;
     userdata->private_object.token = CK_TRUE;
     userdata->key.sign = CK_TRUE;
