@@ -337,7 +337,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     public_object->opposite = object;
     object->opposite = public_object;
 
-    attrs_write(object, config);
+    attrs_write(object->opposite, config);
   }
   else if (userdata->tpm_key.publicArea.type == TPM2_ALG_ECC) {
     TPMS_ECC_POINT *ecc = &userdata->tpm_key.publicArea.unique.ecc;
@@ -409,7 +409,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     public_object->opposite = object;
     object->opposite = public_object;
 
-    attrs_write(object, config);
+    attrs_write(object->opposite, config);
   }
 
   return public_object;
