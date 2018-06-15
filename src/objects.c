@@ -327,7 +327,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     }
 
     object->tpm_handle = handle;
-    object->userdata = NULL;
+    object->userdata = userdata;
     object->num_entries = 3;
     object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
     object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
@@ -351,7 +351,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     userdata->private_object.id = userdata->persistent.id;
     userdata->private_object.id_size = userdata->persistent.id_size;
     userdata->private_object.label = userdata->persistent.label;
-    userdata->private_object.label_size = userdata->persistent.label_size;
+    userdata->private_object.label_size = userdata->persistent.label_size;q
     userdata->private_object.class = CKO_PRIVATE_KEY;
     userdata->private_object.token = CK_TRUE;
     userdata->key.sign = CK_TRUE;
@@ -399,7 +399,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     }
 
     object->tpm_handle = handle;
-    object->userdata = NULL;
+    object->userdata = userdata;
     object->num_entries = 3;
     object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
     object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
@@ -537,7 +537,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       }
 
       object->tpm_handle = tpm.data.handles.handle[i];
-      object->userdata = NULL;
+      object->userdata = userdata;
       object->num_entries = 3;
       object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
       object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
@@ -610,7 +610,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       }
 
       object->tpm_handle = tpm.data.handles.handle[i];
-      object->userdata = NULL;
+      object->userdata = userdata;
       object->num_entries = 3;
       object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
       object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
