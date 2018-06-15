@@ -179,7 +179,7 @@ int attr_set(pObject object, CK_ATTRIBUTE_TYPE type, void* value, size_t size)
 
 int attrs_write(pObject object, struct config *config)
 {
-  pUserdataTpm userdata = (pUserdataTpm)(object->userdata ? object->userdata : object->opposite->userdata;
+  pUserdataTpm userdata = (pUserdataTpm)(object->userdata ? object->userdata : object->opposite->userdata);
 
   if (config->data) {
     DB db;
