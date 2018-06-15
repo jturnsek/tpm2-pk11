@@ -179,7 +179,7 @@ int attr_set(pObject object, CK_ATTRIBUTE_TYPE type, void* value, size_t size)
 
 int attrs_write(pObject object, struct config *config)
 {
-  pUserdataTpm userdata = (pUserdataTpm)object->userdata;
+  pUserdataTpm userdata = (pUserdataTpm)(object->userdata ? object->userdata : object->opposite->userdata;
 
   if (config->data) {
     DB db;
@@ -327,7 +327,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     }
 
     object->tpm_handle = handle;
-    object->userdata = userdata;
+    object->userdata = NULL;
     object->num_entries = 3;
     object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
     object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
@@ -399,7 +399,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     }
 
     object->tpm_handle = handle;
-    object->userdata = userdata;
+    object->userdata = NULL;
     object->num_entries = 3;
     object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
     object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
@@ -537,7 +537,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       }
 
       object->tpm_handle = tpm.data.handles.handle[i];
-      object->userdata = userdata;
+      object->userdata = NULL;
       object->num_entries = 3;
       object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
       object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
@@ -610,7 +610,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       }
 
       object->tpm_handle = tpm.data.handles.handle[i];
-      object->userdata = userdata;
+      object->userdata = NULL;
       object->num_entries = 3;
       object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
       object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
