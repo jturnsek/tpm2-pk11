@@ -530,7 +530,7 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
         break;
       case CKA_VALUE:
         if (pk11_config.data) { 
-          snprintf(filepath, PATH_MAX, "%s/%s", config->data, filename);
+          snprintf(filepath, PATH_MAX, "%s/%s", pk11_config.data, filename);
           certificate_write(filepath, pTemplate[i].pValue, pTemplate[i].ulValueLen);
         }
         break;
