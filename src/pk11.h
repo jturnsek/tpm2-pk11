@@ -26,6 +26,7 @@
 
 #define TPM2_PK11_CONFIG_DIR ".tpm2"
 #define TPM2_PK11_CONFIG_FILE "config"
+#define TPM2_PK11_KEYS_FILE "keys.db"
 
 #define TPM2_PK11_LABEL "TPM2"
 #define TPM2_PK11_SLOT_DESCRIPTION "TPM2 PKCS11 slot"

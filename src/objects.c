@@ -24,6 +24,7 @@
 #include "pk11.h"
 #include "log.h"
 #include "config.h"
+#include "db.h"
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -43,6 +44,12 @@
 #endif
 #include <glob.h>
 
+#define MAX_HASH_TABLE_SIZE           512
+
+#define ID_MAX_SIZE                   256
+#define LABEL_MAX_SIZE                256
+#define EC_POINT_MAX_SIZE             65
+
 static inline int hex_to_char(int c)
 {
   return c >= 10 ? c - 10 + 'A' : c + '0';
@@ -53,14 +60,18 @@ CK_BYTE oidP256[] = { 0x06, 0x08, 0x2A, 0x86, 0x48, 0xCE, 0x3D, 0x03, 0x01, 0x07
 typedef struct userdata_tpm_t {
   TPM2B_PUBLIC tpm_key;
   TPM2B_NAME name;
-  CK_BYTE id[256];
-  CK_UTF8CHAR label[256];
-  CK_BYTE ec_point[128];
+  CK_BYTE ec_point[EC_POINT_MAX_SIZE];
   PkcsObject public_object, private_object;
   PkcsKey key;
   PkcsPublicKey public_key;
   PkcsPrivateKey private_key;
   PkcsModulus modulus;
+  struct persistent_t {
+    CK_BYTE id[ID_MAX_SIZE];
+    size_t id_size;
+    CK_UTF8CHAR label[LABEL_MAX_SIZE];
+    size_t label_size;
+  } persistent;
 } UserdataTpm, *pUserdataTpm;
 
 
@@ -108,7 +119,7 @@ AttrIndex CERTIFICATE_INDEX[] = {
 void* attr_get(pObject object, CK_ATTRIBUTE_TYPE type, size_t *size)
 {
   if (!object) {
-    print_log(DEBUG, "attribute get: null object");
+    print_log(DEBUG, "attribute get: ERROR - null object!");
     return NULL;
   }
 
@@ -134,14 +145,14 @@ void* attr_get(pObject object, CK_ATTRIBUTE_TYPE type, size_t *size)
     }
   }
 
-  print_log(DEBUG, "attribute not found: type = 0x%x", type);
+  print_log(DEBUG, "attribute get: ERROR - not found [type = 0x%x]!", type);
   return NULL;
 }
 
 int attr_set(pObject object, CK_ATTRIBUTE_TYPE type, void* value, size_t size)
 {
   if (!object) {
-    print_log(DEBUG, "attribute set: null object");
+    print_log(DEBUG, "attribute set: ERROR - null object!");
     return -1;
   }
 
@@ -166,19 +177,31 @@ int attr_set(pObject object, CK_ATTRIBUTE_TYPE type, void* value, size_t size)
   return 0;
 }
 
-int attr_read(pObject object, CK_ATTRIBUTE_TYPE type)
+int attrs_write(pObject object, struct config *config)
 {
+  pUserdataTpm userdata = (pUserdataTpm)object->userdata;
+
+  if (config->data) {
+    DB db;
+    char pathname[PATH_MAX]; 
+    snprintf(pathname, PATH_MAX, "%s/" TPM2_PK11_KEYS_FILE, config->data);
+    if (DB_open(&db, pathname, DB_OPEN_MODE_RDWR, MAX_HASH_TABLE_SIZE, userdata->name.size, sizeof(userdata->persistent)) != 0) {
+      return -1;  
+    }
   
+    if (DB_put(&db, &userdata->name.name, &userdata->persistent) == 1) {
+      /* Key not found */
+      DB_close(&db);
+      return -1;
+    }
+    DB_close(&db); 
+  }
+  else {
+    return -1; 
+  }
 
-  return 0;
-}
-
-int attr_write(pObject object, CK_ATTRIBUTE_TYPE type)
-{
- 
   return 0; 
 }
-
 
 void object_add(pObjectList list, pObject object)
 {
@@ -221,7 +244,6 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     return NULL;
   }
   memset(userdata, 0, sizeof(UserdataTpm));
-  userdata->name.size = sizeof(TPMU_NAME);
   TPMI_DH_OBJECT handle = (TPMI_DH_OBJECT)TPM_DEFAULT_EK_HANDLE;
   int i = TPM_MAX_NUM_OF_AK_HANDLES;
   pObjectList tmplist = list;
@@ -241,14 +263,14 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
   }
   if (handle == (TPMI_DH_OBJECT)TPM_DEFAULT_EK_HANDLE || i == 0) {
     /* No EK handle or no more space */
+    print_log(DEBUG, "object_generate_pair: ERROR - handle allocation failed!");
     free(userdata);
     return NULL;
   }
 
-  print_log(VERBOSE, "object_generate_pair: final handle = %x", handle);
-  
   TPM2_RC rc = tpm_generate_key_pair(ctx, handle, algorithm, &userdata->tpm_key, &userdata->name);
   if (rc != TPM2_RC_SUCCESS) {
+    print_log(DEBUG, "object_generate_pair: ERROR - tpm key generation failed!");
     free(userdata);
     return NULL;
   }
@@ -257,16 +279,16 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     TPM2B_PUBLIC_KEY_RSA *rsa_key = &userdata->tpm_key.publicArea.unique.rsa;
     TPMS_RSA_PARMS *rsa_key_parms = &userdata->tpm_key.publicArea.parameters.rsaDetail;
 
-    userdata->public_object.id = userdata->id;
-    userdata->public_object.id_size = 0;
-    userdata->public_object.label = userdata->label;
-    userdata->public_object.label_size = 0;
+    userdata->public_object.id = userdata->persistent.id;
+    userdata->public_object.id_size = userdata->persistent.id_size;
+    userdata->public_object.label = userdata->persistent.label;
+    userdata->public_object.label_size = userdata->persistent.label_size;
     userdata->public_object.class = CKO_PUBLIC_KEY;
     userdata->public_object.token = CK_TRUE;
-    userdata->private_object.id = userdata->id;
-    userdata->private_object.id_size = 0;
-    userdata->private_object.label = userdata->label;
-    userdata->private_object.label_size = 0;
+    userdata->private_object.id = userdata->persistent.id;
+    userdata->private_object.id_size = userdata->persistent.id_size;
+    userdata->private_object.label = userdata->persistent.label;
+    userdata->private_object.label_size = userdata->persistent.label_size;
     userdata->private_object.class = CKO_PRIVATE_KEY;
     userdata->private_object.token = CK_TRUE;
     userdata->key.sign = CK_TRUE;
@@ -314,22 +336,21 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     public_object->opposite = object;
     object->opposite = public_object;
 
-    attr_write(object, CKA_ID);
-    attr_write(object, CKA_LABEL);
+    attrs_write(object, config);
   }
   else if (userdata->tpm_key.publicArea.type == TPM2_ALG_ECC) {
     TPMS_ECC_POINT *ecc = &userdata->tpm_key.publicArea.unique.ecc;
 
-    userdata->public_object.id = userdata->id;
-    userdata->public_object.id_size = 0;
-    userdata->public_object.label = userdata->label;
-    userdata->public_object.label_size = 0;
+    userdata->public_object.id = userdata->persistent.id;
+    userdata->public_object.id_size = userdata->persistent.id_size;
+    userdata->public_object.label = userdata->persistent.label;
+    userdata->public_object.label_size = userdata->persistent.label_size;
     userdata->public_object.class = CKO_PUBLIC_KEY;
     userdata->public_object.token = CK_TRUE;
-    userdata->private_object.id = userdata->id;
-    userdata->private_object.id_size = 0;
-    userdata->private_object.label = userdata->label;
-    userdata->private_object.label_size = 0;
+    userdata->private_object.id = userdata->persistent.id;
+    userdata->private_object.id_size = userdata->persistent.id_size;
+    userdata->private_object.label = userdata->persistent.label;
+    userdata->private_object.label_size = userdata->persistent.label_size;
     userdata->private_object.class = CKO_PRIVATE_KEY;
     userdata->private_object.token = CK_TRUE;
     userdata->key.sign = CK_TRUE;
@@ -387,8 +408,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     public_object->opposite = object;
     object->opposite = public_object;
 
-    attr_write(object, CKA_ID);
-    attr_write(object, CKA_LABEL);
+    attrs_write(object, config);
   }
 
   return public_object;
@@ -400,9 +420,9 @@ void object_free_list(pObjectList list)
     pObjectList next = list->next;
     if (list->object != NULL) {
       pObject object = list->object;
-      if (object->userdata != NULL)
+      if (object->userdata != NULL) {
         free(object->userdata);
-
+      }
       free(object->entries);
       free(object);
     }
@@ -420,39 +440,63 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
   if (list == NULL)
     goto error;
   
-  TPMS_CAPABILITY_DATA persistent;
+  TPMS_CAPABILITY_DATA tpm;
   
-  TPM2_RC rc = tpm_list(ctx, &persistent);
+  TPM2_RC rc = tpm_list(ctx, &tpm);
   if (rc != TPM2_RC_SUCCESS)
     goto error;
 
-  for (int i = 0; i < persistent.data.handles.count; i++) {
+  for (int i = 0; i < tpm.data.handles.count; i++) {
     pUserdataTpm userdata = malloc(sizeof(UserdataTpm));
     if (userdata == NULL)
       goto error;
 
     memset(userdata, 0, sizeof(UserdataTpm));
-    userdata->name.size = sizeof(TPMU_NAME);
-    rc = tpm_read_public(ctx, persistent.data.handles.handle[i], &userdata->tpm_key, &userdata->name);
+    rc = tpm_read_public(ctx, tpm.data.handles.handle[i], &userdata->tpm_key, &userdata->name);
     if (rc != TPM2_RC_SUCCESS) {
       free(userdata);
       goto error;
+    }
+
+    if (config->data) {
+      DB db;
+      char pathname[PATH_MAX]; 
+      snprintf(pathname, PATH_MAX, "%s/" TPM2_PK11_KEYS_FILE, config->data);
+      if (DB_open(&db, pathname, DB_OPEN_MODE_RWCREAT, MAX_HASH_TABLE_SIZE, userdata->name.size, sizeof(userdata->persistent)) != 0) {
+        print_log(DEBUG, "object_load_list: ERROR - key database %s cannot be open!", pathname);
+        free(userdata);
+        goto error;  
+      }
+  
+      if (DB_get(&db, &userdata->name.name, &userdata->persistent) == 1) {
+        /* Key not found - skip this key */
+        print_log(DEBUG, "object_load_list: key not found, skip it");
+        DB_close(&db);
+        free(userdata);
+        continue;
+      }
+      DB_close(&db);
+    }
+    else {
+      print_log(DEBUG, "object_load_list: ERROR - configuration!");
+      free(userdata);
+      goto error; 
     }
 
     if (userdata->tpm_key.publicArea.type == TPM2_ALG_RSA) {
       TPM2B_PUBLIC_KEY_RSA *rsa_key = &userdata->tpm_key.publicArea.unique.rsa;
       TPMS_RSA_PARMS *rsa_key_parms = &userdata->tpm_key.publicArea.parameters.rsaDetail;
 
-      userdata->public_object.id = userdata->id;
-      userdata->public_object.id_size = 0;
-      userdata->public_object.label = userdata->label;
-      userdata->public_object.label_size = 0;
+      userdata->public_object.id = userdata->persistent.id;
+      userdata->public_object.id_size = userdata->persistent.id_size;
+      userdata->public_object.label = userdata->persistent.label;
+      userdata->public_object.label_size = userdata->persistent.label_size;
       userdata->public_object.class = CKO_PUBLIC_KEY;
       userdata->public_object.token = CK_TRUE;
-      userdata->private_object.id = userdata->id;
-      userdata->private_object.id_size = 0;
-      userdata->private_object.label = userdata->label;
-      userdata->private_object.label_size = 0;
+      userdata->private_object.id = userdata->persistent.id;
+      userdata->private_object.id_size = userdata->persistent.id_size;
+      userdata->private_object.label = userdata->persistent.label;
+      userdata->private_object.label_size = userdata->persistent.label_size;
       userdata->private_object.class = CKO_PRIVATE_KEY;
       userdata->private_object.token = CK_TRUE;
       userdata->key.sign = CK_TRUE;
@@ -490,7 +534,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
         goto error;
       }
 
-      object->tpm_handle = persistent.data.handles.handle[i];
+      object->tpm_handle = tpm.data.handles.handle[i];
       object->userdata = NULL;
       object->num_entries = 3;
       object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
@@ -502,23 +546,20 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
 
       public_object->opposite = object;
       object->opposite = public_object;
-
-      attr_read(object, CKA_ID);
-      attr_read(object, CKA_LABEL);
     }
     else if (userdata->tpm_key.publicArea.type == TPM2_ALG_ECC) {
       TPMS_ECC_POINT *ecc = &userdata->tpm_key.publicArea.unique.ecc;
 
-      userdata->public_object.id = userdata->id;
-      userdata->public_object.id_size = 0;
-      userdata->public_object.label = userdata->label;
-      userdata->public_object.label_size = 0;
+      userdata->public_object.id = userdata->persistent.id;
+      userdata->public_object.id_size = userdata->persistent.id_size;
+      userdata->public_object.label = userdata->persistent.label;
+      userdata->public_object.label_size = userdata->persistent.label_size;
       userdata->public_object.class = CKO_PUBLIC_KEY;
       userdata->public_object.token = CK_TRUE;
-      userdata->private_object.id = userdata->id;
-      userdata->private_object.id_size = 0;
-      userdata->private_object.label = userdata->label;
-      userdata->private_object.label_size = 0;
+      userdata->private_object.id = userdata->persistent.id;
+      userdata->private_object.id_size = userdata->persistent.id_size;
+      userdata->private_object.label = userdata->persistent.label;
+      userdata->private_object.label_size = userdata->persistent.label_size;
       userdata->private_object.class = CKO_PRIVATE_KEY;
       userdata->private_object.token = CK_TRUE;
       userdata->key.sign = CK_TRUE;
@@ -566,7 +607,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
         goto error;
       }
 
-      object->tpm_handle = persistent.data.handles.handle[i];
+      object->tpm_handle = tpm.data.handles.handle[i];
       object->userdata = NULL;
       object->num_entries = 3;
       object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
@@ -578,17 +619,14 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
 
       public_object->opposite = object;
       object->opposite = public_object;
-
-      attr_read(object, CKA_ID);
-      attr_read(object, CKA_LABEL);
     }
   }
 
-  if (config->certificates) {
+  if (config->data) {
     glob_t results;
-    char search_path[PATH_MAX];
-    snprintf(search_path, PATH_MAX, "%s/*", config->certificates);
-    if (glob(search_path, GLOB_TILDE | GLOB_NOCHECK, NULL, &results) == 0) {
+    char searchpath[PATH_MAX];
+    snprintf(searchpath, PATH_MAX, "%s/*", config->data);
+    if (glob(searchpath, GLOB_TILDE | GLOB_NOCHECK, NULL, &results) == 0) {
       for (int i = 0; i < results.gl_pathc; i++) {
         pObject object = certificate_read(results.gl_pathv[i]);
         if (object)

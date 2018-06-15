@@ -130,8 +130,7 @@ extern AttrIndex CERTIFICATE_INDEX[5];
 
 void* attr_get(pObject object, CK_ATTRIBUTE_TYPE type, size_t *size);
 int attr_set(pObject object, CK_ATTRIBUTE_TYPE type, void* value, size_t size);
-int attr_read(pObject object, CK_ATTRIBUTE_TYPE type);
-int attr_write(pObject object, CK_ATTRIBUTE_TYPE type);
+int attrs_write(pObject object, struct config *config);
 void object_add(pObjectList list, pObject object);
 void object_remove(pObjectList *list, pObject object);
 void object_free_list(pObjectList list);

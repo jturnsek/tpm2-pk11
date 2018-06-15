@@ -6,7 +6,7 @@ hostname localhost
 port 2321
 # Device to use as TPM
 device /dev/tpm0
-log-level 2
+log-level 0
 log stdout
-certificates /home/root/.tpm2/certs
-keys /home/root/.tpm2/keys
+# Mandatory key for data storage path
+data /home/root/.tpm2

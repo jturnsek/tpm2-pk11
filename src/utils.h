@@ -23,7 +23,6 @@
 
 #include <stddef.h>
 #include <stdint.h>
-#include <glob.h>
 
 void strncpy_pad(char *dest, const char *src, size_t n);
 void retmem(void* dest, size_t* size, const void* src, size_t n);

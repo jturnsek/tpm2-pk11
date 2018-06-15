@@ -293,7 +293,7 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, 
 
   for (int i = 0; i < ulCount; i++) {
     attr_set(object, pTemplate[i].type, pTemplate[i].pValue, pTemplate[i].ulValueLen);
-    attr_write(object, pTemplate[i].type);
+    attrs_write(object, &pk11_config);
   }
 
   return CKR_OK;
@@ -484,8 +484,8 @@ CK_RV C_Logout(CK_SESSION_HANDLE hSession) {
 }
 
 CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_OBJECT_HANDLE_PTR phObject) {
-  char filename[PATH_MAX/2];
-  char file_path[PATH_MAX];
+  char filename[PATH_MAX];
+  char filepath[PATH_MAX];
 
   print_log(VERBOSE, "C_CreateObject: session = %x, count = %d", hSession, ulCount);
   
@@ -529,12 +529,9 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
         }
         break;
       case CKA_VALUE:
-        if (pk11_config.certificates) { 
-          file_path[0] = 0;
-          strcpy(file_path, pk11_config.certificates);
-          strcat(file_path, "/");
-          strcat(file_path, filename);
-          certificate_write(file_path, pTemplate[i].pValue, pTemplate[i].ulValueLen);
+        if (pk11_config.data) { 
+          snprintf(filepath, PATH_MAX, "%s/%s", config->data, filename);
+          certificate_write(filepath, pTemplate[i].pValue, pTemplate[i].ulValueLen);
         }
         break;
       default:
@@ -542,19 +539,13 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
     }
   }
 
-  if (pk11_config.certificates) {
-    glob_t results;
-    if (glob(file_path, GLOB_TILDE | GLOB_NOCHECK, NULL, &results) == 0) {
-      pObject object = certificate_read(results.gl_pathv[0]);
-      if (!object) {
-        globfree(&results);
-        return CKR_GENERAL_ERROR;   
-      }
-      globfree(&results);
-      object_add(pk11_token.objects, object);
-
-      *phObject = (CK_OBJECT_HANDLE)object;
+  if (pk11_config.data) {
+    pObject object = certificate_read(filepath);
+    if (!object) {
+      return CKR_GENERAL_ERROR;   
     }
+    object_add(pk11_token.objects, object);
+    *phObject = (CK_OBJECT_HANDLE)object;
   }
 
   return CKR_OK;
@@ -580,7 +571,7 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject) {
     }
     else if (object->is_certificate) {
       char filename[PATH_MAX] = "";
-      strcpy(filename, pk11_config.certificates);
+      strcpy(filename, pk11_config.data);
       certificate_remove(filename, object);   
     }
 

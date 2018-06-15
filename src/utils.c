@@ -25,7 +25,6 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdlib.h>
-#include <glob.h>
 
 
 void strncpy_pad(char *dest, const char *src, size_t n) {
@@ -70,40 +69,25 @@ void* alloc_userdata_and_read_file(const char* filename, size_t* length) {
 
 int write_file(const char* filename, const void* src, size_t length)
 {
-  glob_t results;
-
-  if (glob(filename, GLOB_TILDE | GLOB_NOCHECK, NULL, &results) == 0) {
-    int fd = open(results.gl_pathv[0], O_RDWR | O_EXCL | O_CREAT);
-    globfree(&results);
-    if (fd < 0) {
-      return -1;
-    }
-
-    int ret = write(fd, src, length);
-    if (ret < 0) {
-      return -1;
-    }
-
-    close(fd);
-
-    return 0;
+  int fd = open(filename, O_RDWR | O_EXCL | O_CREAT);
+  if (fd < 0) {
+    return -1;
   }
+  int ret = write(fd, src, length);
+  if (ret < 0) {
+    return -1;
+  }
+  close(fd);
 
-  return -1;
+  return 0;
 }
 
 int remove_file(const char* filename)
 {
-  glob_t results;
-
-  if (glob(filename, GLOB_TILDE | GLOB_NOCHECK, NULL, &results) == 0) {
-    if (!remove(results.gl_pathv[0])) {
-      globfree(&results);    
-      return 0;
-    }
-    globfree(&results);   
+  if (remove(filename)) {   
+    return -1;
   }
 
-  return -1;
+  return 0;
 }
 
