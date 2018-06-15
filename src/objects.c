@@ -244,6 +244,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     return NULL;
   }
   memset(userdata, 0, sizeof(UserdataTpm));
+  userdata->name.size = sizeof(TPMU_NAME);
   TPMI_DH_OBJECT handle = (TPMI_DH_OBJECT)TPM_DEFAULT_EK_HANDLE + 1;
   int i = TPM_MAX_NUM_OF_AK_HANDLES;
   pObjectList tmplist = list;
@@ -452,6 +453,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       goto error;
 
     memset(userdata, 0, sizeof(UserdataTpm));
+    userdata->name.size = sizeof(TPMU_NAME);
     rc = tpm_read_public(ctx, tpm.data.handles.handle[i], &userdata->tpm_key, &userdata->name);
     if (rc != TPM2_RC_SUCCESS) {
       free(userdata);
