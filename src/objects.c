@@ -244,7 +244,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     return NULL;
   }
   memset(userdata, 0, sizeof(UserdataTpm));
-  TPMI_DH_OBJECT handle = (TPMI_DH_OBJECT)TPM_DEFAULT_EK_HANDLE;
+  TPMI_DH_OBJECT handle = (TPMI_DH_OBJECT)TPM_DEFAULT_EK_HANDLE + 1;
   int i = TPM_MAX_NUM_OF_AK_HANDLES;
   pObjectList tmplist = list;
 
@@ -261,7 +261,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
       break;
     }
   }
-  if (handle == (TPMI_DH_OBJECT)TPM_DEFAULT_EK_HANDLE || i == 0) {
+  if (i == 0) {
     /* No EK handle or no more space */
     print_log(DEBUG, "object_generate_pair: ERROR - handle allocation failed!");
     free(userdata);
