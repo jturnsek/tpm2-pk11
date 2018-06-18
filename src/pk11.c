@@ -273,7 +273,7 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, 
   pObject object = (pObject) hObject;
 
   for (int i = 0; i < ulCount; i++) {
-    size_t size = pTemplate[i].ulValueLen;
+    size_t size;
     void *value = attr_get(object, pTemplate[i].type, (size_t*)&size);
     if (value) {
       retmem(pTemplate[i].pValue, (size_t*)&pTemplate[i].ulValueLen, value, size);  
