@@ -61,16 +61,15 @@ typedef struct userdata_tpm_t {
   TPM2B_PUBLIC tpm_key;
   TPM2B_NAME name;
   CK_BYTE ec_point[EC_POINT_MAX_SIZE];
-  PkcsObject public_object, private_object;
   PkcsKey key;
   PkcsPublicKey public_key;
   PkcsPrivateKey private_key;
   PkcsModulus modulus;
   struct persistent_t {
+    PkcsObject public_object; 
+    PkcsObject private_object;
     CK_BYTE id[ID_MAX_SIZE];
-    size_t id_size;
     CK_UTF8CHAR label[LABEL_MAX_SIZE];
-    size_t label_size;
   } persistent;
 } UserdataTpm, *pUserdataTpm;
 
@@ -280,18 +279,18 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     TPM2B_PUBLIC_KEY_RSA *rsa_key = &userdata->tpm_key.publicArea.unique.rsa;
     TPMS_RSA_PARMS *rsa_key_parms = &userdata->tpm_key.publicArea.parameters.rsaDetail;
 
-    userdata->public_object.id = userdata->persistent.id;
-    userdata->public_object.id_size = userdata->persistent.id_size;
-    userdata->public_object.label = userdata->persistent.label;
-    userdata->public_object.label_size = userdata->persistent.label_size;
-    userdata->public_object.class = CKO_PUBLIC_KEY;
-    userdata->public_object.token = CK_TRUE;
-    userdata->private_object.id = userdata->persistent.id;
-    userdata->private_object.id_size = userdata->persistent.id_size;
-    userdata->private_object.label = userdata->persistent.label;
-    userdata->private_object.label_size = userdata->persistent.label_size;
-    userdata->private_object.class = CKO_PRIVATE_KEY;
-    userdata->private_object.token = CK_TRUE;
+    userdata->persistent.public_object.id = userdata->persistent.id;
+    userdata->persistent.public_object.id_size = 0;
+    userdata->persistent.public_object.label = userdata->persistent.label;
+    userdata->persistent.public_object.label_size = 0;
+    userdata->persistent.public_object.class = CKO_PUBLIC_KEY;
+    userdata->persistent.public_object.token = CK_TRUE;
+    userdata->persistent.private_object.id = userdata->persistent.id;
+    userdata->persistent.private_object.id_size = 0;
+    userdata->persistent.private_object.label = userdata->persistent.label;
+    userdata->persistent.private_object.label_size = 0;
+    userdata->persistent.private_object.class = CKO_PRIVATE_KEY;
+    userdata->persistent.private_object.token = CK_TRUE;
     userdata->key.sign = CK_TRUE;
     userdata->key.verify = CK_TRUE;
     userdata->key.decrypt = CK_TRUE;
@@ -312,7 +311,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     object->userdata = userdata;
     object->num_entries = 4;
     object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
-    object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->public_object, OBJECT_INDEX);
+    object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->persistent.public_object, OBJECT_INDEX);
     object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
     object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.rsa, PUBLIC_KEY_RSA_INDEX);
     object->entries[3] = (AttrIndexEntry) attr_index_entry(&userdata->modulus, MODULUS_INDEX);
@@ -330,7 +329,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     object->userdata = NULL;
     object->num_entries = 3;
     object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
-    object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
+    object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->persistent.private_object, OBJECT_INDEX);
     object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
     object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->modulus, MODULUS_INDEX);
     object->is_certificate = false;
@@ -342,18 +341,18 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
   else if (userdata->tpm_key.publicArea.type == TPM2_ALG_ECC) {
     TPMS_ECC_POINT *ecc = &userdata->tpm_key.publicArea.unique.ecc;
 
-    userdata->public_object.id = userdata->persistent.id;
-    userdata->public_object.id_size = userdata->persistent.id_size;
-    userdata->public_object.label = userdata->persistent.label;
-    userdata->public_object.label_size = userdata->persistent.label_size;
-    userdata->public_object.class = CKO_PUBLIC_KEY;
-    userdata->public_object.token = CK_TRUE;
-    userdata->private_object.id = userdata->persistent.id;
-    userdata->private_object.id_size = userdata->persistent.id_size;
-    userdata->private_object.label = userdata->persistent.label;
-    userdata->private_object.label_size = userdata->persistent.label_size;
-    userdata->private_object.class = CKO_PRIVATE_KEY;
-    userdata->private_object.token = CK_TRUE;
+    userdata->persistent.public_object.id = userdata->persistent.id;
+    userdata->persistent.public_object.id_size = 0;
+    userdata->persistent.public_object.label = userdata->persistent.label;
+    userdata->persistent.public_object.label_size = 0;
+    userdata->persistent.public_object.class = CKO_PUBLIC_KEY;
+    userdata->persistent.public_object.token = CK_TRUE;
+    userdata->persistent.private_object.id = userdata->persistent.id;
+    userdata->persistent.private_object.id_size = 0;
+    userdata->persistent.private_object.label = userdata->persistent.label;
+    userdata->persistent.private_object.label_size = 0;
+    userdata->persistent.private_object.class = CKO_PRIVATE_KEY;
+    userdata->persistent.private_object.token = CK_TRUE;
     userdata->key.sign = CK_TRUE;
     userdata->key.verify = CK_TRUE;
     userdata->key.decrypt = CK_FALSE;
@@ -385,7 +384,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     object->userdata = userdata;
     object->num_entries = 3;
     object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
-    object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->public_object, OBJECT_INDEX);
+    object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->persistent.public_object, OBJECT_INDEX);
     object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
     object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.ec, PUBLIC_KEY_EC_INDEX);
     object->is_certificate = false;
@@ -402,7 +401,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     object->userdata = NULL;
     object->num_entries = 3;
     object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
-    object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
+    object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->persistent.private_object, OBJECT_INDEX);
     object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
     object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->private_key.ec, PRIVATE_KEY_EC_INDEX);
     object->is_certificate = false;
@@ -489,18 +488,6 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       TPM2B_PUBLIC_KEY_RSA *rsa_key = &userdata->tpm_key.publicArea.unique.rsa;
       TPMS_RSA_PARMS *rsa_key_parms = &userdata->tpm_key.publicArea.parameters.rsaDetail;
 
-      userdata->public_object.id = userdata->persistent.id;
-      userdata->public_object.id_size = userdata->persistent.id_size;
-      userdata->public_object.label = userdata->persistent.label;
-      userdata->public_object.label_size = userdata->persistent.label_size;
-      userdata->public_object.class = CKO_PUBLIC_KEY;
-      userdata->public_object.token = CK_TRUE;
-      userdata->private_object.id = userdata->persistent.id;
-      userdata->private_object.id_size = userdata->persistent.id_size;
-      userdata->private_object.label = userdata->persistent.label;
-      userdata->private_object.label_size = userdata->persistent.label_size;
-      userdata->private_object.class = CKO_PRIVATE_KEY;
-      userdata->private_object.token = CK_TRUE;
       userdata->key.sign = CK_TRUE;
       userdata->key.verify = CK_TRUE;
       userdata->key.decrypt = CK_TRUE;
@@ -521,7 +508,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       object->userdata = userdata;
       object->num_entries = 4;
       object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
-      object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->public_object, OBJECT_INDEX);
+      object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->persistent.public_object, OBJECT_INDEX);
       object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
       object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.rsa, PUBLIC_KEY_RSA_INDEX);
       object->entries[3] = (AttrIndexEntry) attr_index_entry(&userdata->modulus, MODULUS_INDEX);
@@ -540,7 +527,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       object->userdata = NULL;
       object->num_entries = 3;
       object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
-      object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
+      object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->persistent.private_object, OBJECT_INDEX);
       object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
       object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->modulus, MODULUS_INDEX);
       object->is_certificate = false;
@@ -552,18 +539,6 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
     else if (userdata->tpm_key.publicArea.type == TPM2_ALG_ECC) {
       TPMS_ECC_POINT *ecc = &userdata->tpm_key.publicArea.unique.ecc;
 
-      userdata->public_object.id = userdata->persistent.id;
-      userdata->public_object.id_size = userdata->persistent.id_size;
-      userdata->public_object.label = userdata->persistent.label;
-      userdata->public_object.label_size = userdata->persistent.label_size;
-      userdata->public_object.class = CKO_PUBLIC_KEY;
-      userdata->public_object.token = CK_TRUE;
-      userdata->private_object.id = userdata->persistent.id;
-      userdata->private_object.id_size = userdata->persistent.id_size;
-      userdata->private_object.label = userdata->persistent.label;
-      userdata->private_object.label_size = userdata->persistent.label_size;
-      userdata->private_object.class = CKO_PRIVATE_KEY;
-      userdata->private_object.token = CK_TRUE;
       userdata->key.sign = CK_TRUE;
       userdata->key.verify = CK_TRUE;
       userdata->key.decrypt = CK_FALSE;
@@ -595,7 +570,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       object->userdata = userdata;
       object->num_entries = 3;
       object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
-      object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->public_object, OBJECT_INDEX);
+      object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->persistent.public_object, OBJECT_INDEX);
       object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
       object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.ec, PUBLIC_KEY_EC_INDEX);
       object->is_certificate = false;
@@ -613,7 +588,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       object->userdata = NULL;
       object->num_entries = 3;
       object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
-      object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->private_object, OBJECT_INDEX);
+      object->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->persistent.private_object, OBJECT_INDEX);
       object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
       object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->private_key.ec, PRIVATE_KEY_EC_INDEX);
       object->is_certificate = false;
