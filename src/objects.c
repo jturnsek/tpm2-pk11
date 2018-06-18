@@ -488,6 +488,10 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       TPM2B_PUBLIC_KEY_RSA *rsa_key = &userdata->tpm_key.publicArea.unique.rsa;
       TPMS_RSA_PARMS *rsa_key_parms = &userdata->tpm_key.publicArea.parameters.rsaDetail;
 
+      userdata->persistent.public_object.id = userdata->persistent.id;
+      userdata->persistent.public_object.label = userdata->persistent.label;
+      userdata->persistent.private_object.id = userdata->persistent.id;
+      userdata->persistent.private_object.label = userdata->persistent.label;
       userdata->key.sign = CK_TRUE;
       userdata->key.verify = CK_TRUE;
       userdata->key.decrypt = CK_TRUE;
@@ -539,6 +543,10 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
     else if (userdata->tpm_key.publicArea.type == TPM2_ALG_ECC) {
       TPMS_ECC_POINT *ecc = &userdata->tpm_key.publicArea.unique.ecc;
 
+      userdata->persistent.public_object.id = userdata->persistent.id;
+      userdata->persistent.public_object.label = userdata->persistent.label;
+      userdata->persistent.private_object.id = userdata->persistent.id;
+      userdata->persistent.private_object.label = userdata->persistent.label;
       userdata->key.sign = CK_TRUE;
       userdata->key.verify = CK_TRUE;
       userdata->key.decrypt = CK_FALSE;
