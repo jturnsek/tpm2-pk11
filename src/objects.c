@@ -42,10 +42,8 @@
 #ifndef PATH_MAX
 #define PATH_MAX 256
 #endif
-#include <glob.h>
 
 #define MAX_HASH_TABLE_SIZE           512
-
 #define ID_MAX_SIZE                   256
 #define LABEL_MAX_SIZE                256
 #define EC_POINT_MAX_SIZE             65
@@ -188,8 +186,8 @@ int attrs_write(pObject object, struct config *config)
       return -1;  
     }
   
-    if (DB_put(&db, &userdata->name.name, &userdata->persistent) == 1) {
-      /* Key not found */
+    if (DB_put(&db, &userdata->name.name, &userdata->persistent) != 0) {
+      /* Write error */
       DB_close(&db);
       return -1;
     }
@@ -522,8 +520,6 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
 
       object = malloc(sizeof(Object));
       if (object == NULL) {
-        free(userdata);
-        free(public_object);
         goto error;
       }
 
@@ -587,8 +583,6 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
 
       object = malloc(sizeof(Object));
       if (object == NULL) {
-        free(userdata);
-        free(public_object);
         goto error;
       }
 
@@ -607,18 +601,9 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
     }
   }
 
-  if (config->data) {
-    glob_t results;
-    char searchpath[PATH_MAX];
-    snprintf(searchpath, PATH_MAX, "%s/*", config->data);
-    if (glob(searchpath, GLOB_TILDE | GLOB_NOCHECK, NULL, &results) == 0) {
-      for (int i = 0; i < results.gl_pathc; i++) {
-        pObject object = certificate_read(results.gl_pathv[i]);
-        if (object)
-          object_add(list, object);
-      }
-      globfree(&results);
-    }
+  if (certificate_load_list(list, config) != 0) {
+    print_log(DEBUG, "object_load_list: ERROR - certificate load!");
+    goto error;
   }
 
   return list;

@@ -293,7 +293,12 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, 
 
   for (int i = 0; i < ulCount; i++) {
     attr_set(object, pTemplate[i].type, pTemplate[i].pValue, pTemplate[i].ulValueLen);
-    attrs_write(object, &pk11_config);
+    if (!object->is_certificate) {
+      attrs_write(object, &pk11_config);
+    }
+    else {
+      certificate_attrs_write(object, &pk11_config);  
+    }
   }
 
   return CKR_OK;
@@ -539,15 +544,6 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
     }
   }
 
-  if (pk11_config.data) {
-    pObject object = certificate_read(filepath);
-    if (!object) {
-      return CKR_GENERAL_ERROR;   
-    }
-    object_add(pk11_token.objects, object);
-    *phObject = (CK_OBJECT_HANDLE)object;
-  }
-
   return CKR_OK;
 }
 
@@ -570,9 +566,7 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject) {
       return ret == TPM2_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR; 
     }
     else if (object->is_certificate) {
-      char filename[PATH_MAX] = "";
-      strcpy(filename, pk11_config.data);
-      certificate_remove(filename, object);   
+      certificate_remove(object, &pk11_config);   
     }
 
     if (object->userdata) {

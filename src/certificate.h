@@ -23,8 +23,9 @@
 
 #include "objects.h"
 
-pObject certificate_read(const char* pathname);
-int certificate_write(const char* pathname, void* value, size_t length);
-void certificate_remove(char* pathname, pObject object);
+int certificate_load_list(pObjectList list, struct config *config);
+int certificate_remove(pObject object, struct config *config);
+int certificate_create(pObjectList list, struct config *config, void* id, size_t id_len, void* value, size_t value_len);
+int certificate_attrs_write(pObject object, struct config *config);
 
 #endif /** CERTIFICATE_H_ */
