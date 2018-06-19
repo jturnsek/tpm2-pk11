@@ -162,7 +162,7 @@ int certificate_remove(pObject object, struct config *config)
   }
 }
 
-int certificate_create(pObjectList list, struct config *config, void* id, size_t id_len, void* value, size_t value_len)
+pObject certificate_create(pObjectList list, struct config *config, void* id, size_t id_len, void* value, size_t value_len)
 {
   if (config->data) {
     DB db;
@@ -170,19 +170,19 @@ int certificate_create(pObjectList list, struct config *config, void* id, size_t
     snprintf(pathname, PATH_MAX, "%s/" TPM2_PK11_CERTS_FILE, config->data);
     if (DB_open(&db, pathname, DB_OPEN_MODE_RDWR, MAX_HASH_TABLE_SIZE, ID_MAX_SIZE, sizeof(UserdataCertificate)) != 0) {
       print_log(DEBUG, "certificate_write: ERROR - certificate database %s cannot be open!", pathname);
-      return -1;
+      return NULL;
     }
 
     pUserdataCertificate userdata = malloc(sizeof(UserdataCertificate));
     if (userdata == NULL) {
       DB_close(&db);
-      return -1;
+      return NULL;
     }
 
     if ((id_len > ID_MAX_SIZE) || (value_len > VALUE_MAX_SIZE)) {
       free(userdata);
       DB_close(&db);
-      return -1;
+      return NULL;
     }
     memcpy(userdata->id, id, id_len);
     memcpy(userdata->value, value, value_len);
@@ -212,7 +212,7 @@ int certificate_create(pObjectList list, struct config *config, void* id, size_t
     if (asn1_der_decoding(&element, userdata->certificate.value, userdata->certificate.value_size, errorDescription) != ASN1_SUCCESS) {
       free(userdata);
       DB_close(&db);
-      return -1;
+      return NULL;
     }
 
     int length = MAX_DER_LENGTH;
@@ -234,7 +234,7 @@ int certificate_create(pObjectList list, struct config *config, void* id, size_t
     if (!object) {
       free(userdata);
       DB_close(&db);
-      return -1;
+      return NULL;
     }
 
     object->userdata = userdata;
@@ -249,15 +249,15 @@ int certificate_create(pObjectList list, struct config *config, void* id, size_t
       print_log(DEBUG, "certificate_write: ERROR - write failed!");
       free(userdata);
       DB_close(&db);
-      return -1;
+      return NULL;
     }
     DB_close(&db);
     object_add(list, object); 
-    return 0;      
+    return object;      
   }
   else {
     print_log(DEBUG, "certificate_write: ERROR - configuration!");
-    return -1;
+    return NULL;
   }  
 }
 
