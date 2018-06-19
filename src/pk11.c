@@ -489,9 +489,6 @@ CK_RV C_Logout(CK_SESSION_HANDLE hSession) {
 }
 
 CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_OBJECT_HANDLE_PTR phObject) {
-  char filename[PATH_MAX];
-  char filepath[PATH_MAX];
-
   print_log(VERBOSE, "C_CreateObject: session = %x, count = %d", hSession, ulCount);
   
   if (get_session(hSession)->have_write == false) {
@@ -499,8 +496,10 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
   }
 
   *phObject = CK_INVALID_HANDLE;
-  filename[0] = 0;
   
+  void* id = NULL, value = NULL;
+  size_t id_len = 0, value_len = 0;
+
   for (CK_ULONG i = 0; i < ulCount; ++i) {
     switch (pTemplate[i].type) {
       case CKA_CLASS:
@@ -523,25 +522,31 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
         break;
       case CKA_ID:
         {
-          int j;
-          for (j = 0; j < pTemplate[i].ulValueLen; j++) {
-            sprintf((char*) filename + j * 2, "%02X", *((unsigned char*)pTemplate[i].pValue + j));
-          }
-          filename[j * 2] = 0;
-          print_log(VERBOSE, "C_CreateObject: filename = %s", filename);
-
-          
+          id = (void*)pTemplate[i].pValue;
+          id_len = (size_t)pTemplate[i].ulValueLen;    
         }
         break;
       case CKA_VALUE:
-        if (pk11_config.data) { 
-          snprintf(filepath, PATH_MAX, "%s/%s", pk11_config.data, filename);
-          certificate_write(filepath, pTemplate[i].pValue, pTemplate[i].ulValueLen);
+        {
+          value = (void*)pTemplate[i].pValue;
+          value_len = (size_t)pTemplate[i].ulValueLen;
         }
         break;
       default:
         break;
     }
+  }
+
+  if (id && value) {
+    int ret = certificate_create(pk11_token.objects, &pk11_config, id, id_len, value, value_len);
+    if (ret != 0) {
+      print_log(VERBOSE, "C_CreateObject: ret = %d", ret);
+      return CKR_GENERAL_ERROR;  
+    }
+  }
+  else {
+    print_log(VERBOSE, "C_CreateObject: ERROR - Bad template!");
+    return CKR_GENERAL_ERROR;  
   }
 
   return CKR_OK;

@@ -22,6 +22,7 @@
 #include "pk11.h"
 #include "utils.h"
 #include "db.h"
+#include "log.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -77,12 +78,12 @@ int certificate_load_list(pObjectList list, struct config *config)
       }
 
       int ret = DB_iterator_next(&dbi, id, userdata);
-      if (i < 0) {
+      if (ret < 0) {
         free(userdata);
         DB_close(&db);
         return -1;
       }
-      else if (i == 0) {
+      else if (ret == 0) {
         loop = false;
         free(userdata);
         break;
@@ -128,7 +129,7 @@ int certificate_load_list(pObjectList list, struct config *config)
   }
 }
 
-int certificate_remove(pObject object, struct config *config);
+int certificate_remove(pObject object, struct config *config)
 {
   if (!object) {
     return -1;
