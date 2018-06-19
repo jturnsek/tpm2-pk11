@@ -497,7 +497,7 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
 
   *phObject = CK_INVALID_HANDLE;
   
-  void* id = NULL, value = NULL;
+  void *id = NULL, *value = NULL;
   size_t id_len = 0, value_len = 0;
 
   for (CK_ULONG i = 0; i < ulCount; ++i) {
