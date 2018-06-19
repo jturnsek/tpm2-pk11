@@ -135,6 +135,8 @@ int certificate_remove(pObject object, struct config *config)
     return -1;
   }
 
+  pUserdataCertificate userdata = (pUserdataCertificate)object->userdata;
+
   if (config->data) {
     DB db;
     char pathname[PATH_MAX]; 
@@ -147,7 +149,7 @@ int certificate_remove(pObject object, struct config *config)
     UserdataCertificate userdata;
     memset(&userdata, 0, sizeof(userdata));
 
-    if (DB_put(&db, object->userdata->id, &userdata) != 0) {
+    if (DB_put(&db, userdata->id, userdata) != 0) {
       /* Write error */
       print_log(DEBUG, "certificate_remove: ERROR - write failed!");
       DB_close(&db);
