@@ -245,9 +245,6 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, C
     for (int j = 0; j < session->num_filters; j++) {
       size_t size = 0;
       void* value = attr_get(object, session->filters[j].type, &size);
-      if (!value) {
-        return CKR_GENERAL_ERROR;
-      }
       if (session->filters[j].ulValueLen != size || memcmp(session->filters[j].pValue, value, size) != 0) {
         filtered = true;
         break;
