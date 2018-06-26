@@ -196,7 +196,7 @@ pObject certificate_create(pObjectList list, struct config *config,
     userdata->object.id = userdata->id;
     userdata->object.id_size = id_len;
     userdata->object.label = userdata->label;
-    userdata->object.label_size = 0;
+    userdata->object.label_size = label_len;
     userdata->certificate.value_size = value_len;
     userdata->certificate.value = userdata->value;
     userdata->certificate.cert_type = CKC_X_509;
