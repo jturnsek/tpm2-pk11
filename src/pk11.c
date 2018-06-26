@@ -270,10 +270,13 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, 
   pObject object = (pObject) hObject;
 
   for (int i = 0; i < ulCount; i++) {
-    size_t size;
+    size_t size = 0;
     void *value = attr_get(object, pTemplate[i].type, (size_t*)&size);
     if (value) {
       retmem(pTemplate[i].pValue, (size_t*)&pTemplate[i].ulValueLen, value, size);  
+    }
+    else {
+      print_log(DEBUG, "C_GetAttributeValue: attribute not found [type = 0x%x]!", pTemplate[i].type);
     }
   }
 
@@ -494,8 +497,8 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
 
   *phObject = CK_INVALID_HANDLE;
   
-  void *id = NULL, *value = NULL;
-  size_t id_len = 0, value_len = 0;
+  void *id = NULL, *label = NULL, *value = NULL;
+  size_t id_len = 0, label_len = 0, value_len = 0;
 
   for (CK_ULONG i = 0; i < ulCount; ++i) {
     switch (pTemplate[i].type) {
@@ -521,6 +524,12 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
         {
           id = (void*)pTemplate[i].pValue;
           id_len = (size_t)pTemplate[i].ulValueLen;    
+        }
+        break;
+      case CKA_LABEL:
+        {
+          label = (void*)pTemplate[i].pValue;
+          label_len = (size_t)pTemplate[i].ulValueLen;    
         }
         break;
       case CKA_VALUE:

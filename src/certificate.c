@@ -162,7 +162,10 @@ int certificate_remove(pObject object, struct config *config)
   }
 }
 
-pObject certificate_create(pObjectList list, struct config *config, void* id, size_t id_len, void* value, size_t value_len)
+pObject certificate_create(pObjectList list, struct config *config, 
+                            void* id, size_t id_len, 
+                            void* label, size_t label_len, 
+                            void* value, size_t value_len)
 {
   if (config->data) {
     DB db;
@@ -185,6 +188,7 @@ pObject certificate_create(pObjectList list, struct config *config, void* id, si
       return NULL;
     }
     memcpy(userdata->id, id, id_len);
+    memcpy(userdata->label, label, label_len);
     memcpy(userdata->value, value, value_len);
 
     userdata->object.class = CKO_CERTIFICATE;

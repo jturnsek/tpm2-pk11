@@ -142,7 +142,6 @@ void* attr_get(pObject object, CK_ATTRIBUTE_TYPE type, size_t *size)
     }
   }
 
-  print_log(DEBUG, "attribute get: ERROR - not found [type = 0x%x]!", type);
   return NULL;
 }
 
