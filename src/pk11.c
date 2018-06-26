@@ -544,7 +544,7 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
   }
 
   if (id && value) {
-    pObject object = certificate_create(pk11_token.objects, &pk11_config, id, id_len, value, value_len);
+    pObject object = certificate_create(pk11_token.objects, &pk11_config, id, id_len, label, label_len, value, value_len);
     if (!object) {
       print_log(VERBOSE, "C_CreateObject: ERROR - Cannot create object");
       return CKR_GENERAL_ERROR;  
