@@ -128,6 +128,8 @@ int certificate_delete(pObject object, struct config *config)
     return -1;
   }
 
+  pUserdataCertificate userdata = (pUserdataCertificate)object->userdata;
+
   if (config->data) {
     DB db;
     char pathname[PATH_MAX]; 
@@ -137,7 +139,7 @@ int certificate_delete(pObject object, struct config *config)
       return -1;
     }
 
-    if (DB_delete(&db, object->userdata->id) != 0) {
+    if (DB_delete(&db, userdata->id) != 0) {
       /* Delete error */
       print_log(DEBUG, "certificate_delete: ERROR - delete failed!");
       DB_close(&db);
