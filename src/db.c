@@ -328,6 +328,12 @@ put_no_match_next_hash_table:
 	return 0; /* success */
 }
 
+int DB_delete(DB *db, const void *key)
+{
+
+	return 0; /* success */	
+}
+
 void DB_iterator_init(DB *db, DB_ITERATOR *dbi)
 {
 	dbi->db = db;

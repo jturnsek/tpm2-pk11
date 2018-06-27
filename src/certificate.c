@@ -33,7 +33,7 @@
 #define PATH_MAX 256
 #endif
 
-#define MAX_HASH_TABLE_SIZE           512
+#define MAX_HASH_TABLE_SIZE           255
 #define ID_MAX_SIZE                   20
 #define LABEL_MAX_SIZE                256
 #define VALUE_MAX_SIZE                4096
@@ -89,13 +89,6 @@ int certificate_load_list(pObjectList list, struct config *config)
         break;
       }
 
-      memset(id, 0, ID_MAX_SIZE);
-      if (memcmp(userdata->id, id, ID_MAX_SIZE) == 0) {
-        /* Certificate was removed, skip it */
-        free(userdata);
-        continue;
-      } 
-
       userdata->object.id = userdata->id;
       userdata->object.label = userdata->label;
       userdata->certificate.value = userdata->value;
@@ -129,7 +122,7 @@ int certificate_load_list(pObjectList list, struct config *config)
   }
 }
 
-int certificate_remove(pObject object, struct config *config)
+int certificate_delete(pObject object, struct config *config)
 {
   if (!object) {
     return -1;
@@ -140,16 +133,13 @@ int certificate_remove(pObject object, struct config *config)
     char pathname[PATH_MAX]; 
     snprintf(pathname, PATH_MAX, "%s/" TPM2_PK11_CERTS_FILE, config->data);
     if (DB_open(&db, pathname, DB_OPEN_MODE_RDWR, MAX_HASH_TABLE_SIZE, ID_MAX_SIZE, sizeof(UserdataCertificate)) != 0) {
-      print_log(DEBUG, "certificate_remove: ERROR - certificate database %s cannot be open!", pathname);
+      print_log(DEBUG, "certificate_delete: ERROR - certificate database %s cannot be open!", pathname);
       return -1;
     }
 
-    UserdataCertificate userdata;
-    memset(&userdata, 0, sizeof(userdata));
-
-    if (DB_put(&db, userdata.id, &userdata) != 0) {
-      /* Write error */
-      print_log(DEBUG, "certificate_remove: ERROR - write failed!");
+    if (DB_delete(&db, object->userdata->id) != 0) {
+      /* Delete error */
+      print_log(DEBUG, "certificate_delete: ERROR - delete failed!");
       DB_close(&db);
       return -1;
     }
@@ -157,7 +147,7 @@ int certificate_remove(pObject object, struct config *config)
     return 0;      
   }
   else {
-    print_log(DEBUG, "certificate_remove: ERROR - configuration!");
+    print_log(DEBUG, "certificate_delete: ERROR - configuration!");
     return -1;
   }
 }
@@ -172,7 +162,7 @@ pObject certificate_create(pObjectList list, struct config *config,
     char pathname[PATH_MAX]; 
     snprintf(pathname, PATH_MAX, "%s/" TPM2_PK11_CERTS_FILE, config->data);
     if (DB_open(&db, pathname, DB_OPEN_MODE_RDWR, MAX_HASH_TABLE_SIZE, ID_MAX_SIZE, sizeof(UserdataCertificate)) != 0) {
-      print_log(DEBUG, "certificate_write: ERROR - certificate database %s cannot be open!", pathname);
+      print_log(DEBUG, "certificate_create: ERROR - certificate database %s cannot be open!", pathname);
       return NULL;
     }
 
@@ -250,7 +240,7 @@ pObject certificate_create(pObjectList list, struct config *config,
 
     if (DB_put(&db, userdata->id, userdata) != 0) {
       /* Write error */
-      print_log(DEBUG, "certificate_write: ERROR - write failed!");
+      print_log(DEBUG, "certificate_create: ERROR - write failed!");
       free(userdata);
       DB_close(&db);
       return NULL;
@@ -260,12 +250,12 @@ pObject certificate_create(pObjectList list, struct config *config,
     return object;      
   }
   else {
-    print_log(DEBUG, "certificate_write: ERROR - configuration!");
+    print_log(DEBUG, "certificate_create: ERROR - configuration!");
     return NULL;
   }  
 }
 
-int certificate_attrs_write(pObject object, struct config *config)
+int certificate_attr_write(pObject object, struct config *config)
 {
   pUserdataCertificate userdata = (pUserdataCertificate)object->userdata;
 

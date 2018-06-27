@@ -133,6 +133,18 @@ extern int DB_get(DB *db, const void *key, void *vbuf);
 extern int DB_put(DB *db, const void *key, const void *value);
 
 /**
+ * Delete an entry
+ *
+ * Entry is marked as deleted and can be reused later. Database file does
+ * not change.
+ *
+ * @param db Database struct
+ * @param key Key (key_size bytes)
+ * @return -1 on I/O error, 0 on success
+ */
+extern int DB_delete(DB *db, const void *key);
+
+/**
  * Cursor used for iterating over all entries in database
  */
 typedef struct {

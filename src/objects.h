@@ -128,11 +128,12 @@ extern AttrIndex PUBLIC_KEY_EC_INDEX[2];
 extern AttrIndex PRIVATE_KEY_EC_INDEX[1];
 extern AttrIndex CERTIFICATE_INDEX[5];
 
-void* attr_get(pObject object, CK_ATTRIBUTE_TYPE type, size_t *size);
-int attr_set(pObject object, CK_ATTRIBUTE_TYPE type, void* value, size_t size);
-int attrs_write(pObject object, struct config *config);
+void* object_attr_get(pObject object, CK_ATTRIBUTE_TYPE type, size_t *size);
+int object_attr_set(pObject object, CK_ATTRIBUTE_TYPE type, void* value, size_t size);
+int object_attr_write(pObject object, struct config *config);
 void object_add(pObjectList list, pObject object);
 void object_remove(pObjectList *list, pObject object);
+int object_delete(pObject object, struct config *config);
 void object_free_list(pObjectList list);
 pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config);
 pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObjectList list, struct config *config);

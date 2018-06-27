@@ -244,7 +244,7 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, C
     bool filtered = false;
     for (int j = 0; j < session->num_filters; j++) {
       size_t size = 0;
-      void* value = attr_get(object, session->filters[j].type, &size);
+      void* value = object_attr_get(object, session->filters[j].type, &size);
       if (session->filters[j].ulValueLen != size || memcmp(session->filters[j].pValue, value, size) != 0) {
         filtered = true;
         break;
@@ -271,7 +271,7 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, 
 
   for (int i = 0; i < ulCount; i++) {
     size_t size = 0;
-    void *value = attr_get(object, pTemplate[i].type, (size_t*)&size);
+    void *value = object_attr_get(object, pTemplate[i].type, (size_t*)&size);
     if (value) {
       retmem(pTemplate[i].pValue, (size_t*)&pTemplate[i].ulValueLen, value, size);  
     }
@@ -292,12 +292,12 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, 
   }
 
   for (int i = 0; i < ulCount; i++) {
-    attr_set(object, pTemplate[i].type, pTemplate[i].pValue, pTemplate[i].ulValueLen);
+    object_attr_set(object, pTemplate[i].type, pTemplate[i].pValue, pTemplate[i].ulValueLen);
     if (!object->is_certificate) {
-      attrs_write(object, &pk11_config);
+      object_attr_write(object, &pk11_config);
     }
     else {
-      certificate_attrs_write(object, &pk11_config);  
+      certificate_attr_write(object, &pk11_config);  
     }
   }
 
@@ -574,11 +574,14 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject) {
 
   if (object) {
     if (!object->is_certificate && object->tpm_handle) {
-      TPM2_RC ret = tpm_evict_control(pk11_token.sapi_context, object->tpm_handle); 
-      return ret == TPM2_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR; 
+      TPM2_RC ret = tpm_evict_control(pk11_token.sapi_context, object->tpm_handle);
+      object_delete(object, &pk11_config); 
+      if (ret != TPM2_RC_SUCCESS) {
+        return CKR_GENERAL_ERROR;
+      } 
     }
     else if (object->is_certificate) {
-      certificate_remove(object, &pk11_config);   
+      certificate_delete(object, &pk11_config);   
     }
 
     if (object->userdata) {

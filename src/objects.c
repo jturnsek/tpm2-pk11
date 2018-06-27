@@ -43,7 +43,7 @@
 #define PATH_MAX 256
 #endif
 
-#define MAX_HASH_TABLE_SIZE           512
+#define MAX_HASH_TABLE_SIZE           255
 #define ID_MAX_SIZE                   256
 #define LABEL_MAX_SIZE                256
 #define EC_POINT_MAX_SIZE             65
@@ -113,7 +113,7 @@ AttrIndex CERTIFICATE_INDEX[] = {
   attr_index_of(CKA_CERTIFICATE_TYPE, PkcsX509, cert_type),
 };
 
-void* attr_get(pObject object, CK_ATTRIBUTE_TYPE type, size_t *size)
+void* object_attr_get(pObject object, CK_ATTRIBUTE_TYPE type, size_t *size)
 {
   if (!object) {
     print_log(DEBUG, "attribute get: ERROR - null object!");
@@ -145,7 +145,7 @@ void* attr_get(pObject object, CK_ATTRIBUTE_TYPE type, size_t *size)
   return NULL;
 }
 
-int attr_set(pObject object, CK_ATTRIBUTE_TYPE type, void* value, size_t size)
+int object_attr_set(pObject object, CK_ATTRIBUTE_TYPE type, void* value, size_t size)
 {
   if (!object) {
     print_log(DEBUG, "attribute set: ERROR - null object!");
@@ -173,7 +173,7 @@ int attr_set(pObject object, CK_ATTRIBUTE_TYPE type, void* value, size_t size)
   return 0;
 }
 
-int attrs_write(pObject object, struct config *config)
+int object_attr_write(pObject object, struct config *config)
 {
   pUserdataTpm userdata = (pUserdataTpm)(object->userdata ? object->userdata : object->opposite->userdata);
 
@@ -229,6 +229,38 @@ void object_remove(pObjectList *list, pObject object)
     }
     prevlist = currlist;
     currlist = currlist->next;
+  }
+}
+
+int object_delete(pObject object, struct config *config)
+{
+  pUserdataTpm userdata = (pUserdataTpm)(object->userdata ? object->userdata : object->opposite->userdata);
+
+  if (!object) {
+    return -1;
+  }
+
+  if (config->data) {
+    DB db;
+    char pathname[PATH_MAX]; 
+    snprintf(pathname, PATH_MAX, "%s/" TPM2_PK11_KEYS_FILE, config->data);
+    if (DB_open(&db, pathname, DB_OPEN_MODE_RDWR, MAX_HASH_TABLE_SIZE, userdata->name.size, sizeof(userdata->persistent)) != 0) {
+      print_log(DEBUG, "object_delete: ERROR - keys database %s cannot be open!", pathname);
+      return -1;
+    }
+
+    if (DB_delete(&db, &userdata->name.name) != 0) {
+      /* Delete error */
+      print_log(DEBUG, "object_delete: ERROR - delete failed!");
+      DB_close(&db);
+      return -1;
+    }
+    DB_close(&db); 
+    return 0;      
+  }
+  else {
+    print_log(DEBUG, "object_delete: ERROR - configuration!");
+    return -1;
   }
 }
 
@@ -333,7 +365,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     public_object->opposite = object;
     object->opposite = public_object;
 
-    attrs_write(object->opposite, config);
+    object_attr_write(object->opposite, config);
   }
   else if (userdata->tpm_key.publicArea.type == TPM2_ALG_ECC) {
     TPMS_ECC_POINT *ecc = &userdata->tpm_key.publicArea.unique.ecc;
@@ -405,7 +437,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     public_object->opposite = object;
     object->opposite = public_object;
 
-    attrs_write(object->opposite, config);
+    object_attr_write(object->opposite, config);
   }
 
   return public_object;
