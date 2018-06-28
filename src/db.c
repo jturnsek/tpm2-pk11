@@ -177,7 +177,7 @@ void DB_close(DB *db)
 
 int DB_get(DB *db,const void *key,void *vbuf)
 {
-	uint8_t tmp[4096];
+	uint8_t tmp[256];
 	const uint8_t *kptr;
 	unsigned long klen,i;
 	uint64_t hash = DB_hash(key, db->key_size) % (uint64_t)db->hash_table_size;
@@ -191,19 +191,25 @@ int DB_get(DB *db,const void *key,void *vbuf)
 		if (offset) {
 			if (fseeko(db->f, offset, SEEK_SET))
 				return DB_ERROR_IO;
-
+			if (fread(&tmp[0], 1, 1, db->f) != 1) 
+				return DB_ERROR_IO;
 			kptr = (const uint8_t *)key;
 			klen = db->key_size;
 			while (klen) {
-				n = (long)fread(tmp, 1, (klen > sizeof(tmp)) ? sizeof(tmp) : klen, db->f);
+				n = (long)fread(&tmp[1], 1, (klen > (sizeof(tmp) - 1)) ? (sizeof(tmp) - 1) : klen, db->f);
 				if (n > 0) {
-					if (memcmp(kptr, tmp, n))
+					if (memcmp(kptr, &tmp[1], n))
 						goto get_no_match_next_hash_table;
 					kptr += n;
 					klen -= (unsigned long)n;
 				} 
 				else 
 					return 1; /* not found */
+			}
+
+			if (tmp[0] == 0) {
+				/* deleted entry */
+				return 1; /* not found */
 			}
 
 			if (fread(vbuf, db->value_size, 1, db->f) == 1)
@@ -220,9 +226,9 @@ get_no_match_next_hash_table:
 	return 1; /* not found */
 }
 
-int DB_put(DB *db,const void *key,const void *value)
+static int _db_put(DB *db,const void *key,const void *value, bool delete)
 {
-	uint8_t tmp[4096];
+	uint8_t tmp[256];
 	const uint8_t *kptr;
 	unsigned long klen,i;
 	uint64_t hash = DB_hash(key, db->key_size) % (uint64_t)db->hash_table_size;
@@ -241,35 +247,65 @@ int DB_put(DB *db,const void *key,const void *value)
 			/* rewrite if already exists */
 			if (fseeko(db->f, offset, SEEK_SET))
 				return DB_ERROR_IO;
-
 			kptr = (const uint8_t *)key;
 			klen = db->key_size;
+			if (fread(&tmp[0], 1, 1, db->f) != 1) 
+				return DB_ERROR_IO;
 			while (klen) {
-				n = (long)fread(tmp, 1, (klen > sizeof(tmp)) ? sizeof(tmp) : klen, db->f);
+				n = (long)fread(&tmp[1], 1, (klen > (sizeof(tmp) - 1)) ? (sizeof(tmp) - 1) : klen, db->f);
 				if (n > 0) {
-					if (memcmp(kptr, tmp, n))
+					if (memcmp(kptr, &tmp[1], n))
 						goto put_no_match_next_hash_table;
 					kptr += n;
 					klen -= (unsigned long)n;
 				}
 			}
 
-			/* C99 spec demands seek after fread(), required for Windows */
-			fseeko(db->f, 0, SEEK_CUR);
- 
-			if (fwrite(value, db->value_size, 1, db->f) == 1) {
+			if (delete) {
+				if (fseeko(db->f, offset, SEEK_SET))
+					return DB_ERROR_IO;
+				tmp[0] = 0;
+				if (fwrite(&tmp[0], 1, 1, db->f) != 1)
+					return DB_ERROR_IO;
 				fflush(db->f);
 				return 0; /* success */
-			} 
-			else 
-				return DB_ERROR_IO;
+			}
+			else {
+				if (tmp[0] == 0) {
+					/* deleted entry found */
+					if (fseeko(db->f, offset, SEEK_SET))
+						return DB_ERROR_IO;
+					tmp[0] = 1;
+					if (fwrite(&tmp[0], 1, 1, db->f) != 1)
+						return DB_ERROR_IO;
+					if (fwrite(key, db->key_size, 1, db->f) != 1)
+						return DB_ERROR_IO;
+				}
+				else {
+					/* C99 spec demands seek after fread(), required for Windows */
+					fseeko(db->f, 0, SEEK_CUR);
+				}
+				if (fwrite(value, db->value_size, 1, db->f) == 1) {
+					fflush(db->f);
+					return 0; /* success */
+				} 
+				else 
+					return DB_ERROR_IO;
+			}
 		} 
 		else {
+			if (delete) {
+				/* entry not present */
+				return DB_ERROR_IO;	
+			}
 			/* add if an empty hash table slot is discovered */
 			if (fseeko(db->f, 0, SEEK_END))
 				return DB_ERROR_IO;
 			endoffset = ftello(db->f);
-
+			
+			tmp[0] = 1;
+			if (fwrite(&tmp[0], 1, 1, db->f) != 1)
+				return DB_ERROR_IO;
 			if (fwrite(key, db->key_size, 1, db->f) != 1)
 				return DB_ERROR_IO;
 			if (fwrite(value, db->value_size, 1, db->f) != 1)
@@ -282,7 +318,6 @@ int DB_put(DB *db,const void *key,const void *value)
 			cur_hash_table[hash] = endoffset;
 
 			fflush(db->f);
-
 			return 0; /* success */
 		}
 put_no_match_next_hash_table:
@@ -291,6 +326,10 @@ put_no_match_next_hash_table:
 		cur_hash_table += (db->hash_table_size + 1);
 	}
 
+	if (delete) {
+		/* entry not present */
+		return DB_ERROR_IO;	
+	}
 	/* if no existing slots, add a new page of hash table entries */
 	if (fseeko(db->f, 0, SEEK_END))
 		return DB_ERROR_IO;
@@ -307,7 +346,10 @@ put_no_match_next_hash_table:
 
 	if (fwrite(cur_hash_table, db->hash_table_size_bytes, 1, db->f) != 1)
 		return DB_ERROR_IO;
-
+	
+	tmp[0] = 1;
+	if (fwrite(&tmp[0], 1, 1, db->f) != 1)
+		return DB_ERROR_IO;
 	if (fwrite(key, db->key_size, 1, db->f) != 1)
 		return DB_ERROR_IO;
 	if (fwrite(value, db->value_size, 1, db->f) != 1)
@@ -324,14 +366,17 @@ put_no_match_next_hash_table:
 	++db->num_hash_tables;
 
 	fflush(db->f);
-
 	return 0; /* success */
+}
+
+int DB_put(DB *db,const void *key,const void *value)
+{
+	return _db_put(db, key, value, false);
 }
 
 int DB_delete(DB *db, const void *key)
 {
-
-	return 0; /* success */	
+	return _db_put(db, key, NULL, true);
 }
 
 void DB_iterator_init(DB *db, DB_ITERATOR *dbi)
@@ -341,29 +386,37 @@ void DB_iterator_init(DB *db, DB_ITERATOR *dbi)
 	dbi->h_idx = 0;
 }
 
-int DB_iterator_next(DB_ITERATOR *dbi,void *kbuf,void *vbuf)
+int DB_iterator_next(DB_ITERATOR *dbi, void *kbuf, void *vbuf)
 {
 	uint64_t offset;
+	uint8_t tmp;
 
-	if ((dbi->h_no < dbi->db->num_hash_tables) && (dbi->h_idx < dbi->db->hash_table_size)) {
-		while (!(offset = dbi->db->hash_tables[((dbi->db->hash_table_size + 1) * dbi->h_no) + dbi->h_idx])) {
+	while (1) {
+		if ((dbi->h_no < dbi->db->num_hash_tables) && (dbi->h_idx < dbi->db->hash_table_size)) {
+			while (!(offset = dbi->db->hash_tables[((dbi->db->hash_table_size + 1) * dbi->h_no) + dbi->h_idx])) {
+				if (++dbi->h_idx >= dbi->db->hash_table_size) {
+					dbi->h_idx = 0;
+					if (++dbi->h_no >= dbi->db->num_hash_tables)
+						return 0;
+				}
+			}
+			if (fseeko(dbi->db->f, offset, SEEK_SET))
+				return DB_ERROR_IO;
+			if (fread(&tmp, 1, 1, dbi->db->f) != 1)
+				return DB_ERROR_IO;
+			if (!tmp)
+				continue;
+			if (fread(kbuf, dbi->db->key_size, 1, dbi->db->f) != 1)
+				return DB_ERROR_IO;
+			if (fread(vbuf, dbi->db->value_size, 1, dbi->db->f) != 1)
+				return DB_ERROR_IO;
 			if (++dbi->h_idx >= dbi->db->hash_table_size) {
 				dbi->h_idx = 0;
-				if (++dbi->h_no >= dbi->db->num_hash_tables)
-					return 0;
+				++dbi->h_no;
 			}
+			return 1;
 		}
-		if (fseeko(dbi->db->f, offset, SEEK_SET))
-			return DB_ERROR_IO;
-		if (fread(kbuf, dbi->db->key_size, 1, dbi->db->f) != 1)
-			return DB_ERROR_IO;
-		if (fread(vbuf, dbi->db->value_size, 1, dbi->db->f) != 1)
-			return DB_ERROR_IO;
-		if (++dbi->h_idx >= dbi->db->hash_table_size) {
-			dbi->h_idx = 0;
-			++dbi->h_no;
-		}
-		return 1;
+		break;
 	}
 
 	return 0;

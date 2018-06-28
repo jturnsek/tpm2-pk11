@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -90,7 +91,7 @@ typedef struct {
  * @param path Path to file
  * @param mode One of the DB_OPEN_MODE constants
  * @param hash_table_size Size of hash table in 64-bit entries (must be >0)
- * @param key_size Size of keys in bytes
+ * @param key_size Size of keys in bytes (must be equal or less than 255)
  * @param value_size Size of values in bytes
  * @return 0 on success, nonzero on error
  */
