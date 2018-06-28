@@ -404,8 +404,6 @@ int DB_iterator_next(DB_ITERATOR *dbi, void *kbuf, void *vbuf)
 				return DB_ERROR_IO;
 			if (fread(&tmp, 1, 1, dbi->db->f) != 1)
 				return DB_ERROR_IO;
-			if (!tmp)
-				continue;
 			if (fread(kbuf, dbi->db->key_size, 1, dbi->db->f) != 1)
 				return DB_ERROR_IO;
 			if (fread(vbuf, dbi->db->value_size, 1, dbi->db->f) != 1)
@@ -414,6 +412,8 @@ int DB_iterator_next(DB_ITERATOR *dbi, void *kbuf, void *vbuf)
 				dbi->h_idx = 0;
 				++dbi->h_no;
 			}
+			if (!tmp)
+				continue;
 			return 1;
 		}
 		break;
