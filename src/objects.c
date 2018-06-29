@@ -43,7 +43,7 @@
 #define PATH_MAX 256
 #endif
 
-#define MAX_HASH_TABLE_SIZE           255
+#define MAX_HASH_TABLE_SIZE           63
 #define ID_MAX_SIZE                   256
 #define LABEL_MAX_SIZE                256
 #define EC_POINT_MAX_SIZE             65
