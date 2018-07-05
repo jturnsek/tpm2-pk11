@@ -251,7 +251,7 @@ static int _db_put(DB *db,const void *key,const void *value, bool delete)
 			klen = db->key_size;
 			if (fread(&tmp[0], 1, 1, db->f) != 1) 
 				return DB_ERROR_IO;
-			while (klen) {
+			while (tmp[0] && klen) {
 				n = (long)fread(&tmp[1], 1, (klen > (sizeof(tmp) - 1)) ? (sizeof(tmp) - 1) : klen, db->f);
 				if (n > 0) {
 					if (memcmp(kptr, &tmp[1], n))
