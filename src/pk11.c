@@ -576,6 +576,8 @@ CK_RV C_CopyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTR
   //Add object to list
   object_add(pk11_token.objects, newobject);
 
+  *phNewObject = newobject;
+
   return CKR_OK;
 }
 
