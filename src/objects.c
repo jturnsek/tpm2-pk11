@@ -453,7 +453,7 @@ void object_free_list(pObjectList list)
     pObjectList next = list->next;
     if (list->object != NULL) {
       pObject object = list->object;
-      if (object->userdata != NULL) {
+      if (!object->is_copy && object->userdata != NULL) {
         free(object->userdata);
       }
       free(object->entries);
