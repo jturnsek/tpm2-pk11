@@ -137,5 +137,6 @@ int object_delete(pObject object, struct config *config);
 void object_free_list(pObjectList list);
 pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config);
 pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObjectList list, struct config *config);
+pObject object_copy(pObject object);
 
 #endif /** OBJECTS_H_ */

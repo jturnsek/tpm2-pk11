@@ -643,3 +643,74 @@ error:
   object_free_list(list);
   return NULL;
 }
+
+pObject object_copy(pObject object)
+{
+  pObject newobject = malloc(sizeof(Object));
+  if (newobject == NULL) {
+    return NULL;  
+  }
+
+  if (object->is_certificate) {
+    /* not supported */
+    return NULL;
+  }
+
+  pUserdataTpm userdata = (pUserdataTpm)object->userdata;
+  if (userdata == NULL) {
+    return NULL;
+  }
+
+  if (userdata->tpm_key.publicArea.type == TPM2_ALG_RSA) {
+    if (object->tpm_handle == 0) {
+      newobject->userdata = userdata;
+      newobject->num_entries = 4;
+      newobject->entries = calloc(newobject->num_entries, sizeof(AttrIndexEntry));
+      newobject->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->persistent.public_object, OBJECT_INDEX);
+      newobject->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
+      newobject->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.rsa, PUBLIC_KEY_RSA_INDEX);
+      newobject->entries[3] = (AttrIndexEntry) attr_index_entry(&userdata->modulus, MODULUS_INDEX);
+      newobject->opposite = NULL;
+      newobject->is_certificate = false;  
+    }
+    else {
+      newobject->tpm_handle = object->tpm_handle;
+      newobject->userdata = userdata;
+      newobject->num_entries = 3;
+      newobject->entries = calloc(newobject->num_entries, sizeof(AttrIndexEntry));
+      newobject->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->persistent.private_object, OBJECT_INDEX);
+      newobject->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
+      newobject->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->modulus, MODULUS_INDEX);
+      newobject->opposite = NULL;
+      newobject->is_certificate = false;
+    }
+  }
+  else if (userdata->tpm_key.publicArea.type == TPM2_ALG_ECC) {
+    if (object->tpm_handle == 0) {
+      newobject->userdata = userdata;
+      newobject->num_entries = 3;
+      newobject->entries = calloc(newobject->num_entries, sizeof(AttrIndexEntry));
+      newobject->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->persistent.public_object, OBJECT_INDEX);
+      newobject->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
+      newobject->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.rsa, PUBLIC_KEY_EC_INDEX);
+      newobject->opposite = NULL;
+      newobject->is_certificate = false;  
+    }
+    else {
+      newobject->tpm_handle = object->tpm_handle;
+      newobject->userdata = userdata;
+      newobject->num_entries = 3;
+      newobject->entries = calloc(newobject->num_entries, sizeof(AttrIndexEntry));
+      newobject->entries[0] = (AttrIndexEntry) attr_index_entry(&userdata->persistent.private_object, OBJECT_INDEX);
+      newobject->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
+      newobject->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->private_key.ec, PRIVATE_KEY_EC_INDEX);
+      newobject->opposite = NULL;
+      newobject->is_certificate = false;
+    }
+  }
+  else {
+    return NULL;
+  }
+
+  return newobject;
+}

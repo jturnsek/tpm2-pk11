@@ -562,12 +562,10 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
 CK_RV C_CopyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_OBJECT_HANDLE_PTR phNewObject) {
   print_log(VERBOSE, "C_CopyObject: session = %x, object = %x, count = %d", hSession, hObject, ulCount);
   pObject object = (pObject) hObject;
-  pObject newobject = malloc(sizeof(Object));
+  pObject newobject = object_copy(object);
   if (newobject == NULL) {
-    return CKR_GENERAL_ERROR;  
+    return CKR_GENERAL_ERROR;
   }
-
-  memcpy(newobject, object, sizeof(Object));
 
   for (int i = 0; i < ulCount; i++) {
     object_attr_set(newobject, pTemplate[i].type, pTemplate[i].pValue, pTemplate[i].ulValueLen);
