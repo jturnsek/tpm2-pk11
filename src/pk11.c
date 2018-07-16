@@ -574,7 +574,7 @@ CK_RV C_CopyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTR
   //Add object to list
   object_add(pk11_token.objects, newobject);
 
-  *phNewObject = newobject;
+  *phNewObject = (CK_OBJECT_HANDLE)newobject;
 
   return CKR_OK;
 }
@@ -599,7 +599,7 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject) {
       certificate_delete(object, &pk11_config);   
     }
 
-    if (!object->is_copy && sobject->userdata) {
+    if (!object->is_copy && object->userdata) {
       free(object->userdata);
     }  
   }
