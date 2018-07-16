@@ -588,7 +588,7 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject) {
   }
 
   if (object) {
-    if (!object->is_certificate && object->tpm_handle) {
+    if (!object->is_copy && !object->is_certificate && object->tpm_handle) {
       TPM2_RC ret = tpm_evict_control(pk11_token.sapi_context, object->tpm_handle);
       object_delete(object, &pk11_config); 
       if (ret != TPM2_RC_SUCCESS) {
@@ -599,7 +599,7 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject) {
       certificate_delete(object, &pk11_config);   
     }
 
-    if (object->userdata) {
+    if (!object->is_copy && sobject->userdata) {
       free(object->userdata);
     }  
   }

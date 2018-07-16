@@ -345,6 +345,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.rsa, PUBLIC_KEY_RSA_INDEX);
     object->entries[3] = (AttrIndexEntry) attr_index_entry(&userdata->modulus, MODULUS_INDEX);
     object->is_certificate = false;
+    object->is_copy = false;
     public_object = object;
 
     object = malloc(sizeof(Object));
@@ -362,6 +363,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
     object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->modulus, MODULUS_INDEX);
     object->is_certificate = false;
+    object->is_copy = false;
     public_object->opposite = object;
     object->opposite = public_object;
 
@@ -417,6 +419,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
     object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.ec, PUBLIC_KEY_EC_INDEX);
     object->is_certificate = false;
+    object->is_copy = false;
     public_object = object;
 
     object = malloc(sizeof(Object));
@@ -434,6 +437,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
     object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->private_key.ec, PRIVATE_KEY_EC_INDEX);
     object->is_certificate = false;
+    object->is_copy = false;
     public_object->opposite = object;
     object->opposite = public_object;
 
@@ -546,6 +550,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.rsa, PUBLIC_KEY_RSA_INDEX);
       object->entries[3] = (AttrIndexEntry) attr_index_entry(&userdata->modulus, MODULUS_INDEX);
       object->is_certificate = false;
+      object->is_copy = false;
       object_add(list, object);
       pObject public_object = object;
 
@@ -562,6 +567,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
       object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->modulus, MODULUS_INDEX);
       object->is_certificate = false;
+      object->is_copy = false;
       object_add(list, object);
 
       public_object->opposite = object;
@@ -609,6 +615,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
       object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.ec, PUBLIC_KEY_EC_INDEX);
       object->is_certificate = false;
+      object->is_copy = false;
       object_add(list, object);
       pObject public_object = object;
 
@@ -625,6 +632,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       object->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
       object->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->private_key.ec, PRIVATE_KEY_EC_INDEX);
       object->is_certificate = false;
+      object->is_copy = false;
       object_add(list, object);
 
       public_object->opposite = object;
@@ -671,7 +679,8 @@ pObject object_copy(pObject object)
       newobject->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.rsa, PUBLIC_KEY_RSA_INDEX);
       newobject->entries[3] = (AttrIndexEntry) attr_index_entry(&userdata->modulus, MODULUS_INDEX);
       newobject->opposite = NULL;
-      newobject->is_certificate = false;  
+      newobject->is_certificate = false; 
+      newobject->is_copy = true; 
     }
     else {
       newobject->tpm_handle = object->tpm_handle;
@@ -683,6 +692,7 @@ pObject object_copy(pObject object)
       newobject->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->modulus, MODULUS_INDEX);
       newobject->opposite = NULL;
       newobject->is_certificate = false;
+      newobject->is_copy = true;
     }
   }
   else if (userdata->tpm_key.publicArea.type == TPM2_ALG_ECC) {
@@ -694,7 +704,8 @@ pObject object_copy(pObject object)
       newobject->entries[1] = (AttrIndexEntry) attr_index_entry(&userdata->key, KEY_INDEX);
       newobject->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->public_key.rsa, PUBLIC_KEY_EC_INDEX);
       newobject->opposite = NULL;
-      newobject->is_certificate = false;  
+      newobject->is_certificate = false;
+      newobject->is_copy = true;  
     }
     else {
       newobject->tpm_handle = object->tpm_handle;
@@ -706,6 +717,7 @@ pObject object_copy(pObject object)
       newobject->entries[2] = (AttrIndexEntry) attr_index_entry(&userdata->private_key.ec, PRIVATE_KEY_EC_INDEX);
       newobject->opposite = NULL;
       newobject->is_certificate = false;
+      newobject->is_copy = true;
     }
   }
   else {

@@ -53,6 +53,7 @@ typedef struct object_t {
   TPMI_DH_OBJECT tpm_handle;
   struct object_t *opposite;
   bool is_certificate;
+  bool is_copy;
 } Object, *pObject;
 
 typedef struct pkcs_object_t {
