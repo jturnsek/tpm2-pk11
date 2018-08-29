@@ -156,7 +156,6 @@ CK_RV C_OpenSession(CK_SLOT_ID slotID, CK_FLAGS flags, CK_VOID_PTR pApplication,
     return CKR_GENERAL_ERROR;
 
   int ret = session_init((struct session*) *phSession, flags & CKF_RW_SESSION ? true : false);
-  print_log(VERBOSE, "C_OpenSession: ret = %d", ret);
   return ret != 0 ? CKR_GENERAL_ERROR : CKR_OK;
 }
 
@@ -235,6 +234,10 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, 
 
 CK_RV C_FindObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, CK_ULONG ulMaxObjectCount, CK_ULONG_PTR pulObjectCount) {
   print_log(VERBOSE, "C_FindObjects: session = %x, max = %d", hSession, ulMaxObjectCount);
+#if 1
+  *pulObjectCount = 0;
+  return CKR_OK;
+#else
   TPMS_CAPABILITY_DATA persistent;
   tpm_list(pk11_token.sapi_context, &persistent);
   struct session* session = get_session(hSession);
@@ -258,6 +261,7 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, C
   }   
 
   return CKR_OK;
+#endif
 }
 
 CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession) {
