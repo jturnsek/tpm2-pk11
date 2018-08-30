@@ -66,6 +66,7 @@ int token_init(struct token* token, struct config *config) {
 #ifdef TCTI_TABRMD_ENABLED
     case TPM_TYPE_TABRMD:
       //rc = tss2_tcti_tabrmd_init(NULL, &size);
+      rc = TSS2_RC_SUCCESS;
       break;
 #endif // TCTI_TABRMD_ENABLED
     default:
@@ -100,6 +101,7 @@ int token_init(struct token* token, struct config *config) {
 #ifdef TCTI_TABRMD_ENABLED
     case TPM_TYPE_TABRMD:
       //rc = tss2_tcti_tabrmd_init(tcti_ctx, &size);
+      rc = TSS2_RC_SUCCESS;
       break;
 #endif // TCTI_TABRMD_ENABLED
     default:
