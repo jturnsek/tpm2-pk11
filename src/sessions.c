@@ -65,7 +65,7 @@ int token_init(struct token* token, struct config *config) {
 #endif // TCTI_DEVICE_ENABLED
 #ifdef TCTI_TABRMD_ENABLED
     case TPM_TYPE_TABRMD:
-      rc = tss2_tcti_tabrmd_init(NULL, &size);
+      //rc = tss2_tcti_tabrmd_init(NULL, &size);
       break;
 #endif // TCTI_TABRMD_ENABLED
     default:
@@ -99,7 +99,7 @@ int token_init(struct token* token, struct config *config) {
 #endif // TCTI_DEVICE_ENABLED
 #ifdef TCTI_TABRMD_ENABLED
     case TPM_TYPE_TABRMD:
-      rc = tss2_tcti_tabrmd_init(tcti_ctx, &size);
+      //rc = tss2_tcti_tabrmd_init(tcti_ctx, &size);
       break;
 #endif // TCTI_TABRMD_ENABLED
     default:
