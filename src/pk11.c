@@ -234,7 +234,6 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, 
 
 CK_RV C_FindObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, CK_ULONG ulMaxObjectCount, CK_ULONG_PTR pulObjectCount) {
   print_log(VERBOSE, "C_FindObjects: session = %x, max = %d", hSession, ulMaxObjectCount);
-#if 0
   TPMS_CAPABILITY_DATA persistent;
   tpm_list(pk11_token.sapi_context, &persistent);
   struct session* session = get_session(hSession);
@@ -257,9 +256,6 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, C
     session->find_cursor = session->find_cursor->next;
   }   
 
-  return CKR_OK;
-#endif
-  *pulObjectCount = 0; 
   return CKR_OK;
 }
 
