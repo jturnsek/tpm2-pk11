@@ -123,7 +123,7 @@ int token_init(struct token* token, struct config *config) {
   };
   rc = Tss2_Sys_Initialize(token->sapi_context, size, tcti_ctx, &abi_version);
 
-  token->objects = object_load_list(token->sapi_context, config);
+  //token->objects = object_load_list(token->sapi_context, config);
   return 0;
 
   cleanup:
@@ -137,7 +137,7 @@ int token_init(struct token* token, struct config *config) {
 }
 
 void token_close(struct token* token) {
-  object_free_list(token->objects);
+  //object_free_list(token->objects);
   Tss2_Sys_Finalize(token->sapi_context);
 }
 
