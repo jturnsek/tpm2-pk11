@@ -218,23 +218,22 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
 CK_RV C_Finalize(CK_VOID_PTR pReserved) {
   print_log(VERBOSE, "C_Finalize");
 
-  //token_close(&pk11_token);
+  token_close(&pk11_token);
 
   return CKR_OK;
 }
 
 CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount) {
   print_log(VERBOSE, "C_FindObjectsInit: session = %x, template =%x, count = %d", hSession, pTemplate, ulCount);
-  //struct session *session = get_session(hSession);
-  //session->find_cursor = pk11_token.objects;
-  //session->filters = pTemplate;
-  //session->num_filters = ulCount;
+  struct session *session = get_session(hSession);
+  session->find_cursor = pk11_token.objects;
+  session->filters = pTemplate;
+  session->num_filters = ulCount;
   return CKR_OK;
 }
 
 CK_RV C_FindObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, CK_ULONG ulMaxObjectCount, CK_ULONG_PTR pulObjectCount) {
   print_log(VERBOSE, "C_FindObjects: session = %x, max = %d", hSession, ulMaxObjectCount);
-#if 0
   TPMS_CAPABILITY_DATA persistent;
   tpm_list(pk11_token.sapi_context, &persistent);
   struct session* session = get_session(hSession);
@@ -257,9 +256,6 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, C
     session->find_cursor = session->find_cursor->next;
   }   
 
-  return CKR_OK;
-#endif
-  *pulObjectCount = 0;
   return CKR_OK;
 }
 
