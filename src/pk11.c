@@ -218,7 +218,7 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
 CK_RV C_Finalize(CK_VOID_PTR pReserved) {
   print_log(VERBOSE, "C_Finalize");
 
-  token_close(&pk11_token);
+  //token_close(&pk11_token);
 
   return CKR_OK;
 }
@@ -390,9 +390,9 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   if (config_load(configfile_path, &pk11_config) < 0)
     return CKR_GENERAL_ERROR;
 
-  //if (token_init(&pk11_token, &pk11_config) < 0) {
-  //  return CKR_GENERAL_ERROR; 
-  //}
+  if (token_init(&pk11_token, &pk11_config) < 0) {
+    return CKR_GENERAL_ERROR; 
+  }
 
   log_init(pk11_config.log_file, pk11_config.log_level);
 
