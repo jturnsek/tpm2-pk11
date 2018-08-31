@@ -24,13 +24,13 @@
 #include <stdlib.h>
 
 #ifdef TCTI_SOCKET_ENABLED
-#include <tcti/tcti_socket.h>
+#include <tss2/tss2_tcti_mssim.h>
 #endif // TCTI_SOCKET_ENABLED
 #ifdef TCTI_DEVICE_ENABLED
-#include <tcti/tcti_device.h>
+#include <tss2/tss2_tcti_device.h>
 #endif // TCTI_DEVICE_ENABLED
 #ifdef TCTI_TABRMD_ENABLED
-#include <tcti/tcti-tabrmd.h>
+#include <tss2/tss2-tcti-tabrmd.h>
 #endif // TCTI_TABRMD_ENABLED
 
 #define DEFAULT_DEVICE "/dev/tpm0"
