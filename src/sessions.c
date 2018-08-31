@@ -44,28 +44,21 @@ int token_init(struct token* token, struct config *config) {
   size_t size = 0;
   TSS2_TCTI_CONTEXT *tcti_ctx = NULL;
   TSS2_RC rc;
-  TCTI_SOCKET_CONF socket_conf = {
-    .hostname = config->hostname != NULL ? config->hostname : DEFAULT_HOSTNAME,
-    .port = config->port > 0 ? config->port : DEFAULT_PORT,
-    .logCallback = NULL,
-    .logBufferCallback = NULL,
-    .logData = NULL,
-  };
 
   switch(config->type) {
 #ifdef TCTI_SOCKET_ENABLED
     case TPM_TYPE_SOCKET:
-      rc = InitSocketTcti(NULL, &size, &socket_conf, 0);
+      rc = Tss2_Tcti_Mssim_Init(NULL, &size, NULL);
       break;
 #endif // TCTI_SOCKET_ENABLED
 #ifdef TCTI_DEVICE_ENABLED
     case TPM_TYPE_DEVICE:
-      rc = InitDeviceTcti(NULL, &size, 0);
+      rc = Tss2_Tcti_Device_Init(NULL, &size, NULL);
       break;
 #endif // TCTI_DEVICE_ENABLED
 #ifdef TCTI_TABRMD_ENABLED
     case TPM_TYPE_TABRMD:
-      rc = tss2_tcti_tabrmd_init(NULL, &size);
+      rc = Tss2_Tcti_Tabrmd_Init(tcti_ctx, &size, NULL);
       break;
 #endif // TCTI_TABRMD_ENABLED
     default:
@@ -82,24 +75,22 @@ int token_init(struct token* token, struct config *config) {
 
   switch(config->type) {
 #ifdef TCTI_SOCKET_ENABLED
-    case TPM_TYPE_SOCKET:
-      rc = InitSocketTcti(tcti_ctx, &size, &socket_conf, 0);
+    case TPM_TYPE_SOCKET: {}
+      char *conf = "tcp://127.0.0.1:2323";
+      rc = Tss2_Tcti_Mssim_Init(tcti_ctx, &size, conf);
       break;
+    }
 #endif // TCTI_SOCKET_ENABLED
 #ifdef TCTI_DEVICE_ENABLED
     case TPM_TYPE_DEVICE: {
-      TCTI_DEVICE_CONF conf = {
-        .device_path = config->device != NULL ? config->device : DEFAULT_DEVICE,
-        .logCallback = NULL,
-        .logData = NULL,
-      };
-      rc = InitDeviceTcti(tcti_ctx, &size, &conf);
+      char *conf = DEFAULT_DEVICE;
+      rc = Tss2_Tcti_Device_Init(tcti_ctx, &size, conf);
       break;
     }
 #endif // TCTI_DEVICE_ENABLED
 #ifdef TCTI_TABRMD_ENABLED
     case TPM_TYPE_TABRMD:
-      rc = tss2_tcti_tabrmd_init(tcti_ctx, &size);
+      rc = Tss2_Tcti_Tabrmd_Init(tcti_ctx, &size, NULL);
       break;
 #endif // TCTI_TABRMD_ENABLED
     default:
@@ -115,12 +106,8 @@ int token_init(struct token* token, struct config *config) {
   if (token->sapi_context == NULL)
     goto cleanup;
 
-  TSS2_ABI_VERSION abi_version = {
-    .tssCreator = TSSWG_INTEROP,
-    .tssFamily = TSS_SAPI_FIRST_FAMILY,
-    .tssLevel = TSS_SAPI_FIRST_LEVEL,
-    .tssVersion = TSS_SAPI_FIRST_VERSION,
-  };
+  TSS2_ABI_VERSION abi_version = TSS2_ABI_VERSION_CURRENT;
+  
   rc = Tss2_Sys_Initialize(token->sapi_context, size, tcti_ctx, &abi_version);
 
   token->objects = object_load_list(token->sapi_context, config);

@@ -21,7 +21,11 @@
 #ifndef TPM_H_
 #define TPM_H_
 
-#include <sapi/tpm20.h>
+#include <tss2/tss2_sys.h>
+#include <tss2/tss2_tcti.h>
+#include <tss2/tss2_tcti_device.h>
+#include <tss2/tss2_tcti_mssim.h>
+#include <tss2/tss2-tcti-tabrmd.h>
 
 #define TPM_DEFAULT_EK_HANDLE 		0x81010000
 #define TPM_MAX_NUM_OF_AK_HANDLES	8
