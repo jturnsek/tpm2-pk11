@@ -25,7 +25,11 @@
 #include "objects.h"
 
 #include <stdbool.h>
-#include <sapi/tpm20.h>
+#include <tss2/tss2_sys.h>
+#include <tss2/tss2_tcti.h>
+#include <tss2/tss2_tcti_device.h>
+#include <tss2/tss2_tcti_mssim.h>
+#include <tss2/tss2-tcti-tabrmd.h>
 #include <p11-kit/pkcs11.h>
 
 
