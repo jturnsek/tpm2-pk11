@@ -197,10 +197,10 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
   strncpy_pad(pInfo->utcTime, "", sizeof(pInfo->utcTime));
 
   pInfo->flags = CKF_TOKEN_INITIALIZED | CKF_WRITE_PROTECTED;
-  pInfo->ulMaxSessionCount = 1;
-  pInfo->ulSessionCount = 0;
-  pInfo->ulMaxRwSessionCount = 1;
-  pInfo->ulRwSessionCount = 0;
+  pInfo->ulMaxSessionCount = CK_EFFECTIVELY_INFINITE;
+  pInfo->ulSessionCount = CK_UNAVAILABLE_INFORMATION;
+  pInfo->ulMaxRwSessionCount = CK_EFFECTIVELY_INFINITE;
+  pInfo->ulRwSessionCount = CK_UNAVAILABLE_INFORMATION;
   pInfo->ulMaxPinLen = 64;
   pInfo->ulMinPinLen = 8;
   pInfo->ulTotalPublicMemory = CK_UNAVAILABLE_INFORMATION;
