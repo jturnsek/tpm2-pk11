@@ -404,14 +404,13 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR enc_data, CK_ULONG
 }
 
 CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
-  print_log(VERBOSE, "C_Initialize");
   char configfile_path[256];
   snprintf(configfile_path, sizeof(configfile_path), "%s/" TPM2_PK11_CONFIG_DIR "/" TPM2_PK11_CONFIG_FILE, getenv("HOME"));
   if (config_load(configfile_path, &pk11_config) < 0)
     return CKR_GENERAL_ERROR;
-
-  session_init(&main_session, &pk11_config, true);
   log_init(pk11_config.log_file, pk11_config.log_level);
+  print_log(VERBOSE, "C_Initialize");
+  session_init(&main_session, &pk11_config, true);
   return CKR_OK;
 }
 
