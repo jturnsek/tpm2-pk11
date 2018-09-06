@@ -23,9 +23,15 @@
 
 #include <tss2/tss2_sys.h>
 #include <tss2/tss2_tcti.h>
+#ifdef TCTI_DEVICE_ENABLED
 #include <tss2/tss2_tcti_device.h>
+#endif
+#ifdef TCTI_MSSIM_ENABLED
 #include <tss2/tss2_tcti_mssim.h>
+#endif
+#ifdef TCTI_TABRMD_ENABLED
 #include <tss2/tss2-tcti-tabrmd.h>
+#endif
 
 #define TPM_DEFAULT_EK_HANDLE 		0x81010000
 #define TPM_MAX_NUM_OF_AK_HANDLES	8

@@ -501,7 +501,6 @@ CK_RV C_Login(CK_SESSION_HANDLE session_handle, CK_USER_TYPE userType, CK_UTF8CH
   if (userType != CKU_USER)
     return CKR_USER_TYPE_INVALID;
 
-  struct session* session = get_session(session_handle);
   session->password = strndup(pin, pin_len);
 
   return CKR_OK;
