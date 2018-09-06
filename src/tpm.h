@@ -30,14 +30,15 @@
 #define TPM_DEFAULT_EK_HANDLE 		0x81010000
 #define TPM_MAX_NUM_OF_AK_HANDLES	8
 
-TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle_ak, TPM2_ALG_ID algorithm, TPM2B_PUBLIC *public, TPM2B_NAME *name);
-TPM2_RC tpm_read_public(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, TPM2B_PUBLIC *public, TPM2B_NAME *name);
-TPM2_RC tpm_rsa_sign(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, unsigned char *hash, unsigned long hash_length, TPMT_SIGNATURE *signature);
-TPM2_RC tpm_ecc_sign(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, unsigned char *hash, unsigned long hash_length, TPMT_SIGNATURE *signature);
-TPM2_RC tpm_verify(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, TPMT_SIGNATURE *signature, unsigned char *hash, unsigned long hash_length);
-TPM2_RC tpm_rsa_decrypt(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, unsigned char *cipher_text, unsigned long cipher_length, TPM2B_PUBLIC_KEY_RSA *message);
-TPM2_RC tpm_rsa_encrypt(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, unsigned char *data, unsigned long data_length, TPM2B_PUBLIC_KEY_RSA *message);
-TPM2_RC tpm_list(TSS2_SYS_CONTEXT *sapi_context, TPMS_CAPABILITY_DATA* capability_data);
-TPM2_RC tpm_evict_control(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT object);
+TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle_ak, TPM2_ALG_ID algorithm, TPM2B_PUBLIC *public, TPM2B_NAME *name);
+TPM2_RC tpm_read_public(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, TPM2B_PUBLIC *public, TPM2B_NAME *name);
+TPM2_RC tpm_rsa_sign(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned char *hash, unsigned long hash_length, TPMT_SIGNATURE *signature);
+TPM2_RC tpm_ecc_sign(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned char *hash, unsigned long hash_length, TPMT_SIGNATURE *signature);
+TPM2_RC tpm_verify(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, TPMT_SIGNATURE *signature, unsigned char *hash, unsigned long hash_length);
+TPM2_RC tpm_rsa_decrypt(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned char *cipher_text, unsigned long cipher_length, TPM2B_PUBLIC_KEY_RSA *message);
+TPM2_RC tpm_rsa_encrypt(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned char *data, unsigned long data_length, TPM2B_PUBLIC_KEY_RSA *message);
+TPM2_RC tpm_evict_control(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT object);
+TPM2_RC tpm_info(TSS2_SYS_CONTEXT *context, UINT32 property, TPMS_CAPABILITY_DATA* capability_data);
+TPMS_TAGGED_PROPERTY* tpm_info_get(TPMS_TAGGED_PROPERTY properties[], size_t count, TPM2_PT key);
 
 #endif /** TPM_H_ */

@@ -27,30 +27,34 @@
 #include <stdbool.h>
 #include <tss2/tss2_sys.h>
 #include <tss2/tss2_tcti.h>
+#ifdef TCTI_DEVICE_ENABLED
 #include <tss2/tss2_tcti_device.h>
+#endif
+#ifdef TCTI_MSSIM_ENABLED
 #include <tss2/tss2_tcti_mssim.h>
+#endif
+#ifdef TCTI_TABRMD_ENABLED
 #include <tss2/tss2-tcti-tabrmd.h>
+#endif
 #include <p11-kit/pkcs11.h>
 
 
-struct token {
-	TSS2_SYS_CONTEXT *sapi_context;
-  pObjectList objects;
-};
-
 struct session {
-  bool have_write;
+	TSS2_SYS_CONTEXT *context;
+	pObjectList objects;
+	bool have_write;
   TPMI_DH_OBJECT handle;
   pObjectList find_cursor;
   CK_ATTRIBUTE_PTR filters;
   size_t num_filters;
   pObject current_object;
   CK_MECHANISM_TYPE mechanism;
+  char *password;
 };
 
-int token_init(struct token* token, struct config *config);
-void token_close(struct token* token);
-int session_init(struct session* session, bool have_write);
+extern unsigned int open_sessions;
+
+int session_init(struct session* session, struct config *config, bool have_write);
 void session_close(struct session* session);
 
 #endif /** SESSIONS_H_ */

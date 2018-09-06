@@ -22,43 +22,47 @@
 #include "log.h"
 
 #include <stdlib.h>
+#include <string.h>
 
-#ifdef TCTI_SOCKET_ENABLED
-#include <tss2/tss2_tcti_mssim.h>
-#endif // TCTI_SOCKET_ENABLED
-#ifdef TCTI_DEVICE_ENABLED
-#include <tss2/tss2_tcti_device.h>
-#endif // TCTI_DEVICE_ENABLED
-#ifdef TCTI_TABRMD_ENABLED
-#include <tss2/tss2-tcti-tabrmd.h>
-#endif // TCTI_TABRMD_ENABLED
 
 #define DEFAULT_DEVICE "/dev/tpm0"
 #define DEFAULT_HOSTNAME "127.0.0.1"
 #define DEFAULT_PORT 2323
 
+unsigned int open_sessions;
 
-int token_init(struct token* token, struct config *config) {
-  token->sapi_context = NULL;
+int session_init(struct session* session, struct config *config, bool have_write) {
+  memset(session, 0, sizeof(struct session));
+
+  session->have_write = have_write;
 
   size_t size = 0;
   TSS2_TCTI_CONTEXT *tcti_ctx = NULL;
   TSS2_RC rc;
 
+#ifdef TCTI_DEVICE_ENABLED
+  TSS_COMPAT_TCTI_DEVICE_CONF device_conf;
+#endif // TCTI_DEVICE_ENABLED
+  
   switch(config->type) {
 #ifdef TCTI_SOCKET_ENABLED
+    case TPM_TYPE_SOCKET:
+      rc = InitSocketTcti(NULL, &size, NULL, 0);
+      break;
+#endif // TCTI_SOCKET_ENABLED
+#ifdef TCTI_MSSIM_ENABLED
     case TPM_TYPE_SOCKET:
       rc = Tss2_Tcti_Mssim_Init(NULL, &size, NULL);
       break;
 #endif // TCTI_SOCKET_ENABLED
 #ifdef TCTI_DEVICE_ENABLED
     case TPM_TYPE_DEVICE:
-      rc = Tss2_Tcti_Device_Init(NULL, &size, NULL);
+      rc = Tss2_Tcti_Device_Init(NULL, &size, device_conf);
       break;
 #endif // TCTI_DEVICE_ENABLED
 #ifdef TCTI_TABRMD_ENABLED
     case TPM_TYPE_TABRMD:
-      rc = Tss2_Tcti_Tabrmd_Init(tcti_ctx, &size, NULL);
+      rc = Tss2_Tcti_Tabrmd_Init(NULL, &size, NULL);
       break;
 #endif // TCTI_TABRMD_ENABLED
     default:
@@ -73,18 +77,30 @@ int token_init(struct token* token, struct config *config) {
   if (tcti_ctx == NULL)
     goto cleanup;
 
+#ifdef TCTI_SOCKET_ENABLED
+  TCTI_SOCKET_CONF socket_conf;
+#endif // TCTI_SOCKET_ENABLED
+#ifdef TCTI_MSSIM_ENABLED
+  const char tcti_uri[256];
+#endif // TCTI_MSSIM_ENABLED
+
   switch(config->type) {
 #ifdef TCTI_SOCKET_ENABLED
-    case TPM_TYPE_SOCKET: {}
-      char *conf = "tcp://127.0.0.1:2323";
-      rc = Tss2_Tcti_Mssim_Init(tcti_ctx, &size, conf);
+    case TPM_TYPE_SOCKET:
+      socket_conf = (TCTI_SOCKET_CONF) { .hostname = config->hostname != NULL ? config->hostname : DEFAULT_HOSTNAME, .port = config->port > 0 ? config->port : DEFAULT_PORT };
+      rc = InitSocketTcti(tcti_ctx, &size, &socket_conf, 0);
       break;
-    }
 #endif // TCTI_SOCKET_ENABLED
+#ifdef TCTI_MSSIM_ENABLED
+    case TPM_TYPE_SOCKET:
+      snprintf("tcp://%s:%d", sizeof(tcti_uri), config->hostname != NULL ? config->hostname : DEFAULT_HOSTNAME, config->port > 0 ? config->port : DEFAULT_PORT);
+      rc = Tss2_Tcti_Mssim_Init(tcti_ctx, &size, (const char*) &tcti_uri);
+      break;
+#endif // TCTI_MSSIM_ENABLED
 #ifdef TCTI_DEVICE_ENABLED
     case TPM_TYPE_DEVICE: {
-      char *conf = DEFAULT_DEVICE;
-      rc = Tss2_Tcti_Device_Init(tcti_ctx, &size, conf);
+      TSS_COMPAT_DEVICE_CONF(device_conf, config->device != NULL ? config->device : DEFAULT_DEVICE);
+      rc = Tss2_Tcti_Device_Init(tcti_ctx, &size, device_conf);
       break;
     }
 #endif // TCTI_DEVICE_ENABLED
@@ -102,36 +118,35 @@ int token_init(struct token* token, struct config *config) {
     goto cleanup;
   
   size = Tss2_Sys_GetContextSize(0);
-  token->sapi_context = (TSS2_SYS_CONTEXT*) calloc(1, size);
-  if (token->sapi_context == NULL)
+  session->context = (TSS2_SYS_CONTEXT*) calloc(1, size);
+  if (session->context == NULL)
     goto cleanup;
 
   TSS2_ABI_VERSION abi_version = TSS2_ABI_VERSION_CURRENT;
   
-  rc = Tss2_Sys_Initialize(token->sapi_context, size, tcti_ctx, &abi_version);
+  rc = Tss2_Sys_Initialize(session->context, size, tcti_ctx, &abi_version);
 
-  token->objects = object_load_list(token->sapi_context, config);
+  session->objects = object_load_list(session->context, config);
+
+  open_sessions++;
+   
   return 0;
 
   cleanup:
   if (tcti_ctx != NULL)
     free(tcti_ctx);
 
-  if (token->sapi_context != NULL)
-    free(token->sapi_context);
+  if (session->context != NULL)
+    free(session->context);
 
   return -1;
 }
 
-void token_close(struct token* token) {
-  object_free_list(token->objects);
-  Tss2_Sys_Finalize(token->sapi_context);
-}
-
-int session_init(struct session* session, bool have_write) {
-  session->have_write = have_write; 
-  return 0;
-}
-
 void session_close(struct session* session) {
+  if (session->password)
+    free(session->password);
+
+  object_free_list(session->objects);
+  Tss2_Sys_Finalize(session->context);
+  open_sessions--;
 }

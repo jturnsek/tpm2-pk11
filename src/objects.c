@@ -473,20 +473,19 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
   if (list == NULL)
     goto error;
   
-  TPMS_CAPABILITY_DATA tpm;
-  
-  TPM2_RC rc = tpm_list(ctx, &tpm);
+  TPMS_CAPABILITY_DATA persistent;
+  TPM2_RC rc = tpm_info(ctx, TPM2_HT_PERSISTENT, &persistent);
   if (rc != TPM2_RC_SUCCESS)
     goto error;
 
-  for (int i = 0; i < tpm.data.handles.count; i++) {
+  for (int i = 0; i < persistent.data.handles.count; i++) {
     pUserdataTpm userdata = malloc(sizeof(UserdataTpm));
     if (userdata == NULL)
       goto error;
 
     memset(userdata, 0, sizeof(UserdataTpm));
     userdata->name.size = sizeof(TPMU_NAME);
-    rc = tpm_read_public(ctx, tpm.data.handles.handle[i], &userdata->tpm_key, &userdata->name);
+    rc = tpm_read_public(ctx, persistent.data.handles.handle[i], &userdata->tpm_key, &userdata->name);
     if (rc != TPM2_RC_SUCCESS) {
       free(userdata);
       goto error;
@@ -559,7 +558,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
         goto error;
       }
 
-      object->tpm_handle = tpm.data.handles.handle[i];
+      object->tpm_handle = persistent.data.handles.handle[i];
       object->userdata = NULL;
       object->num_entries = 3;
       object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));
@@ -624,7 +623,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
         goto error;
       }
 
-      object->tpm_handle = tpm.data.handles.handle[i];
+      object->tpm_handle = persistent.data.handles.handle[i];
       object->userdata = NULL;
       object->num_entries = 3;
       object->entries = calloc(object->num_entries, sizeof(AttrIndexEntry));

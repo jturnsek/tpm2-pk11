@@ -40,10 +40,10 @@
 #define get_session(x) ((struct session*) x)
 
 static struct config pk11_config = {0};
-static struct token pk11_token = {0};
+static struct session main_session;
 
-static CK_RV extractObjectInformation(CK_ATTRIBUTE_PTR pTemplate,
-              CK_ULONG ulCount,
+static CK_RV extractObjectInformation(CK_ATTRIBUTE_PTR template,
+              CK_ULONG count,
               CK_OBJECT_CLASS *objClass,
               CK_KEY_TYPE *keyType,
               CK_CERTIFICATE_TYPE *certType,
@@ -57,34 +57,34 @@ static CK_RV extractObjectInformation(CK_ATTRIBUTE_PTR pTemplate,
   bool bHasPrivate = false;
 
   // Extract object information
-  for (CK_ULONG i = 0; i < ulCount; ++i) {
-    switch (pTemplate[i].type) {
+  for (CK_ULONG i = 0; i < count; ++i) {
+    switch (template[i].type) {
       case CKA_CLASS:
-        if (pTemplate[i].ulValueLen == sizeof(CK_OBJECT_CLASS)) {
-          *objClass = *(CK_OBJECT_CLASS_PTR)pTemplate[i].pValue;
+        if (template[i].ulValueLen == sizeof(CK_OBJECT_CLASS)) {
+          *objClass = *(CK_OBJECT_CLASS_PTR)template[i].pValue;
           bHasClass = true;
         }
         break;
       case CKA_KEY_TYPE:
-        if (pTemplate[i].ulValueLen == sizeof(CK_KEY_TYPE)) {
-          *keyType = *(CK_KEY_TYPE*)pTemplate[i].pValue;
+        if (template[i].ulValueLen == sizeof(CK_KEY_TYPE)) {
+          *keyType = *(CK_KEY_TYPE*)template[i].pValue;
           bHasKeyType = true;
         }
         break;
       case CKA_CERTIFICATE_TYPE:
-        if (pTemplate[i].ulValueLen == sizeof(CK_CERTIFICATE_TYPE)) {
-          *certType = *(CK_CERTIFICATE_TYPE*)pTemplate[i].pValue;
+        if (template[i].ulValueLen == sizeof(CK_CERTIFICATE_TYPE)) {
+          *certType = *(CK_CERTIFICATE_TYPE*)template[i].pValue;
           bHasCertType = true;
         }
         break;
       case CKA_TOKEN:
-        if (pTemplate[i].ulValueLen == sizeof(CK_BBOOL)) {
-          *isOnToken = *(CK_BBOOL*)pTemplate[i].pValue;
+        if (template[i].ulValueLen == sizeof(CK_BBOOL)) {
+          *isOnToken = *(CK_BBOOL*)template[i].pValue;
         }
         break;
       case CKA_PRIVATE:
-        if (pTemplate[i].ulValueLen == sizeof(CK_BBOOL)) {
-          *isPrivate = *(CK_BBOOL*)pTemplate[i].pValue;
+        if (template[i].ulValueLen == sizeof(CK_BBOOL)) {
+          *isPrivate = *(CK_BBOOL*)template[i].pValue;
           bHasPrivate = true;
         }
         break;
@@ -126,119 +126,140 @@ static CK_RV extractObjectInformation(CK_ATTRIBUTE_PTR pTemplate,
 }
 
 
-CK_RV C_GetInfo(CK_INFO_PTR pInfo) {
+CK_RV C_GetInfo(CK_INFO_PTR info) {
   print_log(VERBOSE, "C_GetInfo");
-  pInfo->cryptokiVersion.major = CRYPTOKI_VERSION_MAJOR;
-  pInfo->cryptokiVersion.minor = CRYPTOKI_VERSION_MINOR;
-  strncpy_pad(pInfo->manufacturerID, TPM2_PK11_MANUFACTURER, sizeof(pInfo->manufacturerID));
-  strncpy_pad(pInfo->libraryDescription, TPM2_PK11_LIBRARY_DESCRIPTION, sizeof(pInfo->libraryDescription));
-  pInfo->libraryVersion.major = LIBRARY_VERSION_MAJOR;
-  pInfo->libraryVersion.minor = LIBRARY_VERSION_MINOR;
-  pInfo->flags = 0;
+  info->cryptokiVersion.major = CRYPTOKI_VERSION_MAJOR;
+  info->cryptokiVersion.minor = CRYPTOKI_VERSION_MINOR;
+  strncpy_pad(info->manufacturerID, sizeof(info->manufacturerID), TPM2_PK11_MANUFACTURER, sizeof(info->manufacturerID));
+  strncpy_pad(info->libraryDescription, sizeof(info->libraryDescription), TPM2_PK11_LIBRARY_DESCRIPTION, sizeof(info->libraryDescription));
+  info->flags = 0;
 
   return CKR_OK;
 }
 
-CK_RV C_GetSlotList(CK_BBOOL tokenPresent, CK_SLOT_ID_PTR pSlotList, CK_ULONG_PTR pulCount) {
-  print_log(VERBOSE, "C_GetSlotList: present = %s", tokenPresent ? "true" : "false");
-  if (*pulCount && pSlotList)
-    *pSlotList = SLOT_ID;
+CK_RV C_GetSlotList(CK_BBOOL present, CK_SLOT_ID_PTR list, CK_ULONG_PTR count) {
+  print_log(VERBOSE, "C_GetSlotList: present = %s", present ? "true" : "false");
+  if (*count && list)
+    *list = SLOT_ID;
 
-  *pulCount = 1;
+  *count = 1;
 
   return CKR_OK;
 }
 
-CK_RV C_OpenSession(CK_SLOT_ID slotID, CK_FLAGS flags, CK_VOID_PTR pApplication, CK_NOTIFY Notify, CK_SESSION_HANDLE_PTR phSession) {
-  print_log(VERBOSE, "C_OpenSession: id = %d, flags = %x", slotID, flags);
-  *phSession = (unsigned long) malloc(sizeof(struct session));
-  if ((void*) *phSession == NULL)
+CK_RV C_OpenSession(CK_SLOT_ID id, CK_FLAGS flags, CK_VOID_PTR application, CK_NOTIFY notify, CK_SESSION_HANDLE_PTR session) {
+  print_log(VERBOSE, "C_OpenSession: id = %d, flags = %x", id, flags);
+  *session = (unsigned long) malloc(sizeof(struct session));
+  if ((void*) *session == NULL)
     return CKR_GENERAL_ERROR;
 
-  int ret = session_init((struct session*) *phSession, flags & CKF_RW_SESSION ? true : false);
+  int ret = session_init((struct session*) *session, &pk11_config, flags & CKF_RW_SESSION ? true : false);
+
   return ret != 0 ? CKR_GENERAL_ERROR : CKR_OK;
 }
 
-CK_RV C_CloseSession(CK_SESSION_HANDLE hSession) {
-  print_log(VERBOSE, "C_CloseSession: session = %x", hSession);
-  session_close(get_session(hSession));
-
-  free(get_session(hSession));
+CK_RV C_CloseSession(CK_SESSION_HANDLE session_handle) {
+  print_log(VERBOSE, "C_CloseSession: session = %x", session_handle);
+  session_close(get_session(session_handle));
+  free(get_session(session_handle));
   return CKR_OK;
 }
 
-CK_RV C_GetSessionInfo(CK_SESSION_HANDLE hSession, CK_SESSION_INFO_PTR pInfo) {
-  print_log(VERBOSE, "C_GetSessionInfo: session = %x", hSession);
-  pInfo->slotID = 0;
-  pInfo->state = CKS_RO_USER_FUNCTIONS;
-  pInfo->flags = CKF_SERIAL_SESSION;
-  pInfo->ulDeviceError = 0;
+CK_RV C_GetSessionInfo(CK_SESSION_HANDLE session_handle, CK_SESSION_INFO_PTR info) {
+  print_log(VERBOSE, "C_GetSessionInfo: session = %x", session_handle);
+  info->slotID = 0;
+  info->state = CKS_RO_USER_FUNCTIONS;
+  info->flags = CKF_SERIAL_SESSION;
+  info->ulDeviceError = 0;
   return CKR_OK;
 }
 
-CK_RV C_GetSlotInfo(CK_SLOT_ID slotID, CK_SLOT_INFO_PTR pInfo) {
-  print_log(VERBOSE, "C_GetSlotInfo: id = %d", slotID);
-  strncpy_pad(pInfo->manufacturerID, TPM2_PK11_MANUFACTURER, sizeof(pInfo->manufacturerID));
-  strncpy_pad(pInfo->slotDescription, TPM2_PK11_SLOT_DESCRIPTION, sizeof(pInfo->slotDescription));
-  pInfo->flags = CKF_TOKEN_PRESENT | CKF_HW_SLOT;
-  pInfo->hardwareVersion.major = 0;
-  pInfo->hardwareVersion.minor = 0;
-  pInfo->firmwareVersion.major = 0;
-  pInfo->firmwareVersion.minor = 0;
+CK_RV C_GetSlotInfo(CK_SLOT_ID id, CK_SLOT_INFO_PTR info) {
+  print_log(VERBOSE, "C_GetSlotInfo: id = %d", id);
+  TPMS_CAPABILITY_DATA fixed;
+  if (tpm_info(main_session.context, TPM2_PT_FIXED, &fixed) != TPM2_RC_SUCCESS)
+    return CKR_DEVICE_ERROR;
+
+  TPML_TAGGED_TPM_PROPERTY props = fixed.data.tpmProperties;
+  TPMS_TAGGED_PROPERTY* manufacturer = tpm_info_get(props.tpmProperty, props.count, TPM2_PT_MANUFACTURER);
+  UINT32 manufacturer_val = manufacturer ? htobe32(manufacturer->value) : 0;
+  strncpy_pad(info->manufacturerID, sizeof(info->manufacturerID), manufacturer ? (char*) &manufacturer_val : TPM2_PK11_MANUFACTURER, manufacturer ? 4 : sizeof(info->manufacturerID));
+  strncpy_pad(info->slotDescription, sizeof(info->slotDescription), TPM2_PK11_SLOT_DESCRIPTION, sizeof(info->slotDescription));
+
+  info->flags = CKF_TOKEN_PRESENT | CKF_HW_SLOT;
+  TPMS_TAGGED_PROPERTY* revision = tpm_info_get(props.tpmProperty, props.count, TPM2_PT_REVISION);
+  info->hardwareVersion.major = revision ? revision->value / 100 : 0;
+  info->hardwareVersion.minor = revision ? revision->value % 100 : 0;
+  TPMS_TAGGED_PROPERTY* major = tpm_info_get(props.tpmProperty, props.count, TPM2_PT_FIRMWARE_VERSION_1);
+  info->firmwareVersion.major = major ? major->value : 0;
+  TPMS_TAGGED_PROPERTY* minor = tpm_info_get(props.tpmProperty, props.count, TPM2_PT_FIRMWARE_VERSION_2);
+  info->firmwareVersion.minor = major ? major->value : 0;
   return CKR_OK;
 }
 
-CK_RV C_GetTokenInfo(CK_SLOT_ID slotID, CK_TOKEN_INFO_PTR pInfo) {
-  print_log(VERBOSE, "C_GetTokenInfo: id = %d", slotID);
-  strncpy_pad(pInfo->label, TPM2_PK11_LABEL, sizeof(pInfo->label));
-  strncpy_pad(pInfo->manufacturerID, TPM2_PK11_MANUFACTURER, sizeof(pInfo->manufacturerID));
-  strncpy_pad(pInfo->model, TPM2_PK11_MODEL, sizeof(pInfo->label));
-  strncpy_pad(pInfo->serialNumber, TPM2_PK11_SERIAL, sizeof(pInfo->serialNumber));
-  strncpy_pad(pInfo->utcTime, "", sizeof(pInfo->utcTime));
+CK_RV C_GetTokenInfo(CK_SLOT_ID id, CK_TOKEN_INFO_PTR info) {
+  print_log(VERBOSE, "C_GetTokenInfo: id = %d", id);
+  TPMS_CAPABILITY_DATA fixed;
+  if (tpm_info(main_session.context, TPM2_PT_FIXED, &fixed) != TPM2_RC_SUCCESS)
+    return CKR_DEVICE_ERROR;
 
-  pInfo->flags = CKF_TOKEN_INITIALIZED | CKF_WRITE_PROTECTED;
-  pInfo->ulMaxSessionCount = CK_EFFECTIVELY_INFINITE;
-  pInfo->ulSessionCount = CK_UNAVAILABLE_INFORMATION;
-  pInfo->ulMaxRwSessionCount = CK_EFFECTIVELY_INFINITE;
-  pInfo->ulRwSessionCount = CK_UNAVAILABLE_INFORMATION;
-  pInfo->ulMaxPinLen = 64;
-  pInfo->ulMinPinLen = 8;
-  pInfo->ulTotalPublicMemory = CK_UNAVAILABLE_INFORMATION;
-  pInfo->ulFreePublicMemory = CK_UNAVAILABLE_INFORMATION;
-  pInfo->ulTotalPrivateMemory = CK_UNAVAILABLE_INFORMATION;
-  pInfo->ulFreePrivateMemory = CK_UNAVAILABLE_INFORMATION;
-  pInfo->hardwareVersion.major = 0;
-  pInfo->hardwareVersion.minor = 0;
-  pInfo->firmwareVersion.major = 0;
-  pInfo->firmwareVersion.minor = 0;
+  TPML_TAGGED_TPM_PROPERTY props = fixed.data.tpmProperties;
+  strncpy_pad(info->label, sizeof(info->label), TPM2_PK11_LABEL, sizeof(info->label));
+  TPMS_TAGGED_PROPERTY* manufacturer = tpm_info_get(props.tpmProperty, props.count, TPM2_PT_MANUFACTURER);
+  UINT32 manufacturer_val = manufacturer ? htobe32(manufacturer->value) : 0;
+  strncpy_pad(info->manufacturerID, sizeof(info->manufacturerID), manufacturer ? (char*) &manufacturer_val : TPM2_PK11_MANUFACTURER, manufacturer ? 4 : sizeof(info->manufacturerID));
+  strncpy_pad(info->model, sizeof(info->label), TPM2_PK11_MODEL, sizeof(info->label));
+  strncpy_pad(info->serialNumber, sizeof(info->serialNumber), TPM2_PK11_SERIAL, sizeof(info->serialNumber));
+  strncpy_pad(info->utcTime, sizeof(info->utcTime), "", sizeof(info->utcTime));
+
+  info->flags = CKF_TOKEN_INITIALIZED | CKF_WRITE_PROTECTED;
+  if (pk11_config.login_required)
+    info->flags |= CKF_LOGIN_REQUIRED;
+
+  TPMS_TAGGED_PROPERTY* max_sessions = tpm_info_get(props.tpmProperty, props.count, TPM2_PT_ACTIVE_SESSIONS_MAX);
+  info->ulMaxSessionCount = max_sessions ? max_sessions->value : CK_EFFECTIVELY_INFINITE;
+  info->ulSessionCount = open_sessions;
+  info->ulMaxRwSessionCount = max_sessions ? max_sessions->value : CK_EFFECTIVELY_INFINITE;
+  info->ulRwSessionCount = 0;
+  info->ulMaxPinLen = 64;
+  info->ulMinPinLen = 0;
+  info->ulTotalPublicMemory = CK_UNAVAILABLE_INFORMATION;
+  info->ulFreePublicMemory = CK_UNAVAILABLE_INFORMATION;
+  info->ulTotalPrivateMemory = CK_UNAVAILABLE_INFORMATION;
+  info->ulFreePrivateMemory = CK_UNAVAILABLE_INFORMATION;
+  TPMS_TAGGED_PROPERTY* revision = tpm_info_get(props.tpmProperty, props.count, TPM2_PT_REVISION);
+  info->hardwareVersion.major = revision ? revision->value / 100 : 0;
+  info->hardwareVersion.minor = revision ? revision->value % 100 : 0;
+  TPMS_TAGGED_PROPERTY* major = tpm_info_get(props.tpmProperty, props.count, TPM2_PT_FIRMWARE_VERSION_1);
+  info->firmwareVersion.major = major ? major->value : 0;
+  TPMS_TAGGED_PROPERTY* minor = tpm_info_get(props.tpmProperty, props.count, TPM2_PT_FIRMWARE_VERSION_2);
+  info->firmwareVersion.minor = major ? major->value : 0;
 
   return CKR_OK;
 }
 
-CK_RV C_Finalize(CK_VOID_PTR pReserved) {
+CK_RV C_Finalize(CK_VOID_PTR reserved) {
   print_log(VERBOSE, "C_Finalize");
-
-  token_close(&pk11_token);
-
+  session_close(&main_session);
   return CKR_OK;
 }
 
-CK_RV C_FindObjectsInit(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount) {
-  print_log(VERBOSE, "C_FindObjectsInit: session = %x, template =%x, count = %d", hSession, pTemplate, ulCount);
-  struct session *session = get_session(hSession);
-  session->find_cursor = pk11_token.objects;
-  session->filters = pTemplate;
-  session->num_filters = ulCount;
+CK_RV C_FindObjectsInit(CK_SESSION_HANDLE session_handle, CK_ATTRIBUTE_PTR filters, CK_ULONG count) {
+  print_log(VERBOSE, "C_FindObjectsInit: session = %x, count = %d", session_handle, count);
+  struct session *session = get_session(session_handle);
+  session->find_cursor = session->objects;
+  session->filters = filters;
+  session->num_filters = count;
   return CKR_OK;
 }
 
-CK_RV C_FindObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, CK_ULONG ulMaxObjectCount, CK_ULONG_PTR pulObjectCount) {
-  print_log(VERBOSE, "C_FindObjects: session = %x, max = %d", hSession, ulMaxObjectCount);
+CK_RV C_FindObjects(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE_PTR object_handle, CK_ULONG max_objects, CK_ULONG_PTR found) {
+  print_log(VERBOSE, "C_FindObjects: session = %x, max = %d", session_handle, max_objects);
   TPMS_CAPABILITY_DATA persistent;
-  tpm_list(pk11_token.sapi_context, &persistent);
-  struct session* session = get_session(hSession);
-  *pulObjectCount = 0;
-  while (session->find_cursor != NULL && *pulObjectCount < ulMaxObjectCount) {
+  tpm_info(get_session(session_handle)->context, TPM2_HT_PERSISTENT, &persistent);
+  struct session* session = get_session(session_handle);
+  *found = 0;
+  while (session->find_cursor != NULL && *found < max_objects) {
     pObject object = session->find_cursor->object;
     bool filtered = false;
     for (int j = 0; j < session->num_filters; j++) {
@@ -250,8 +271,8 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, C
       }
     }
     if (!filtered) {
-      phObject[*pulObjectCount] = (CK_OBJECT_HANDLE) session->find_cursor->object;
-      (*pulObjectCount)++;
+      object_handle[*found] = (CK_OBJECT_HANDLE) session->find_cursor->object;
+      (*found)++;
     }
     session->find_cursor = session->find_cursor->next;
   }   
@@ -259,39 +280,39 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE_PTR phObject, C
   return CKR_OK;
 }
 
-CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE hSession) {
-  print_log(VERBOSE, "C_FindObjectsFinal: session = %x", hSession);
+CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE session_handle) {
+  print_log(VERBOSE, "C_FindObjectsFinal: session = %x", session_handle);
   return CKR_OK;
 }
 
-CK_RV C_GetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount) {
-  print_log(VERBOSE, "C_GetAttributeValue: session = %x, object = %x, count = %d", hSession, hObject, ulCount);
-  pObject object = (pObject) hObject;
+CK_RV C_GetAttributeValue(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE object_handle, CK_ATTRIBUTE_PTR template, CK_ULONG count) {
+  print_log(VERBOSE, "C_GetAttributeValue: session = %x, object = %x, count = %d", session_handle, object_handle, count);
+  pObject object = (pObject) object_handle;
 
-  for (int i = 0; i < ulCount; i++) {
+  for (int i = 0; i < count; i++) {
     size_t size = 0;
-    void *value = object_attr_get(object, pTemplate[i].type, (size_t*)&size);
+    void *value = object_attr_get(object, template[i].type, (size_t*)&size);
     if (value) {
-      retmem(pTemplate[i].pValue, (size_t*)&pTemplate[i].ulValueLen, value, size);  
+      retmem(template[i].pValue, (size_t*)&template[i].ulValueLen, value, size);  
     }
     else {
-      print_log(DEBUG, "C_GetAttributeValue: attribute not found [type = 0x%x]!", pTemplate[i].type);
+      print_log(DEBUG, "C_GetAttributeValue: attribute not found [type = 0x%x]!", template[i].type);
     }
   }
 
   return CKR_OK;
 }
 
-CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount) {
-  print_log(VERBOSE, "C_SetAttributeValue: session = %x, object = %x, count = %d", hSession, hObject, ulCount);
-  pObject object = (pObject) hObject;
+CK_RV C_SetAttributeValue(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE object_handle, CK_ATTRIBUTE_PTR template, CK_ULONG count) {
+  print_log(VERBOSE, "C_SetAttributeValue: session = %x, object = %x, count = %d", session_handle, object_handle, count);
+  pObject object = (pObject) object_handle;
 
-  if (get_session(hSession)->have_write == false) {
+  if (get_session(session_handle)->have_write == false) {
     return CKR_SESSION_READ_ONLY;
   }
 
-  for (int i = 0; i < ulCount; i++) {
-    object_attr_set(object, pTemplate[i].type, pTemplate[i].pValue, pTemplate[i].ulValueLen);
+  for (int i = 0; i < count; i++) {
+    object_attr_set(object, template[i].type, template[i].pValue, template[i].ulValueLen);
     if (!object->is_certificate) {
       object_attr_write(object, &pk11_config);
     }
@@ -303,21 +324,21 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, 
   return CKR_OK;
 }
 
-CK_RV C_SignInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey) {
-  print_log(VERBOSE, "C_SignInit: session = %x, key = %x", hSession, hKey);
-  pObject object = (pObject) hKey;
-  get_session(hSession)->handle = object->tpm_handle;
-  get_session(hSession)->current_object = object;
+CK_RV C_SignInit(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism, CK_OBJECT_HANDLE key) {
+  print_log(VERBOSE, "C_SignInit: session = %x, key = %x", session_handle, key);
+  pObject object = (pObject) key;
+  get_session(session_handle)->handle = object->tpm_handle;
+  get_session(session_handle)->current_object = object;
 
-  switch(pMechanism->mechanism) {
+  switch(mechanism->mechanism) {
     case CKM_RSA_X_509:
-      get_session(hSession)->mechanism = CKM_RSA_X_509;
+      get_session(session_handle)->mechanism = CKM_RSA_X_509;
       break;
     case CKM_RSA_PKCS:
-      get_session(hSession)->mechanism = CKM_RSA_PKCS;
+      get_session(session_handle)->mechanism = CKM_RSA_PKCS;
       break;
     case CKM_ECDSA:
-      get_session(hSession)->mechanism = CKM_ECDSA;
+      get_session(session_handle)->mechanism = CKM_ECDSA;
       break;
     default:
       return CKR_MECHANISM_INVALID;
@@ -326,41 +347,41 @@ CK_RV C_SignInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJ
   return CKR_OK;
 }
 
-CK_RV C_Sign(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen) {
-  print_log(VERBOSE, "C_Sign: session = %x, len = %d", hSession, ulDataLen);
-  struct session* session = get_session(hSession);
+CK_RV C_Sign(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR data, CK_ULONG data_len, CK_BYTE_PTR signature, CK_ULONG_PTR signature_len) {
+  print_log(VERBOSE, "C_Sign: session = %x, len = %d", session_handle, data_len);
+  struct session* session = get_session(session_handle);
   TPM2_RC rc = CKR_GENERAL_ERROR;
   TPMT_SIGNATURE sign = {0};
 
   if (session->mechanism == CKM_RSA_PKCS) {
-    rc = tpm_rsa_sign(pk11_token.sapi_context, session->handle, pData, ulDataLen, &sign);
+    rc = tpm_rsa_sign(session->context, session->handle, data, data_len, &sign);
     if (rc == TPM2_RC_SUCCESS) {
-      retmem(pSignature, (size_t*)pulSignatureLen, sign.signature.rsassa.sig.buffer, sign.signature.rsassa.sig.size);
+      retmem(signature, (size_t*)signature_len, sign.signature.rsassa.sig.buffer, sign.signature.rsassa.sig.size);
     } 
   }
   else if (session->mechanism == CKM_ECDSA) {
-    rc = tpm_ecc_sign(pk11_token.sapi_context, session->handle, pData, ulDataLen, &sign);
+    rc = tpm_ecc_sign(session->context, session->handle, data, data_len, &sign);
     if (rc == TPM2_RC_SUCCESS) {
-      memcpy(pSignature, sign.signature.ecdsa.signatureR.buffer, sign.signature.ecdsa.signatureR.size);
-      memcpy(pSignature + sign.signature.ecdsa.signatureR.size, sign.signature.ecdsa.signatureS.buffer, sign.signature.ecdsa.signatureS.size);
-      *pulSignatureLen = sign.signature.ecdsa.signatureR.size + sign.signature.ecdsa.signatureS.size;
+      memcpy(signature, sign.signature.ecdsa.signatureR.buffer, sign.signature.ecdsa.signatureR.size);
+      memcpy(signature + sign.signature.ecdsa.signatureR.size, sign.signature.ecdsa.signatureS.buffer, sign.signature.ecdsa.signatureS.size);
+      *signature_len = sign.signature.ecdsa.signatureR.size + sign.signature.ecdsa.signatureS.size;
     } 
   }
   
   return rc == TPM2_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
 }
 
-CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey) {
-  print_log(VERBOSE, "C_DecryptInit: session = %x, key = %x", hSession, hKey);
-  pObject object = (pObject) hKey;
-  get_session(hSession)->handle = object->tpm_handle;
+CK_RV C_DecryptInit(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism, CK_OBJECT_HANDLE key) {
+  print_log(VERBOSE, "C_DecryptInit: session = %x, key = %x", session_handle, key);
+  pObject object = (pObject) key;
+  get_session(session_handle)->handle = object->tpm_handle;
 
-  switch(pMechanism->mechanism) {
+  switch(mechanism->mechanism) {
     case CKM_RSA_X_509:
-      get_session(hSession)->mechanism = CKM_RSA_X_509;
+      get_session(session_handle)->mechanism = CKM_RSA_X_509;
       break;
     case CKM_RSA_PKCS:
-      get_session(hSession)->mechanism = CKM_RSA_PKCS;
+      get_session(session_handle)->mechanism = CKM_RSA_PKCS;
       break;
     default:
       return CKR_MECHANISM_INVALID;
@@ -369,37 +390,32 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_
   return CKR_OK;
 }
 
-CK_RV C_Decrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen) {
-  print_log(VERBOSE, "C_Decrypt: session = %x, len = %d", hSession, ulEncryptedDataLen);
+CK_RV C_Decrypt(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR enc_data, CK_ULONG enc_data_len, CK_BYTE_PTR data, CK_ULONG_PTR data_len) {
+  print_log(VERBOSE, "C_Decrypt: session = %x, len = %d", session_handle, enc_data_len);
   TPM2B_PUBLIC_KEY_RSA message = { .size = TPM2_MAX_RSA_KEY_BYTES };
-  struct session* session = get_session(hSession);
-  TPM2_RC ret = tpm_rsa_decrypt(pk11_token.sapi_context, session->handle, pEncryptedData, ulEncryptedDataLen, &message);
+  struct session* session = get_session(session_handle);
+  TPM2_RC ret = tpm_rsa_decrypt(session->context, session->handle, enc_data, enc_data_len, &message);
   
-  retmem(pData, (size_t*)pulDataLen, message.buffer, message.size);
+  retmem(data, (size_t*)data_len, message.buffer, message.size);
 
   return ret == TPM2_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
 }
 
 CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
+  print_log(VERBOSE, "C_Initialize");
   char configfile_path[256];
   snprintf(configfile_path, sizeof(configfile_path), "%s/" TPM2_PK11_CONFIG_DIR "/" TPM2_PK11_CONFIG_FILE, getenv("HOME"));
   if (config_load(configfile_path, &pk11_config) < 0)
     return CKR_GENERAL_ERROR;
 
-  if (token_init(&pk11_token, &pk11_config) < 0) {
-    return CKR_GENERAL_ERROR; 
-  }
-
+  session_init(&main_session, &pk11_config);
   log_init(pk11_config.log_file, pk11_config.log_level);
-
-  print_log(VERBOSE, "C_Initialize");
-
   return CKR_OK;
 }
 
 /* Stubs for not yet supported functions*/
-CK_RV C_GetMechanismList(CK_SLOT_ID slotID, CK_MECHANISM_TYPE_PTR pMechanismList, CK_ULONG_PTR pulCount) {
-  print_log(VERBOSE, "C_GetMechanismList: slot = %d", slotID);
+CK_RV C_GetMechanismList(CK_SLOT_ID id, CK_MECHANISM_TYPE_PTR list, CK_ULONG_PTR count) {
+  print_log(VERBOSE, "C_GetMechanismList: slot = %d", id);
   CK_ULONG nrSupportedMechanisms = 10;
 
   CK_MECHANISM_TYPE supportedMechanisms[] =
@@ -416,94 +432,108 @@ CK_RV C_GetMechanismList(CK_SLOT_ID slotID, CK_MECHANISM_TYPE_PTR pMechanismList
     CKM_ECDH1_DERIVE
   };
 
-  if (pulCount == NULL_PTR) return CKR_ARGUMENTS_BAD;
+  if (count == NULL_PTR) return CKR_ARGUMENTS_BAD;
 
-  if (pMechanismList == NULL_PTR)
+  if (list == NULL_PTR)
   {
-    *pulCount = nrSupportedMechanisms;
+    *count = nrSupportedMechanisms;
 
     return CKR_OK;
   }
 
-  if (*pulCount < nrSupportedMechanisms)
+  if (*count < nrSupportedMechanisms)
   {
-    *pulCount = nrSupportedMechanisms;
+    *count = nrSupportedMechanisms;
 
     return CKR_BUFFER_TOO_SMALL;
   }
 
-  *pulCount = nrSupportedMechanisms;
+  *count = nrSupportedMechanisms;
 
   for (CK_ULONG i = 0; i < nrSupportedMechanisms; i ++)
   {
-    pMechanismList[i] = supportedMechanisms[i];
+    list[i] = supportedMechanisms[i];
   }
 
   return CKR_OK;
 }
 
-CK_RV C_GetMechanismInfo (CK_SLOT_ID slotID, CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR pInfo) {
-  print_log(VERBOSE, "C_GetMechanismInfo: slot = %d", slotID);
+CK_RV C_GetMechanismInfo (CK_SLOT_ID id, CK_MECHANISM_TYPE type, CK_MECHANISM_INFO_PTR info) {
+  print_log(VERBOSE, "C_GetMechanismInfo: slot = %d", id);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_InitToken (CK_SLOT_ID slotID, CK_CHAR_PTR pPin, CK_ULONG usPinLen, CK_CHAR_PTR pLabel) {
-  print_log(VERBOSE, "C_InitToken: slot = %d", slotID);
+CK_RV C_InitToken (CK_SLOT_ID id, CK_CHAR_PTR pin, CK_ULONG pin_len, CK_CHAR_PTR label) {
+  print_log(VERBOSE, "C_InitToken: slot = %d", id);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_InitPIN (CK_SESSION_HANDLE hSession, CK_CHAR_PTR pPin, CK_ULONG usPinLen) {
-  print_log(VERBOSE, "C_InitPIN: session = %x", hSession);
+CK_RV C_InitPIN (CK_SESSION_HANDLE session_handle, CK_CHAR_PTR pin, CK_ULONG pin_len) {
+  print_log(VERBOSE, "C_InitPIN: session = %x", session_handle);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_SetPIN (CK_SESSION_HANDLE hSession, CK_CHAR_PTR pOldPin, CK_ULONG usOldLen, CK_CHAR_PTR pNewPin, CK_ULONG usNewLen) {
-  print_log(VERBOSE, "C_SetPIN: session = %x", hSession);
+CK_RV C_SetPIN (CK_SESSION_HANDLE session_handle, CK_CHAR_PTR old_pin, CK_ULONG old_pin_len, CK_CHAR_PTR new_pin, CK_ULONG new_pin_len) {
+  print_log(VERBOSE, "C_SetPIN: session = %x", session_handle);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_CloseAllSessions (CK_SLOT_ID slotID) {
-  print_log(VERBOSE, "C_CloseAllSessions: slot = %d", slotID);
+CK_RV C_CloseAllSessions (CK_SLOT_ID id) {
+  print_log(VERBOSE, "C_CloseAllSessions: slot = %d", id);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_GetOperationState(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pOperationState, CK_ULONG_PTR pulOperationStateLen) {
-  print_log(VERBOSE, "C_GetOperationState: session = %x, len = %d", hSession, pulOperationStateLen);
+CK_RV C_GetOperationState(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR state, CK_ULONG_PTR state_len) {
+  print_log(VERBOSE, "C_GetOperationState: session = %x, len = %d", session_handle, state_len);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_SetOperationState(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pOperationState, CK_ULONG ulOperationStateLen, CK_OBJECT_HANDLE hEncryptionKey, CK_OBJECT_HANDLE hAuthenticationKey) {
-  print_log(VERBOSE, "C_SetOperationState: session = %x, len = %d, enc_key = %x, auth_key = %x", hSession, ulOperationStateLen, hEncryptionKey, hAuthenticationKey);
+CK_RV C_SetOperationState(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR state, CK_ULONG state_len, CK_OBJECT_HANDLE enc_key, CK_OBJECT_HANDLE auth_key) {
+  print_log(VERBOSE, "C_SetOperationState: session = %x, len = %d, enc_key = %x, auth_key = %x", session_handle, state_len, enc_key, auth_key);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_Login(CK_SESSION_HANDLE hSession, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pPin, CK_ULONG ulPinLen) {
-  print_log(VERBOSE, "C_Login: session = %x", hSession);
-  return CKR_FUNCTION_NOT_SUPPORTED;
+CK_RV C_Login(CK_SESSION_HANDLE session_handle, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pin, CK_ULONG pin_len) {
+  print_log(VERBOSE, "C_Login: session = %x", session_handle);
+
+  if (userType != CKU_USER)
+    return CKR_USER_TYPE_INVALID;
+
+  struct session* session = get_session(session_handle);
+  session->password = strndup(pin, pin_len);
+
+  return CKR_OK;
 }
 
-CK_RV C_Logout(CK_SESSION_HANDLE hSession) {
-  print_log(VERBOSE, "C_Logout: session = %x", hSession);
-  return CKR_FUNCTION_NOT_SUPPORTED;
+CK_RV C_Logout(CK_SESSION_HANDLE session_handle) {
+  print_log(VERBOSE, "C_Logout: session = %x", session_handle);
+
+  struct session* session = get_session(session_handle);
+  if (session->password) {
+    free(session->password);
+    session->password = NULL;
+  }
+
+  return CKR_OK;
 }
 
-CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_OBJECT_HANDLE_PTR phObject) {
-  print_log(VERBOSE, "C_CreateObject: session = %x, count = %d", hSession, ulCount);
+CK_RV C_CreateObject(CK_SESSION_HANDLE session_handle, CK_ATTRIBUTE_PTR template, CK_ULONG count, CK_OBJECT_HANDLE_PTR object) {
+  print_log(VERBOSE, "C_CreateObject: session = %x, count = %d", session_handle, count);
   
-  if (get_session(hSession)->have_write == false) {
+  if (get_session(session_handle)->have_write == false) {
     return CKR_SESSION_READ_ONLY;
   }
 
-  *phObject = CK_INVALID_HANDLE;
+  *object = CK_INVALID_HANDLE;
   
   void *id = NULL, *label = NULL, *value = NULL;
   size_t id_len = 0, label_len = 0, value_len = 0;
 
-  for (CK_ULONG i = 0; i < ulCount; ++i) {
-    switch (pTemplate[i].type) {
+  for (CK_ULONG i = 0; i < count; ++i) {
+    switch (template[i].type) {
       case CKA_CLASS:
-        if (pTemplate[i].ulValueLen == sizeof(CK_OBJECT_CLASS)) {
-          CK_OBJECT_CLASS objClass = *(CK_OBJECT_CLASS_PTR)pTemplate[i].pValue;
+        if (template[i].ulValueLen == sizeof(CK_OBJECT_CLASS)) {
+          CK_OBJECT_CLASS objClass = *(CK_OBJECT_CLASS_PTR)template[i].pValue;
           if (objClass != CKO_CERTIFICATE) {
             /* Currently only Certificates are supported! */
             return CKR_GENERAL_ERROR;  
@@ -511,8 +541,8 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
         }
         break;
       case CKA_CERTIFICATE_TYPE:
-        if (pTemplate[i].ulValueLen == sizeof(CK_CERTIFICATE_TYPE)) {
-          CK_CERTIFICATE_TYPE certType = *(CK_CERTIFICATE_TYPE*)pTemplate[i].pValue;
+        if (template[i].ulValueLen == sizeof(CK_CERTIFICATE_TYPE)) {
+          CK_CERTIFICATE_TYPE certType = *(CK_CERTIFICATE_TYPE*)template[i].pValue;
           if (certType != CKC_X_509) {
             /* Currently only X509 type is supported! */
             return CKR_GENERAL_ERROR;
@@ -521,20 +551,20 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
         break;
       case CKA_ID:
         {
-          id = (void*)pTemplate[i].pValue;
-          id_len = (size_t)pTemplate[i].ulValueLen;    
+          id = (void*)template[i].pValue;
+          id_len = (size_t)template[i].ulValueLen;    
         }
         break;
       case CKA_LABEL:
         {
-          label = (void*)pTemplate[i].pValue;
-          label_len = (size_t)pTemplate[i].ulValueLen;    
+          label = (void*)template[i].pValue;
+          label_len = (size_t)template[i].ulValueLen;    
         }
         break;
       case CKA_VALUE:
         {
-          value = (void*)pTemplate[i].pValue;
-          value_len = (size_t)pTemplate[i].ulValueLen;
+          value = (void*)template[i].pValue;
+          value_len = (size_t)template[i].ulValueLen;
         }
         break;
       default:
@@ -543,12 +573,12 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
   }
 
   if (id && value) {
-    pObject object = certificate_create(pk11_token.objects, &pk11_config, id, id_len, label, label_len, value, value_len);
-    if (!object) {
+    pObject newobject = certificate_create(session->objects, &pk11_config, id, id_len, label, label_len, value, value_len);
+    if (!newobject) {
       print_log(VERBOSE, "C_CreateObject: ERROR - Cannot create object");
       return CKR_GENERAL_ERROR;  
     }
-    *phObject = (CK_OBJECT_HANDLE)object;
+    *object = (CK_OBJECT_HANDLE)newobject;
   }
   else {
     print_log(VERBOSE, "C_CreateObject: ERROR - Bad template!");
@@ -558,37 +588,38 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE hSession, CK_ATTRIBUTE_PTR pTemplate, CK_
   return CKR_OK;
 }
 
-CK_RV C_CopyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_OBJECT_HANDLE_PTR phNewObject) {
-  print_log(VERBOSE, "C_CopyObject: session = %x, object = %x, count = %d", hSession, hObject, ulCount);
-  pObject object = (pObject) hObject;
+
+CK_RV C_CopyObject(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE object_handle, CK_ATTRIBUTE_PTR template, CK_ULONG count, CK_OBJECT_HANDLE_PTR new_object) {
+  print_log(VERBOSE, "C_CopyObject: session = %x, object = %x, count = %d", session_handle, object_handle, count);
+  pObject object = (pObject) object_handle;
   pObject newobject = object_copy(object);
   if (newobject == NULL) {
     return CKR_GENERAL_ERROR;
   }
 
-  for (int i = 0; i < ulCount; i++) {
-    object_attr_set(newobject, pTemplate[i].type, pTemplate[i].pValue, pTemplate[i].ulValueLen);
+  for (int i = 0; i < count; i++) {
+    object_attr_set(newobject, template[i].type, template[i].pValue, template[i].ulValueLen);
   }
 
   //Add object to list
-  object_add(pk11_token.objects, newobject);
+  object_add(session->objects, newobject);
 
-  *phNewObject = (CK_OBJECT_HANDLE)newobject;
+  *new_object = (CK_OBJECT_HANDLE)newobject;
 
   return CKR_OK;
 }
 
-CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject) {
-  print_log(VERBOSE, "C_DestroyObject: session = %x, object = %x", hSession, hObject);
-  pObject object = (pObject) hObject;    
+CK_RV C_DestroyObject(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE object_handle) {
+  print_log(VERBOSE, "C_DestroyObject: session = %x, object = %x", session_handle, object_handle);
+  pObject object = (pObject) object_handle;    
 
-  if (get_session(hSession)->have_write == false) {
+  if (get_session(session_handle)->have_write == false) {
     return CKR_SESSION_READ_ONLY;
   }
 
   if (object) {
     if (!object->is_copy && !object->is_certificate && object->tpm_handle) {
-      TPM2_RC ret = tpm_evict_control(pk11_token.sapi_context, object->tpm_handle);
+      TPM2_RC ret = tpm_evict_control(session->context, object->tpm_handle);
       object_delete(object, &pk11_config); 
       if (ret != TPM2_RC_SUCCESS) {
         return CKR_GENERAL_ERROR;
@@ -606,29 +637,29 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject) {
     return CKR_GENERAL_ERROR;  
   }
 
-  object_remove(&pk11_token.objects, object);
+  object_remove(&session->objects, object);
 
   free(object);
 
   return CKR_OK;
 }
 
-CK_RV C_GetObjectSize(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject, CK_ULONG_PTR pulSize) {
-  print_log(VERBOSE, "C_GetObjectSize: session = %x, object = %x", hSession, hObject);
+CK_RV C_GetObjectSize(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE object_handle, CK_ULONG_PTR size) {
+  print_log(VERBOSE, "C_GetObjectSize: session = %x, object = %x", session_handle, object_handle);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_EncryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hObject) {
-  print_log(VERBOSE, "C_EncryptInit: session = %x, object = %x", hSession, hObject);
-  pObject object = (pObject) hObject;
-  get_session(hSession)->handle = object->tpm_handle;
+CK_RV C_EncryptInit(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism, CK_OBJECT_HANDLE object_handle) {
+  print_log(VERBOSE, "C_EncryptInit: session = %x, object = %x", session_handle, object_handle);
+  pObject object = (pObject) object_handle;
+  get_session(session_handle)->handle = object->tpm_handle;
 
-  switch(pMechanism->mechanism) {
+  switch(mechanism->mechanism) {
     case CKM_RSA_X_509:
-      get_session(hSession)->mechanism = CKM_RSA_X_509;
+      get_session(session_handle)->mechanism = CKM_RSA_X_509;
       break;
     case CKM_RSA_PKCS:
-      get_session(hSession)->mechanism = CKM_RSA_PKCS;
+      get_session(session_handle)->mechanism = CKM_RSA_PKCS;
       break;
     default:
       return CKR_MECHANISM_INVALID;
@@ -637,98 +668,98 @@ CK_RV C_EncryptInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_
   return CKR_OK;
 }
 
-CK_RV C_Encrypt(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen) {
-  print_log(VERBOSE, "C_Encrypt: session = %x, len = %x", hSession, ulDataLen);
+CK_RV C_Encrypt(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR data, CK_ULONG data_len, CK_BYTE_PTR enc_data, CK_ULONG_PTR enc_data_len) {
+  print_log(VERBOSE, "C_Encrypt: session = %x, len = %x", session_handle, data_len);
   TPM2B_PUBLIC_KEY_RSA message = { .size = TPM2_MAX_RSA_KEY_BYTES };
-  struct session* session = get_session(hSession);
+  struct session* session = get_session(session_handle);
 
-  TPM2_RC ret = tpm_rsa_encrypt(pk11_token.sapi_context, session->handle, pData, ulDataLen, &message);
+  TPM2_RC ret = tpm_rsa_encrypt(session->context, session->handle, data, data_len, &message);
   
-  retmem(pEncryptedData, (size_t*)pulEncryptedDataLen, message.buffer, message.size);
+  retmem(enc_data, (size_t*)enc_data_len, message.buffer, message.size);
 
   return ret == TPM2_RC_SUCCESS ? CKR_OK : CKR_GENERAL_ERROR;
 }
 
-CK_RV C_EncryptUpdate(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen) {
-  print_log(VERBOSE, "C_EncryptUpdate: session = %x, len = %x", hSession, ulDataLen);
+CK_RV C_EncryptUpdate(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR data, CK_ULONG data_len, CK_BYTE_PTR enc_data, CK_ULONG_PTR enc_data_len) {
+  print_log(VERBOSE, "C_EncryptUpdate: session = %x, len = %x", session_handle, data_len);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_EncryptFinal(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pEncryptedData, CK_ULONG_PTR pulEncryptedDataLen) {
-  print_log(VERBOSE, "C_EncryptFinal: session = %x", hSession);
+CK_RV C_EncryptFinal(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR enc_data, CK_ULONG_PTR enc_data_len) {
+  print_log(VERBOSE, "C_EncryptFinal: session = %x", session_handle);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_DecryptUpdate(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pEncryptedData, CK_ULONG ulEncryptedDataLen, CK_BYTE_PTR pData, CK_ULONG_PTR pDataLen) {
-  print_log(VERBOSE, "C_DecryptUpdate: session = %x, len = %x", hSession, ulEncryptedDataLen);
+CK_RV C_DecryptUpdate(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR enc_data, CK_ULONG enc_data_len, CK_BYTE_PTR data, CK_ULONG_PTR data_len) {
+  print_log(VERBOSE, "C_DecryptUpdate: session = %x, len = %x", session_handle, enc_data_len);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_DecryptFinal(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG_PTR pDataLen) {
-  print_log(VERBOSE, "C_DecryptFinal: session = %x", hSession);
+CK_RV C_DecryptFinal(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR data, CK_ULONG_PTR data_len) {
+  print_log(VERBOSE, "C_DecryptFinal: session = %x", session_handle);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_DigestInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism) {
-  print_log(VERBOSE, "C_DigestInit: session = %x", hSession);
+CK_RV C_DigestInit(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism) {
+  print_log(VERBOSE, "C_DigestInit: session = %x", session_handle);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_Digest(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pDigest, CK_ULONG_PTR pulDigestLen) {
-  print_log(VERBOSE, "C_Digest: session = %x, len = %x", hSession, ulDataLen);
+CK_RV C_Digest(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR data, CK_ULONG data_len, CK_BYTE_PTR digest, CK_ULONG_PTR digest_len) {
+  print_log(VERBOSE, "C_Digest: session = %x, len = %x", session_handle, data_len);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_DigestUpdate(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pPart, CK_ULONG ulPartLen) {
-  print_log(VERBOSE, "C_DigestUpdate: session = %x, len = %x", hSession, ulPartLen);
+CK_RV C_DigestUpdate(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR part, CK_ULONG part_len) {
+  print_log(VERBOSE, "C_DigestUpdate: session = %x, len = %x", session_handle, part_len);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_DigestKey(CK_SESSION_HANDLE hSession, CK_OBJECT_HANDLE hObject) {
-  print_log(VERBOSE, "C_DigestKey: session = %x, object = %x", hSession, hObject);
+CK_RV C_DigestKey(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE object) {
+  print_log(VERBOSE, "C_DigestKey: session = %x, object = %x", session_handle, object);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_DigestFinal(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pDigest, CK_ULONG_PTR pulDigestLen) {
-  print_log(VERBOSE, "C_DigestFinal: session = %x", hSession);
+CK_RV C_DigestFinal(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR digest, CK_ULONG_PTR digest_len) {
+  print_log(VERBOSE, "C_DigestFinal: session = %x", session_handle);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_SignUpdate(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pPart, CK_ULONG ulPartLen) {
-  print_log(VERBOSE, "C_SignUpdate: session = %x, len = %x", hSession, ulPartLen);
+CK_RV C_SignUpdate(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR part, CK_ULONG part_len) {
+  print_log(VERBOSE, "C_SignUpdate: session = %x, len = %x", session_handle, part_len);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_SignFinal(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen) {
-  print_log(VERBOSE, "C_SignFinal: session = %x", hSession);
+CK_RV C_SignFinal(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR signature, CK_ULONG_PTR signature_len) {
+  print_log(VERBOSE, "C_SignFinal: session = %x", session_handle);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_SignRecoverInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey) {
-  print_log(VERBOSE, "C_SignRecoverInit: session = %x, key = %x", hSession, hKey);
+CK_RV C_SignRecoverInit(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism, CK_OBJECT_HANDLE key) {
+  print_log(VERBOSE, "C_SignRecoverInit: session = %x, key = %x", session_handle, key);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_SignRecover(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG_PTR pulSignatureLen) {
-  print_log(VERBOSE, "C_SignRecover: session = %x, len = %d", hSession, ulDataLen);
+CK_RV C_SignRecover(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR data, CK_ULONG data_len, CK_BYTE_PTR signature, CK_ULONG_PTR signature_len) {
+  print_log(VERBOSE, "C_SignRecover: session = %x, len = %d", session_handle, data_len);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey) {
-  print_log(VERBOSE, "C_VerifyInit: session = %x, key = %x", hSession, hKey);
-  pObject object = (pObject) hKey;
-  get_session(hSession)->handle = object->tpm_handle;
-  get_session(hSession)->current_object = object;
+CK_RV C_VerifyInit(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism, CK_OBJECT_HANDLE key) {
+  print_log(VERBOSE, "C_VerifyInit: session = %x, key = %x", session_handle, hKey);
+  pObject object = (pObject) key;
+  get_session(session_handle)->handle = object->tpm_handle;
+  get_session(session_handle)->current_object = object;
 
-  switch(pMechanism->mechanism) {
+  switch(mechanism->mechanism) {
     case CKM_RSA_X_509:
-      get_session(hSession)->mechanism = CKM_RSA_X_509;
+      get_session(session_handle)->mechanism = CKM_RSA_X_509;
       break;
     case CKM_RSA_PKCS:
-      get_session(hSession)->mechanism = CKM_RSA_PKCS;
+      get_session(session_handle)->mechanism = CKM_RSA_PKCS;
       break;
     case CKM_ECDSA:
-      get_session(hSession)->mechanism = CKM_ECDSA;
+      get_session(session_handle)->mechanism = CKM_ECDSA;
       break;
     default:
       return CKR_MECHANISM_INVALID;
@@ -737,95 +768,95 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_O
   return CKR_OK;
 }
 
-CK_RV C_Verify(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pData, CK_ULONG ulDataLen, CK_BYTE_PTR pSignature, CK_ULONG ulSignatureLen) {
-  print_log(VERBOSE, "C_Verify: session = %x, len = %d", hSession, ulDataLen);
-  struct session* session = get_session(hSession);
+CK_RV C_Verify(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR data, CK_ULONG data_len, CK_BYTE_PTR signature, CK_ULONG signature_len) {
+  print_log(VERBOSE, "C_Verify: session = %x, len = %d", session_handle, ulDataLen);
+  struct session* session = get_session(session_handle);
   TPMT_SIGNATURE sign = {0};
   TPM2_RC rc;
   
   if (session->mechanism == CKM_RSA_PKCS) {
-    memcpy(sign.signature.rsassa.sig.buffer, pSignature, (size_t)ulSignatureLen);
-    sign.signature.rsassa.sig.size = ulSignatureLen;
+    memcpy(sign.signature.rsassa.sig.buffer, signature, (size_t)signature_len);
+    sign.signature.rsassa.sig.size = signature_len;
   }
   else if (session->mechanism == CKM_ECDSA) {
-    memcpy(sign.signature.ecdsa.signatureR.buffer, pSignature, (size_t)ulSignatureLen/2);
-    sign.signature.ecdsa.signatureR.size = ulSignatureLen/2;
-    memcpy(sign.signature.ecdsa.signatureS.buffer, pSignature + sign.signature.ecdsa.signatureR.size, (size_t)ulSignatureLen/2);
-    sign.signature.ecdsa.signatureS.size = ulSignatureLen/2;  
+    memcpy(sign.signature.ecdsa.signatureR.buffer, signature, (size_t)signature_len/2);
+    sign.signature.ecdsa.signatureR.size = signature_len/2;
+    memcpy(sign.signature.ecdsa.signatureS.buffer, signature + sign.signature.ecdsa.signatureR.size, (size_t)signature_len/2);
+    sign.signature.ecdsa.signatureS.size = signature_len/2;  
   }
   else {
     return CKR_GENERAL_ERROR;  
   }
 
-  rc = tpm_verify(pk11_token.sapi_context, session->handle, &sign, pData, ulDataLen);
+  rc = tpm_verify(session->context, session->handle, &sign, data, data_len);
 
   return rc == TPM2_RC_SUCCESS ? CKR_OK : CKR_SIGNATURE_INVALID;
 }
 
-CK_RV C_VerifyUpdate(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pPart, CK_ULONG ulPartLen) {
-  print_log(VERBOSE, "C_VerifyUpdate: session = %x, len = %d", hSession, ulPartLen);
+CK_RV C_VerifyUpdate(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR part, CK_ULONG part_len) {
+  print_log(VERBOSE, "C_VerifyUpdate: session = %x, len = %d", session_handle, part_len);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_VerifyFinal(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pSignature, CK_ULONG ulSignatureLen) {
-  print_log(VERBOSE, "C_VerifyFinal: session = %x", hSession);
+CK_RV C_VerifyFinal(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR signature, CK_ULONG signature_len) {
+  print_log(VERBOSE, "C_VerifyFinal: session = %x", session_handle);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_VerifyRecoverInit(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hKey) {
-  print_log(VERBOSE, "C_VerifyRecoverInit: session = %x, key = %x", hSession, hKey);
+CK_RV C_VerifyRecoverInit(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism, CK_OBJECT_HANDLE key) {
+  print_log(VERBOSE, "C_VerifyRecoverInit: session = %x, key = %x", session_handle, key);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_VerifyRecover(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pSignature, CK_ULONG ulSignatureLen, CK_BYTE_PTR pData, CK_ULONG_PTR pulDataLen) {
-  print_log(VERBOSE, "C_VerifyRecover: session = %x, len = %d", hSession, ulSignatureLen);
+CK_RV C_VerifyRecover(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR signature, CK_ULONG signature_len, CK_BYTE_PTR data, CK_ULONG_PTR data_len) {
+  print_log(VERBOSE, "C_VerifyRecover: session = %x, len = %d", session_handle, signature_len);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_DigestEncryptUpdate(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pPart, CK_ULONG ulPartLen, CK_BYTE_PTR pEncryptedPart, CK_ULONG_PTR pulEncryptedPartLen) {
-  print_log(VERBOSE, "C_DigestEncryptUpdate: session = %x, len = %d", hSession, ulPartLen);
+CK_RV C_DigestEncryptUpdate(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR part, CK_ULONG part_len, CK_BYTE_PTR enc_part, CK_ULONG_PTR enc_part_len) {
+  print_log(VERBOSE, "C_DigestEncryptUpdate: session = %x, len = %d", session_handle, part_len);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_DecryptDigestUpdate(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pPart, CK_ULONG ulPartLen, CK_BYTE_PTR pDecryptedPart, CK_ULONG_PTR pulDecryptedPartLen) {
-  print_log(VERBOSE, "C_DigestEncryptUpdate: session = %x, len = %d", hSession, ulPartLen);
+CK_RV C_DecryptDigestUpdate(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR part, CK_ULONG part_len, CK_BYTE_PTR dec_part, CK_ULONG_PTR dec_part_len) {
+  print_log(VERBOSE, "C_DigestEncryptUpdate: session = %x, len = %d", session_handle, part_len);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_SignEncryptUpdate(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pPart, CK_ULONG ulPartLen, CK_BYTE_PTR pEncryptedPart, CK_ULONG_PTR pulEncryptedPartLen) {
-  print_log(VERBOSE, "C_DigestEncryptUpdate: session = %x, len = %d", hSession, ulPartLen);
+CK_RV C_SignEncryptUpdate(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR part, CK_ULONG part_len, CK_BYTE_PTR enc_part, CK_ULONG_PTR enc_part_len) {
+  print_log(VERBOSE, "C_DigestEncryptUpdate: session = %x, len = %d", session_handle, part_len);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_DecryptVerifyUpdate(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pEncryptedPart, CK_ULONG ulEncryptedPartLen, CK_BYTE_PTR pPart, CK_ULONG_PTR pulPartLen) {
-  print_log(VERBOSE, "C_DigestEncryptUpdate: session = %x, len = %d", hSession, ulEncryptedPartLen);
+CK_RV C_DecryptVerifyUpdate(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR enc_part, CK_ULONG enc_part_len, CK_BYTE_PTR part, CK_ULONG_PTR part_len) {
+  print_log(VERBOSE, "C_DigestEncryptUpdate: session = %x, len = %d", session_handle, enc_part_len);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_GenerateKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_OBJECT_HANDLE_PTR phKey) {
-  print_log(VERBOSE, "C_GenerateKey: session = %x, count = %d", hSession, ulCount);
+CK_RV C_GenerateKey(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism, CK_ATTRIBUTE_PTR template, CK_ULONG count, CK_OBJECT_HANDLE_PTR key) {
+  print_log(VERBOSE, "C_GenerateKey: session = %x, count = %d", session_handle, count);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_ATTRIBUTE_PTR pPublicKeyTemplate, CK_ULONG ulPublicKeyAttributeCount, CK_ATTRIBUTE_PTR pPrivateKeyTemplate, CK_ULONG ulPrivateKeyAttributeCount, CK_OBJECT_HANDLE_PTR phPublicKey, CK_OBJECT_HANDLE_PTR phPrivateKey) {
-  print_log(VERBOSE, "C_GenerateKeyPair: session = %x, public_count = %d, private_count = %d", hSession, ulPublicKeyAttributeCount, ulPrivateKeyAttributeCount);
-  struct session* session = get_session(hSession);
+CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism, CK_ATTRIBUTE_PTR public_key_template, CK_ULONG public_key_attr_count, CK_ATTRIBUTE_PTR private_key_template, CK_ULONG private_key_attr_count, CK_OBJECT_HANDLE_PTR public_key, CK_OBJECT_HANDLE_PTR private_key) {
+  print_log(VERBOSE, "C_GenerateKeyPair: session = %x, public_count = %d, private_count = %d", session_handle, ulPublicKeyAttributeCount, private_key_attr_count);
+  struct session* session = get_session(session_handle);
   TPM2_ALG_ID algorithm_type;
 
-  if (pMechanism == NULL_PTR) return CKR_ARGUMENTS_BAD;
-  if (phPublicKey == NULL_PTR) return CKR_ARGUMENTS_BAD;
-  if (phPrivateKey == NULL_PTR) return CKR_ARGUMENTS_BAD;
+  if (mechanism == NULL_PTR) return CKR_ARGUMENTS_BAD;
+  if (public_key == NULL_PTR) return CKR_ARGUMENTS_BAD;
+  if (private_key == NULL_PTR) return CKR_ARGUMENTS_BAD;
 
-  if (get_session(hSession)->have_write == false) {
+  if (get_session(session_handle)->have_write == false) {
     return CKR_SESSION_READ_ONLY;
   }
 
-  *phPublicKey = CK_INVALID_HANDLE;
-  *phPrivateKey = CK_INVALID_HANDLE;
+  *public_key = CK_INVALID_HANDLE;
+  *private_key = CK_INVALID_HANDLE;
 
   // Check the mechanism, only accept RSA, EC key pair generation.
   CK_KEY_TYPE keyType;
-  switch (pMechanism->mechanism) {
+  switch (mechanism->mechanism) {
     case CKM_RSA_PKCS_KEY_PAIR_GEN:
       keyType = CKK_RSA;
       algorithm_type = TPM2_ALG_RSA;
@@ -845,14 +876,14 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
   CK_BBOOL ispublicKeyToken = CK_FALSE;
   CK_BBOOL ispublicKeyPrivate = CK_FALSE;
   bool isPublicKeyImplicit = true;
-  extractObjectInformation(pPublicKeyTemplate, ulPublicKeyAttributeCount, &publicKeyClass, &keyType, &dummy, &ispublicKeyToken, &ispublicKeyPrivate, isPublicKeyImplicit);
+  extractObjectInformation(public_key_template, public_key_attr_count, &publicKeyClass, &keyType, &dummy, &ispublicKeyToken, &ispublicKeyPrivate, isPublicKeyImplicit);
 
   // Report errors caused by accidental template mix-ups in the application using this lib.
   if (publicKeyClass != CKO_PUBLIC_KEY)
     return CKR_ATTRIBUTE_VALUE_INVALID;
-  if (pMechanism->mechanism == CKM_RSA_PKCS_KEY_PAIR_GEN && keyType != CKK_RSA)
+  if (mechanism->mechanism == CKM_RSA_PKCS_KEY_PAIR_GEN && keyType != CKK_RSA)
     return CKR_TEMPLATE_INCONSISTENT;
-  if (pMechanism->mechanism == CKM_EC_KEY_PAIR_GEN && keyType != CKK_EC)
+  if (mechanism->mechanism == CKM_EC_KEY_PAIR_GEN && keyType != CKK_EC)
     return CKR_TEMPLATE_INCONSISTENT;
 
   // Extract information from the private key template that is needed to create the object.
@@ -860,7 +891,7 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
   CK_BBOOL isprivateKeyToken = CK_FALSE;
   CK_BBOOL isprivateKeyPrivate = CK_TRUE;
   bool isPrivateKeyImplicit = true;
-  extractObjectInformation(pPrivateKeyTemplate, ulPrivateKeyAttributeCount, &privateKeyClass, &keyType, &dummy, &isprivateKeyToken, &isprivateKeyPrivate, isPrivateKeyImplicit);
+  extractObjectInformation(private_key_template, private_key_attr_count, &privateKeyClass, &keyType, &dummy, &isprivateKeyToken, &isprivateKeyPrivate, isPrivateKeyImplicit);
 
   // Report errors caused by accidental template mix-ups in the application using this lib.
   if (privateKeyClass != CKO_PRIVATE_KEY)
@@ -870,67 +901,67 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism,
   if (pMechanism->mechanism == CKM_EC_KEY_PAIR_GEN && keyType != CKK_EC)
     return CKR_TEMPLATE_INCONSISTENT;
 
-  pObject object = object_generate_pair(pk11_token.sapi_context, algorithm_type, pk11_token.objects, &pk11_config);
+  pObject object = object_generate_pair(session->context, algorithm_type, session->objects, &pk11_config);
   if (object == NULL) {
     return CKR_FUNCTION_FAILED; 
   }
   //Add object to list
-  object_add(pk11_token.objects, object);
-  *phPublicKey = (CK_OBJECT_HANDLE)object;
-  object_add(pk11_token.objects, object->opposite);
-  *phPrivateKey = (CK_OBJECT_HANDLE)object->opposite;
+  object_add(session->objects, object);
+  *public_key = (CK_OBJECT_HANDLE)object;
+  object_add(session->objects, object->opposite);
+  *private_key = (CK_OBJECT_HANDLE)object->opposite;
 
   print_log(VERBOSE, "C_GenerateKeyPair: Finished OK");
   return CKR_OK;
 }
 
-CK_RV C_WrapKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hWrappingKey, CK_OBJECT_HANDLE hKey,  CK_BYTE_PTR pWrappedKey, CK_ULONG_PTR pulWrappedKeyLen) {
-  print_log(VERBOSE, "C_WrapKey: session = %x, wrapping_key = %x, key = %x", hSession, hWrappingKey, hKey);
+CK_RV C_WrapKey(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism, CK_OBJECT_HANDLE wrapping_key, CK_OBJECT_HANDLE key, CK_BYTE_PTR wrapped_key, CK_ULONG_PTR wrapped_key_len) {
+  print_log(VERBOSE, "C_WrapKey: session = %x, wrapping_key = %x, key = %x", session_handle, wrapping_key, key);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_UnwrapKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hUnwrappingKey, CK_BYTE_PTR pWrappedKey, CK_ULONG ulWrappedKeyLen, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_OBJECT_HANDLE_PTR phKey) {
-  print_log(VERBOSE, "C_UnwrapKey: session = %x, unwrapping_key = %x, key = %x, count = %d", hSession, hUnwrappingKey, phKey, ulCount);
+CK_RV C_UnwrapKey(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism, CK_OBJECT_HANDLE unwrapping_key, CK_BYTE_PTR wrapped_key, CK_ULONG wrapped_key_len, CK_ATTRIBUTE_PTR template, CK_ULONG count, CK_OBJECT_HANDLE_PTR key) {
+  print_log(VERBOSE, "C_UnwrapKey: session = %x, unwrapping_key = %x, key = %x, count = %d", session_handle, unwrapping_key, key, count);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_DeriveKey(CK_SESSION_HANDLE hSession, CK_MECHANISM_PTR pMechanism, CK_OBJECT_HANDLE hBaseKey, CK_ATTRIBUTE_PTR pTemplate, CK_ULONG ulCount, CK_OBJECT_HANDLE_PTR phKey) {
-  print_log(VERBOSE, "C_WrapKey: session = %x, base_key = %x, count = %d", hSession, hBaseKey, ulCount);
+CK_RV C_DeriveKey(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism, CK_OBJECT_HANDLE base_key, CK_ATTRIBUTE_PTR template, CK_ULONG count, CK_OBJECT_HANDLE_PTR key) {
+  print_log(VERBOSE, "C_WrapKey: session = %x, base_key = %x, count = %d", session_handle, base_key, count);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_SeedRandom(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pSeed, CK_ULONG ulSeedLen) {
+CK_RV C_SeedRandom(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR seed, CK_ULONG seed_len) {
   // jturnsek: N/A
-  print_log(VERBOSE, "C_SeedRandom: session = %x, len = %d", hSession, ulSeedLen);
+  print_log(VERBOSE, "C_SeedRandom: session = %x, len = %d", session_handle, seed_len);
   return CKR_OK;
 }
 
-CK_RV C_GenerateRandom(CK_SESSION_HANDLE hSession, CK_BYTE_PTR pRandomData, CK_ULONG ulRandomLen) {
-  print_log(VERBOSE, "C_GenerateRandom: session = %x, len = %d", hSession, ulRandomLen);
-  struct session* session = get_session(hSession);
+CK_RV C_GenerateRandom(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR random_data, CK_ULONG random_data_len) {
+  print_log(VERBOSE, "C_GenerateRandom: session = %x, len = %d", session_handle, random_data_len);
+  struct session* session = get_session(session_handle);
   TPM2B_DIGEST random_bytes;
 
-  TPM2_RC rval = Tss2_Sys_GetRandom(pk11_token.sapi_context, NULL, ulRandomLen, &random_bytes, NULL);
+  TPM2_RC rval = Tss2_Sys_GetRandom(session->context, NULL, random_data_len, &random_bytes, NULL);
   if (rval != TPM2_RC_SUCCESS) {
     return CKR_GENERAL_ERROR;
   }
 
-  retmem(pRandomData, (size_t*)&ulRandomLen, random_bytes.buffer, random_bytes.size);
+  retmem(random_data, (size_t*)&random_data_len, random_bytes.buffer, random_bytes.size);
 
   return CKR_OK;
 }
 
-CK_RV C_GetFunctionStatus(CK_SESSION_HANDLE hSession) {
-  print_log(VERBOSE, "C_GetFunctionStatus: session = %x", hSession);
+CK_RV C_GetFunctionStatus(CK_SESSION_HANDLE session_handle) {
+  print_log(VERBOSE, "C_GetFunctionStatus: session = %x", session_handle);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_CancelFunction(CK_SESSION_HANDLE hSession) {
-  print_log(VERBOSE, "C_CancelFunction: session = %x", hSession);
+CK_RV C_CancelFunction(CK_SESSION_HANDLE session_handle) {
+  print_log(VERBOSE, "C_CancelFunction: session = %x", session_handle);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
 
-CK_RV C_WaitForSlotEvent(CK_FLAGS flags, CK_SLOT_ID_PTR pSlot, CK_VOID_PTR pReserved) {
+CK_RV C_WaitForSlotEvent(CK_FLAGS flags, CK_SLOT_ID_PTR slot, CK_VOID_PTR reserved) {
   print_log(VERBOSE, "C_WaitForSlotEvent: flags = %x", flags);
   return CKR_FUNCTION_NOT_SUPPORTED;
 }
@@ -1007,11 +1038,10 @@ static CK_FUNCTION_LIST function_list = {
   .C_WaitForSlotEvent = C_WaitForSlotEvent,
 };
 
-CK_RV C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR ppFunctionList) {
-  print_log(VERBOSE, "C_GetFunctionList");
-  if (ppFunctionList == NULL_PTR)
+CK_RV C_GetFunctionList(CK_FUNCTION_LIST_PTR_PTR list) {
+  if (list == NULL_PTR)
     return CKR_ARGUMENTS_BAD;
 
-  *ppFunctionList = &function_list;
+  *list = &function_list;
   return CKR_OK;
 }

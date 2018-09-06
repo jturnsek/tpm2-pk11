@@ -10,3 +10,7 @@ log-level 0
 log stdout
 # Mandatory key for data storage path
 data /home/root/.tpm2
+# Set login_required in case keys are protected by a password
+# Notice currently only a single password for all keys is supported
+# Depending on the TPM settings, providing wrong passwords can lead to a lockout
+login-required false

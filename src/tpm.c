@@ -156,15 +156,15 @@ TPMI_SH_AUTH_SESSION tpm2_session_get_session_handle(tpm2_session *session) {
 }
 
 //
-// This is a wrapper function around the TPM2_StartAuthSession command.
+// This is a wrapper function around the TPM2_StartAutsession_handle command.
 // It performs the command, calculates the session key, and updates a
 // SESSION structure.
 //
-static bool start_auth_session(TSS2_SYS_CONTEXT *sapi_context, tpm2_session *session)
+static bool start_auth_session(TSS2_SYS_CONTEXT *context, tpm2_session *session)
 {
   tpm2_session_data *d = session->input;
 
-  TSS2_RC rval = Tss2_Sys_StartAuthSession(sapi_context, d->key, d->bind,
+  TSS2_RC rval = Tss2_Sys_StartAutsession_handle(context, d->key, d->bind,
                   NULL, &session->input->nonce_caller, &d->encrypted_salt,
                   d->session_type, &d->symmetric, d->authHash,
                   &session->output.session_handle, &session->internal.nonceNewer,
@@ -181,7 +181,7 @@ void tpm2_session_free(tpm2_session **session)
   *session = NULL;
 }
 
-tpm2_session *tpm2_session_new(TSS2_SYS_CONTEXT *sapi_context, tpm2_session_data *data)
+tpm2_session *tpm2_session_new(TSS2_SYS_CONTEXT *context, tpm2_session_data *data)
 {
   tpm2_session *session = calloc(1, sizeof(tpm2_session));
   if (!session) {
@@ -193,7 +193,7 @@ tpm2_session *tpm2_session_new(TSS2_SYS_CONTEXT *sapi_context, tpm2_session_data
 
   session->internal.nonceNewer.size = session->input->nonce_caller.size;
 
-  bool result = start_auth_session(sapi_context, session);
+  bool result = start_auth_session(context, session);
   if (!result) {
     tpm2_session_free(&session);
     return NULL;
@@ -306,7 +306,7 @@ static bool set_key_algorithm(TPM2B_PUBLIC *in_public)
   return true;
 }
 
-TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle_ak, TPM2_ALG_ID algorithm, TPM2B_PUBLIC *public, TPM2B_NAME *name)
+TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle_ak, TPM2_ALG_ID algorithm, TPM2B_PUBLIC *public, TPM2B_NAME *name)
 {
   TPML_PCR_SELECTION creation_pcr;
   TSS2L_SYS_AUTH_RESPONSE sessions_data_out;
@@ -355,7 +355,7 @@ TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT han
     return TPM2_RC_FAILURE;
   }
 
-  tpm2_session *session = tpm2_session_new(sapi_context, data);
+  tpm2_session *session = tpm2_session_new(context, data);
   if (!session) {
     return TPM2_RC_FAILURE;
   }
@@ -364,7 +364,7 @@ TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT han
   tpm2_session_free(&session);
 
   TPM2_RC rval = TSS2_RETRY_EXP(Tss2_Sys_PolicySecret(
-    sapi_context,
+    context,
     TPM2_RH_ENDORSEMENT,
     handle,
     &sessions_data,
@@ -384,7 +384,7 @@ TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT han
   sessions_data.auths[0].sessionAttributes |= TPMA_SESSION_CONTINUESESSION;
   sessions_data.auths[0].hmac.size = 0;
 
-  rval = TSS2_RETRY_EXP(Tss2_Sys_Create(sapi_context, ctx.handle_ek, &sessions_data,
+  rval = TSS2_RETRY_EXP(Tss2_Sys_Create(context, ctx.handle_ek, &sessions_data,
           &inSensitive, &inPublic, &outsideInfo, &creation_pcr, &out_private,
           &out_public, &creation_data, &creation_hash, &creation_ticket,
           &sessions_data_out));
@@ -393,7 +393,7 @@ TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT han
   }
   
   // Need to flush the session here.
-  rval = TSS2_RETRY_EXP(Tss2_Sys_FlushContext(sapi_context, handle));
+  rval = TSS2_RETRY_EXP(Tss2_Sys_FlushContext(context, handle));
   if (rval != TPM2_RC_SUCCESS) {
     return rval;
   }
@@ -409,7 +409,7 @@ TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT han
     return TPM2_RC_FAILURE;
   }
 
-  session = tpm2_session_new(sapi_context, data);
+  session = tpm2_session_new(context, data);
   if (!session) {
     return TPM2_RC_FAILURE;
   }
@@ -417,7 +417,7 @@ TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT han
   handle = tpm2_session_get_session_handle(session);
   tpm2_session_free(&session);
 
-  rval = TSS2_RETRY_EXP(Tss2_Sys_PolicySecret(sapi_context, TPM2_RH_ENDORSEMENT,
+  rval = TSS2_RETRY_EXP(Tss2_Sys_PolicySecret(context, TPM2_RH_ENDORSEMENT,
           handle, &sessions_data, 0, 0, 0, 0, 0, 0, 0));
   if (rval != TPM2_RC_SUCCESS) {
     return rval;
@@ -428,14 +428,14 @@ TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT han
   sessions_data.auths[0].hmac.size = 0;
 
   TPMI_DH_OBJECT loaded_key_handle;
-  rval = TSS2_RETRY_EXP(Tss2_Sys_Load(sapi_context, ctx.handle_ek, &sessions_data, &out_private,
+  rval = TSS2_RETRY_EXP(Tss2_Sys_Load(context, ctx.handle_ek, &sessions_data, &out_private,
           &out_public, &loaded_key_handle, name, &sessions_data_out));
   if (rval != TPM2_RC_SUCCESS) {
     return rval;
   }
 
   // Need to flush the session here.
-  rval = TSS2_RETRY_EXP(Tss2_Sys_FlushContext(sapi_context, handle));
+  rval = TSS2_RETRY_EXP(Tss2_Sys_FlushContext(context, handle));
   if (rval != TPM2_RC_SUCCESS) {
     return rval;
   }
@@ -446,13 +446,13 @@ TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT han
   // use the owner auth here.
   memcpy(&sessions_data.auths[0].hmac, &ctx.passwords.owner, sizeof(ctx.passwords.owner));
 
-  rval = TSS2_RETRY_EXP(Tss2_Sys_EvictControl(sapi_context, TPM2_RH_OWNER, loaded_key_handle,
+  rval = TSS2_RETRY_EXP(Tss2_Sys_EvictControl(context, TPM2_RH_OWNER, loaded_key_handle,
           &sessions_data, handle_ak, &sessions_data_out));
   if (rval != TPM2_RC_SUCCESS) {
     return rval;
   }
   
-  rval = TSS2_RETRY_EXP(Tss2_Sys_FlushContext(sapi_context, loaded_key_handle));
+  rval = TSS2_RETRY_EXP(Tss2_Sys_FlushContext(context, loaded_key_handle));
   if (rval != TPM2_RC_SUCCESS) {
     return rval;
   }
@@ -462,17 +462,17 @@ TPM2_RC tpm_generate_key_pair(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT han
   return TPM2_RC_SUCCESS;
 }
 
-TPM2_RC tpm_read_public(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, TPM2B_PUBLIC *public, TPM2B_NAME *name) {
+TPM2_RC tpm_read_public(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, TPM2B_PUBLIC *public, TPM2B_NAME *name) {
   TSS2L_SYS_AUTH_RESPONSE sessions_data_out = { .count = 1 };
 
   TPM2B_NAME qualified_name = { .size = sizeof(TPMU_NAME) };
 
-  TSS2_RC rval = TSS2_RETRY_EXP(Tss2_Sys_ReadPublic(sapi_context, handle, 0, public, name, &qualified_name, &sessions_data_out));
+  TSS2_RC rval = TSS2_RETRY_EXP(Tss2_Sys_ReadPublic(context, handle, 0, public, name, &qualified_name, &sessions_data_out));
 
   return rval;
 }
 
-TPM2_RC tpm_rsa_sign(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, unsigned char *hash, unsigned long hash_length, TPMT_SIGNATURE *signature) {
+TPM2_RC tpm_rsa_sign(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned char *hash, unsigned long hash_length, TPMT_SIGNATURE *signature) {
   TSS2L_SYS_AUTH_COMMAND sessions_data = {
     .count = 1,
     .auths[0] = { .sessionHandle = TPM2_RS_PW },
@@ -507,12 +507,12 @@ TPM2_RC tpm_rsa_sign(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, unsi
   // Remove OID from hash if provided
   memcpy(digest.buffer, hash - digestSize + hash_length, digestSize);
 
-  TSS2_RC rval = TSS2_RETRY_EXP(Tss2_Sys_Sign(sapi_context, handle, &sessions_data, &digest, &scheme, &validation, signature, &sessions_data_out));
+  TSS2_RC rval = TSS2_RETRY_EXP(Tss2_Sys_Sign(context, handle, &sessions_data, &digest, &scheme, &validation, signature, &sessions_data_out));
 
   return rval;
 }
 
-TPM2_RC tpm_ecc_sign(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, unsigned char *hash, unsigned long hash_length, TPMT_SIGNATURE *signature) {
+TPM2_RC tpm_ecc_sign(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned char *hash, unsigned long hash_length, TPMT_SIGNATURE *signature) {
   TSS2L_SYS_AUTH_COMMAND sessions_data = {
     .count = 1,
     .auths[0] = { .sessionHandle = TPM2_RS_PW },
@@ -532,12 +532,12 @@ TPM2_RC tpm_ecc_sign(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, unsi
  
   memcpy(digest.buffer, hash, TPM2_SHA256_DIGEST_SIZE);
 
-  TSS2_RC rval = TSS2_RETRY_EXP(Tss2_Sys_Sign(sapi_context, handle, &sessions_data, &digest, &scheme, &validation, signature, &sessions_data_out));
+  TSS2_RC rval = TSS2_RETRY_EXP(Tss2_Sys_Sign(context, handle, &sessions_data, &digest, &scheme, &validation, signature, &sessions_data_out));
 
   return rval;
 }
 
-TPM2_RC tpm_verify(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, TPMT_SIGNATURE *signature, unsigned char *hash, unsigned long hash_length) {
+TPM2_RC tpm_verify(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, TPMT_SIGNATURE *signature, unsigned char *hash, unsigned long hash_length) {
   TPM2B_DIGEST digest  = { .size = hash_length };
   TPMT_TK_VERIFIED validation;
 
@@ -545,12 +545,12 @@ TPM2_RC tpm_verify(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, TPMT_S
 
   memcpy(digest.buffer, hash, hash_length);
 
-  TSS2_RC rval = TSS2_RETRY_EXP(Tss2_Sys_VerifySignature(sapi_context, handle, NULL, &digest, signature, &validation, &sessions_data_out));
+  TSS2_RC rval = TSS2_RETRY_EXP(Tss2_Sys_VerifySignature(context, handle, NULL, &digest, signature, &validation, &sessions_data_out));
 
   return rval;
 }
 
-TPM2_RC tpm_rsa_decrypt(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, unsigned char *cipher_text, unsigned long cipher_length, TPM2B_PUBLIC_KEY_RSA *message) {
+TPM2_RC tpm_rsa_decrypt(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned char *cipher_text, unsigned long cipher_length, TPM2B_PUBLIC_KEY_RSA *message) {
   TSS2L_SYS_AUTH_COMMAND sessions_data = {
     .count = 1,
     .auths[0] = { .sessionHandle = TPM2_RS_PW },
@@ -566,12 +566,12 @@ TPM2_RC tpm_rsa_decrypt(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, u
   TPM2B_PUBLIC_KEY_RSA cipher = { .size = cipher_length };
   memcpy(cipher.buffer, cipher_text, cipher_length);
 
-  TSS2_RC rval = TSS2_RETRY_EXP(Tss2_Sys_RSA_Decrypt(sapi_context, handle, &sessions_data, &cipher, &scheme, &label, message, &sessions_data_out));
+  TSS2_RC rval = TSS2_RETRY_EXP(Tss2_Sys_RSA_Decrypt(context, handle, &sessions_data, &cipher, &scheme, &label, message, &sessions_data_out));
 
   return rval;
 }
 
-TPM2_RC tpm_rsa_encrypt(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, unsigned char *data, unsigned long data_length, TPM2B_PUBLIC_KEY_RSA *message) {
+TPM2_RC tpm_rsa_encrypt(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT handle, unsigned char *data, unsigned long data_length, TPM2B_PUBLIC_KEY_RSA *message) {
   TPMT_RSA_DECRYPT scheme;
   TPM2B_DATA label;
 
@@ -584,20 +584,12 @@ TPM2_RC tpm_rsa_encrypt(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT handle, u
 
   memcpy(in_data.buffer, data, data_length);
 
-  TSS2_RC rval = TSS2_RETRY_EXP(Tss2_Sys_RSA_Encrypt(sapi_context, handle, NULL, &in_data, &scheme, &label, message, &out_sessions_data));
+  TSS2_RC rval = TSS2_RETRY_EXP(Tss2_Sys_RSA_Encrypt(context, handle, NULL, &in_data, &scheme, &label, message, &out_sessions_data));
 
   return rval;
 }
 
-TPM2_RC tpm_list(TSS2_SYS_CONTEXT *sapi_context, TPMS_CAPABILITY_DATA* capability_data) {
-  TPMI_YES_NO more_data;
-
-  TSS2_RC rval = TSS2_RETRY_EXP(Tss2_Sys_GetCapability(sapi_context, 0, TPM2_CAP_HANDLES, htobe32(TPM2_HT_PERSISTENT), TPM2_PT_TPM2_HR_PERSISTENT, &more_data, capability_data, 0));
-
-  return rval;
-}
-
-TPM2_RC tpm_evict_control(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT object) {
+TPM2_RC tpm_evict_control(TSS2_SYS_CONTEXT *context, TPMI_DH_OBJECT object) {
   TSS2L_SYS_AUTH_RESPONSE sessions_data_out;
   TSS2L_SYS_AUTH_COMMAND sessions_data = {
     .count = 1, 
@@ -618,9 +610,38 @@ TPM2_RC tpm_evict_control(TSS2_SYS_CONTEXT *sapi_context, TPMI_DH_OBJECT object)
     return TPM2_RC_FAILURE;
   }
 
-  TSS2_RC rval = TSS2_RETRY_EXP(Tss2_Sys_EvictControl(sapi_context, TPM2_RH_OWNER, object,
+  TSS2_RC rval = TSS2_RETRY_EXP(Tss2_Sys_EvictControl(context, TPM2_RH_OWNER, object,
                                   &sessions_data, persist, &sessions_data_out));
 
   return rval;
 }
 
+TPM2_RC tpm_info(TSS2_SYS_CONTEXT *context, UINT32 property, TPMS_CAPABILITY_DATA* capability_data) {
+  TPMI_YES_NO more_data;
+  TPM2_CAP capability;
+  UINT32 propertyCount;
+
+  switch (property) {
+    case TPM2_HT_PERSISTENT:
+      property = htobe32(property);
+      capability = TPM2_CAP_HANDLES;
+      propertyCount = TPM2_PT_TPM2_HR_PERSISTENT;
+      break;
+    case TPM2_PT_FIXED:
+      capability = TPM2_CAP_TPM_PROPERTIES;
+      propertyCount = TPM2_MAX_TPM_PROPERTIES;
+      break;
+  }
+  
+  return Tss2_Sys_GetCapability(context, 0, capability, property, propertyCount, &more_data, capability_data, 0);
+}
+
+TPMS_TAGGED_PROPERTY* tpm_info_get(TPMS_TAGGED_PROPERTY properties[], size_t count, TPM2_PT key) {
+  for (int i = 0; i < count; i++) {
+    if (properties[i].property == key)
+      return &properties[i];
+
+  }
+
+  return NULL;
+}

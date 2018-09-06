@@ -24,6 +24,7 @@
 #include <stdarg.h>
 #include <string.h>
 #include <unistd.h>
+#include <time.h>
 
 static int log_level = NONE;
 static FILE* log_stream = NULL;
@@ -36,15 +37,20 @@ void log_init(char* filename, int level) {
     else if (strcmp(filename, "stderr") == 0)
       log_stream = stderr;
     else
-      log_stream = fopen(filename, "w");
+      log_stream = fopen(filename, "a");
   }
 }
 
 void print_log(int level, const char* format, ...) {
   if (log_stream != NULL && level <= log_level) {
+    char buffer[20];
+    time_t now = time(0);
+    struct tm* time_now = localtime(&now);
+
     va_list args;
     va_start(args, format);
-    fprintf(log_stream, "[tpm-pk11] ");
+    strftime(buffer, sizeof(buffer), "%Y-%m-%d %H:%M:%S", time_now);
+    fprintf(log_stream, "%s [tpm-pk11] ", buffer);
     vfprintf(log_stream, format, args);
     fprintf(log_stream, "\n");
     va_end(args);
