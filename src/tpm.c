@@ -167,7 +167,7 @@ static bool start_auth_session(TSS2_SYS_CONTEXT *context, tpm2_session *session)
 {
   tpm2_session_data *d = session->input;
 
-  TSS2_RC rval = Tss2_Sys_StartAutsession_handle(context, d->key, d->bind,
+  TSS2_RC rval = Tss2_Sys_StartAuthSession(context, d->key, d->bind,
                   NULL, &session->input->nonce_caller, &d->encrypted_salt,
                   d->session_type, &d->symmetric, d->authHash,
                   &session->output.session_handle, &session->internal.nonceNewer,
