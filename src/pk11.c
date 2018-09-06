@@ -30,6 +30,8 @@
 #include <sys/mman.h>
 #include <string.h>
 #include <stdio.h>
+#include <stdlib.h>
+#include <endian.h>
 
 #define SLOT_ID 0x1234
 
@@ -408,7 +410,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   if (config_load(configfile_path, &pk11_config) < 0)
     return CKR_GENERAL_ERROR;
 
-  session_init(&main_session, &pk11_config);
+  session_init(&main_session, &pk11_config, true);
   log_init(pk11_config.log_file, pk11_config.log_level);
   return CKR_OK;
 }
@@ -495,7 +497,7 @@ CK_RV C_SetOperationState(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR state, C
 
 CK_RV C_Login(CK_SESSION_HANDLE session_handle, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pin, CK_ULONG pin_len) {
   print_log(VERBOSE, "C_Login: session = %x", session_handle);
-
+  struct session* session = get_session(session_handle);
   if (userType != CKU_USER)
     return CKR_USER_TYPE_INVALID;
 
@@ -507,7 +509,6 @@ CK_RV C_Login(CK_SESSION_HANDLE session_handle, CK_USER_TYPE userType, CK_UTF8CH
 
 CK_RV C_Logout(CK_SESSION_HANDLE session_handle) {
   print_log(VERBOSE, "C_Logout: session = %x", session_handle);
-
   struct session* session = get_session(session_handle);
   if (session->password) {
     free(session->password);
@@ -519,8 +520,8 @@ CK_RV C_Logout(CK_SESSION_HANDLE session_handle) {
 
 CK_RV C_CreateObject(CK_SESSION_HANDLE session_handle, CK_ATTRIBUTE_PTR template, CK_ULONG count, CK_OBJECT_HANDLE_PTR object) {
   print_log(VERBOSE, "C_CreateObject: session = %x, count = %d", session_handle, count);
-  
-  if (get_session(session_handle)->have_write == false) {
+  struct session* session = get_session(session_handle);
+  if (session->have_write == false) {
     return CKR_SESSION_READ_ONLY;
   }
 
@@ -591,6 +592,7 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE session_handle, CK_ATTRIBUTE_PTR template
 
 CK_RV C_CopyObject(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE object_handle, CK_ATTRIBUTE_PTR template, CK_ULONG count, CK_OBJECT_HANDLE_PTR new_object) {
   print_log(VERBOSE, "C_CopyObject: session = %x, object = %x, count = %d", session_handle, object_handle, count);
+  struct session* session = get_session(session_handle);
   pObject object = (pObject) object_handle;
   pObject newobject = object_copy(object);
   if (newobject == NULL) {
@@ -611,9 +613,10 @@ CK_RV C_CopyObject(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE object_han
 
 CK_RV C_DestroyObject(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE object_handle) {
   print_log(VERBOSE, "C_DestroyObject: session = %x, object = %x", session_handle, object_handle);
+  struct session* session = get_session(session_handle);
   pObject object = (pObject) object_handle;    
 
-  if (get_session(session_handle)->have_write == false) {
+  if (session->have_write == false) {
     return CKR_SESSION_READ_ONLY;
   }
 
@@ -746,7 +749,7 @@ CK_RV C_SignRecover(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR data, CK_ULONG
 }
 
 CK_RV C_VerifyInit(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism, CK_OBJECT_HANDLE key) {
-  print_log(VERBOSE, "C_VerifyInit: session = %x, key = %x", session_handle, hKey);
+  print_log(VERBOSE, "C_VerifyInit: session = %x, key = %x", session_handle, key);
   pObject object = (pObject) key;
   get_session(session_handle)->handle = object->tpm_handle;
   get_session(session_handle)->current_object = object;
@@ -769,7 +772,7 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism,
 }
 
 CK_RV C_Verify(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR data, CK_ULONG data_len, CK_BYTE_PTR signature, CK_ULONG signature_len) {
-  print_log(VERBOSE, "C_Verify: session = %x, len = %d", session_handle, ulDataLen);
+  print_log(VERBOSE, "C_Verify: session = %x, len = %d", session_handle, data_len);
   struct session* session = get_session(session_handle);
   TPMT_SIGNATURE sign = {0};
   TPM2_RC rc;
@@ -839,7 +842,7 @@ CK_RV C_GenerateKey(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism
 }
 
 CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism, CK_ATTRIBUTE_PTR public_key_template, CK_ULONG public_key_attr_count, CK_ATTRIBUTE_PTR private_key_template, CK_ULONG private_key_attr_count, CK_OBJECT_HANDLE_PTR public_key, CK_OBJECT_HANDLE_PTR private_key) {
-  print_log(VERBOSE, "C_GenerateKeyPair: session = %x, public_count = %d, private_count = %d", session_handle, ulPublicKeyAttributeCount, private_key_attr_count);
+  print_log(VERBOSE, "C_GenerateKeyPair: session = %x, public_count = %d, private_count = %d", session_handle, public_key_attr_count, private_key_attr_count);
   struct session* session = get_session(session_handle);
   TPM2_ALG_ID algorithm_type;
 
@@ -896,9 +899,9 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mecha
   // Report errors caused by accidental template mix-ups in the application using this lib.
   if (privateKeyClass != CKO_PRIVATE_KEY)
     return CKR_ATTRIBUTE_VALUE_INVALID;
-  if (pMechanism->mechanism == CKM_RSA_PKCS_KEY_PAIR_GEN && keyType != CKK_RSA)
+  if (mechanism->mechanism == CKM_RSA_PKCS_KEY_PAIR_GEN && keyType != CKK_RSA)
     return CKR_TEMPLATE_INCONSISTENT;
-  if (pMechanism->mechanism == CKM_EC_KEY_PAIR_GEN && keyType != CKK_EC)
+  if (mechanism->mechanism == CKM_EC_KEY_PAIR_GEN && keyType != CKK_EC)
     return CKR_TEMPLATE_INCONSISTENT;
 
   pObject object = object_generate_pair(session->context, algorithm_type, session->objects, &pk11_config);

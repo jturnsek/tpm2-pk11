@@ -21,6 +21,7 @@
 #include "sessions.h"
 #include "log.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -41,7 +42,7 @@ int session_init(struct session* session, struct config *config, bool have_write
   TSS2_RC rc;
 
 #ifdef TCTI_DEVICE_ENABLED
-  TSS_COMPAT_TCTI_DEVICE_CONF device_conf;
+  char* device_conf;
 #endif // TCTI_DEVICE_ENABLED
   
   switch(config->type) {
@@ -99,7 +100,7 @@ int session_init(struct session* session, struct config *config, bool have_write
 #endif // TCTI_MSSIM_ENABLED
 #ifdef TCTI_DEVICE_ENABLED
     case TPM_TYPE_DEVICE: {
-      TSS_COMPAT_DEVICE_CONF(device_conf, config->device != NULL ? config->device : DEFAULT_DEVICE);
+      char *conf = (config->device != NULL ? config->device : DEFAULT_DEVICE);
       rc = Tss2_Tcti_Device_Init(tcti_ctx, &size, device_conf);
       break;
     }
