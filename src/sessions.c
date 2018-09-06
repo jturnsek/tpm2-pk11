@@ -24,6 +24,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <dlfcn.h>
 
 
 #define DEFAULT_DEVICE "/dev/tpm0"
@@ -31,6 +32,8 @@
 #define DEFAULT_PORT 2323
 
 unsigned int open_sessions;
+
+static void *tcti_handle;
 
 int session_init(struct session* session, struct config *config, bool have_write) {
   memset(session, 0, sizeof(struct session));
@@ -40,6 +43,7 @@ int session_init(struct session* session, struct config *config, bool have_write
   size_t size = 0;
   TSS2_TCTI_CONTEXT *tcti_ctx = NULL;
   TSS2_RC rc;
+  TSS2_RC (*init)(TSS2_TCTI_CONTEXT *, size_t *, const char *conf);
 
 #ifdef TCTI_DEVICE_ENABLED
   char* device_conf;
@@ -63,7 +67,19 @@ int session_init(struct session* session, struct config *config, bool have_write
 #endif // TCTI_DEVICE_ENABLED
 #ifdef TCTI_TABRMD_ENABLED
     case TPM_TYPE_TABRMD:
-      rc = Tss2_Tcti_Tabrmd_Init(NULL, &size, NULL);
+      tcti_handle = dlopen("libtss2-tcti-tabrmd.so.0", RTLD_LAZY);
+      if (!tcti_handle) {
+        goto cleanup;
+      }
+      init = dlsym(tcti_handle, "Tss2_Tcti_Tabrmd_Init");
+      if (!init) {
+        dlclose(tcti_handle);
+        goto cleanup; 
+      }
+      rc = init(NULL, &size, NULL);
+      if (rc != TSS2_RC_SUCCESS) {
+        dlclose(tcti_handle);
+      } 
       break;
 #endif // TCTI_TABRMD_ENABLED
     default:
@@ -107,7 +123,10 @@ int session_init(struct session* session, struct config *config, bool have_write
 #endif // TCTI_DEVICE_ENABLED
 #ifdef TCTI_TABRMD_ENABLED
     case TPM_TYPE_TABRMD:
-      rc = Tss2_Tcti_Tabrmd_Init(tcti_ctx, &size, NULL);
+      rc = init(tcti_ctx, &size, NULL);
+      if (rc != TSS2_RC_SUCCESS) {
+        dlclose(tcti_handle);
+      }
       break;
 #endif // TCTI_TABRMD_ENABLED
     default:
