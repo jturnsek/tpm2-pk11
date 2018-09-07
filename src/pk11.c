@@ -295,6 +295,7 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE obj
     size_t size = 0;
     void *value = object_attr_get(object, template[i].type, (size_t*)&size);
     if (value) {
+      print_log(DEBUG, "C_GetAttributeValue: template[i].pValue = 0x%x,template[i].ulValueLen = %d, value = 0x%x", template[i].pValue, template[i].ulValueLen, (int)value);
       retmem(template[i].pValue, (size_t*)&template[i].ulValueLen, value, size);  
     }
     else {
