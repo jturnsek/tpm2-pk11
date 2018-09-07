@@ -410,7 +410,10 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
     return CKR_GENERAL_ERROR;
   log_init(pk11_config.log_file, pk11_config.log_level);
   print_log(VERBOSE, "C_Initialize");
-  session_init(&main_session, &pk11_config, true);
+  if (session_init(&main_session, &pk11_config, true) < 0) {
+    print_log(VERBOSE, "C_Initialize: ERROR!");
+    return CKR_GENERAL_ERROR;
+  }
   return CKR_OK;
 }
 
