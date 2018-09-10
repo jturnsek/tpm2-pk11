@@ -61,7 +61,7 @@ int certificate_load_list(pObjectList list, struct config *config)
     DB_ITERATOR dbi;
     char pathname[PATH_MAX]; 
     snprintf(pathname, PATH_MAX, "%s/" TPM2_PK11_CERTS_FILE, config->data);
-    if (DB_open(&db, pathname, DB_OPEN_MODE_RDONLY, MAX_HASH_TABLE_SIZE, ID_MAX_SIZE, sizeof(UserdataCertificate)) != 0) {
+    if (DB_open(&db, pathname, DB_OPEN_MODE_RWCREAT, MAX_HASH_TABLE_SIZE, ID_MAX_SIZE, sizeof(UserdataCertificate)) != 0) {
       print_log(DEBUG, "certificate_load_list: ERROR - certificate database %s cannot be open!", pathname);
       return -1;
     }

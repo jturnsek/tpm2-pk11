@@ -495,7 +495,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
       DB db;
       char pathname[PATH_MAX]; 
       snprintf(pathname, PATH_MAX, "%s/" TPM2_PK11_KEYS_FILE, config->data);
-      if (DB_open(&db, pathname, DB_OPEN_MODE_RDONLY, MAX_HASH_TABLE_SIZE, userdata->name.size, sizeof(userdata->persistent)) != 0) {
+      if (DB_open(&db, pathname, DB_OPEN_MODE_RWCREAT, MAX_HASH_TABLE_SIZE, userdata->name.size, sizeof(userdata->persistent)) != 0) {
         print_log(DEBUG, "object_load_list: ERROR - key database %s cannot be open!", pathname);
         free(userdata);
         goto error;  
