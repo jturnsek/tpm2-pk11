@@ -53,8 +53,9 @@ struct session {
 };
 
 extern unsigned int open_sessions;
+extern pObjectList objects;
 
-int session_init(struct session* session, struct config *config, bool have_write);
-void session_close(struct session* session);
+int session_init(struct session* session, struct config *config, bool have_write, bool is_main);
+void session_close(struct session* session, bool is_main);
 
 #endif /** SESSIONS_H_ */

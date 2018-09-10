@@ -155,14 +155,14 @@ CK_RV C_OpenSession(CK_SLOT_ID id, CK_FLAGS flags, CK_VOID_PTR application, CK_N
   if ((void*) *session == NULL)
     return CKR_GENERAL_ERROR;
 
-  int ret = session_init((struct session*) *session, &pk11_config, flags & CKF_RW_SESSION ? true : false);
+  int ret = session_init((struct session*) *session, &pk11_config, flags & CKF_RW_SESSION ? true : false, false);
 
   return ret != 0 ? CKR_GENERAL_ERROR : CKR_OK;
 }
 
 CK_RV C_CloseSession(CK_SESSION_HANDLE session_handle) {
   print_log(VERBOSE, "C_CloseSession: session = %x", session_handle);
-  session_close(get_session(session_handle));
+  session_close(get_session(session_handle), false);
   free(get_session(session_handle));
   return CKR_OK;
 }
@@ -242,7 +242,7 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID id, CK_TOKEN_INFO_PTR info) {
 
 CK_RV C_Finalize(CK_VOID_PTR reserved) {
   print_log(VERBOSE, "C_Finalize");
-  session_close(&main_session);
+  session_close(&main_session, true);
   return CKR_OK;
 }
 
@@ -411,7 +411,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
     return CKR_GENERAL_ERROR;
   log_init(pk11_config.log_file, pk11_config.log_level);
   print_log(VERBOSE, "C_Initialize");
-  if (session_init(&main_session, &pk11_config, true) < 0) {
+  if (session_init(&main_session, &pk11_config, true, false) < 0) {
     print_log(VERBOSE, "C_Initialize: ERROR!");
     return CKR_GENERAL_ERROR;
   }

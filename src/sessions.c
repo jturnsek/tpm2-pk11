@@ -32,10 +32,11 @@
 #define DEFAULT_PORT 2323
 
 unsigned int open_sessions;
+pObjectList objects;
 
 static void *tcti_handle;
 
-int session_init(struct session* session, struct config *config, bool have_write) {
+int session_init(struct session* session, struct config *config, bool have_write, bool is_main) {
   memset(session, 0, sizeof(struct session));
 
   session->have_write = have_write;
@@ -146,8 +147,11 @@ int session_init(struct session* session, struct config *config, bool have_write
   
   rc = Tss2_Sys_Initialize(session->context, size, tcti_ctx, &abi_version);
 
-  session->objects = object_load_list(session->context, config);
+  if (is_main) {
+    objects = object_load_list(session->context, config);
+  }
 
+  session->objects = objects;
   open_sessions++;
    
   return 0;
@@ -162,11 +166,15 @@ int session_init(struct session* session, struct config *config, bool have_write
   return -1;
 }
 
-void session_close(struct session* session) {
-  if (session->password)
+void session_close(struct session* session, bool is_main) {
+  if (session->password) {
     free(session->password);
+  }
 
-  object_free_list(session->objects);
+  if (is_main) {
+    object_free_list(session->objects);
+  }
+
   Tss2_Sys_Finalize(session->context);
   open_sessions--;
 }
