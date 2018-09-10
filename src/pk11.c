@@ -411,7 +411,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
     return CKR_GENERAL_ERROR;
   log_init(pk11_config.log_file, pk11_config.log_level);
   print_log(VERBOSE, "C_Initialize");
-  if (session_init(&main_session, &pk11_config, true, false) < 0) {
+  if (session_init(&main_session, &pk11_config, true, true) < 0) {
     print_log(VERBOSE, "C_Initialize: ERROR!");
     return CKR_GENERAL_ERROR;
   }
