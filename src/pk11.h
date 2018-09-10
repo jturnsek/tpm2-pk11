@@ -24,7 +24,7 @@
 #include <stdint.h>
 #include <p11-kit/pkcs11.h>
 
-#define TPM2_PK11_CONFIG_DIR 	".tpm2"
+#define TPM2_PK11_CONFIG_DIR 	"tpm2"
 #define TPM2_PK11_CONFIG_FILE 	"config"
 #define TPM2_PK11_KEYS_FILE 	"keys.db"
 #define TPM2_PK11_CERTS_FILE 	"certs.db"
