@@ -149,6 +149,9 @@ int session_init(struct session* session, struct config *config, bool have_write
 
   if (is_main) {
     objects = object_load_list(session->context, config);
+    if (!objects) {
+      goto cleanup;
+    }
   }
 
   session->objects = objects;

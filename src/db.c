@@ -42,11 +42,11 @@ int DB_open(
 	db->f = fopen(path, ((mode == DB_OPEN_MODE_RWREPLACE) ? "w+b" : (((mode == DB_OPEN_MODE_RDWR) || (mode == DB_OPEN_MODE_RWCREAT)) ? "r+b" : "rb")));
 
 	if (!db->f) {
-		if (mode == DB_OPEN_MODE_RWCREAT) {
-			db->f = fopen(path, "w+b");
-		}
-		if (!db->f)
+		/* Try again with read-write-create flags */
+		db->f = fopen(path, "w+b");
+		if (!db->f) {
 			return DB_ERROR_IO;
+		}
 	}
 
 	if (fseeko(db->f, 0, SEEK_END)) {
