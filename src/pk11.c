@@ -248,7 +248,7 @@ CK_RV C_Finalize(CK_VOID_PTR reserved) {
   print_log(VERBOSE, "C_Finalize");
   setlogmask (LOG_UPTO (LOG_NOTICE));
   openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-  syslog (LOG_NOTICE, "Program stoped by User %d", getuid ());
+  syslog (LOG_NOTICE, "C_Finalize: User %d", getuid ());
   closelog ();
   session_close(&main_session, true);
   return CKR_OK;
@@ -422,7 +422,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
 
   setlogmask (LOG_UPTO (LOG_NOTICE));
   openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-  syslog (LOG_NOTICE, "Program started by User %d", getuid ());
+  syslog (LOG_NOTICE, "C_Initialize: User %d", getuid ());
   closelog ();
 
   if (session_init(&main_session, &pk11_config, true, true) < 0) {

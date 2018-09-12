@@ -25,7 +25,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dlfcn.h>
+
 #include <syslog.h>
+#include <unistd.h>
+#include <sys/types.h>
 
 
 #define DEFAULT_DEVICE "/dev/tpm0"
@@ -36,6 +39,11 @@ unsigned int open_sessions;
 pObjectList objects;
 
 int session_init(struct session* session, struct config *config, bool have_write, bool is_main) {
+  setlogmask (LOG_UPTO (LOG_NOTICE));
+  openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+  syslog (LOG_NOTICE, "session_init: User %d", getuid ());
+  closelog ();
+
   memset(session, 0, sizeof(struct session));
 
   session->have_write = have_write;
@@ -67,7 +75,7 @@ int session_init(struct session* session, struct config *config, bool have_write
 #endif // TCTI_DEVICE_ENABLED
 #ifdef TCTI_TABRMD_ENABLED
     case TPM_TYPE_TABRMD:
-      session->tcti_handle = dlopen("libtss2-tcti-tabrmd.so.0.0.0", RTLD_LAZY);
+      session->tcti_handle = dlopen("libtss2-tcti-tabrmd.so.0", RTLD_LAZY);
       setlogmask (LOG_UPTO (LOG_NOTICE));
       openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
       syslog (LOG_NOTICE, "tcti_handle=0x%x", (long)session->tcti_handle);
