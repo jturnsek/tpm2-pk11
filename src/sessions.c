@@ -25,6 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <dlfcn.h>
+#include <syslog.h>
 
 
 #define DEFAULT_DEVICE "/dev/tpm0"
@@ -69,10 +70,18 @@ int session_init(struct session* session, struct config *config, bool have_write
 #ifdef TCTI_TABRMD_ENABLED
     case TPM_TYPE_TABRMD:
       tcti_handle = dlopen("libtss2-tcti-tabrmd.so.0", RTLD_LAZY);
+      setlogmask (LOG_UPTO (LOG_NOTICE));
+      openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+      syslog (LOG_NOTICE, "tcti_handle=0x%x", (long)tcti_handle);
+      closelog ();
       if (!tcti_handle) {
         goto cleanup;
       }
       init = dlsym(tcti_handle, "Tss2_Tcti_Tabrmd_Init");
+      setlogmask (LOG_UPTO (LOG_NOTICE));
+      openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+      syslog (LOG_NOTICE, "init=0x%x", (long)init);
+      closelog ();
       if (!init) {
         dlclose(tcti_handle);
         goto cleanup; 
@@ -126,6 +135,10 @@ int session_init(struct session* session, struct config *config, bool have_write
     case TPM_TYPE_TABRMD:
       rc = init(tcti_ctx, &size, NULL);
       if (rc != TSS2_RC_SUCCESS) {
+        setlogmask (LOG_UPTO (LOG_NOTICE));
+        openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+        syslog (LOG_NOTICE, "rc=0x%x", (long)rc);
+        closelog ();
         dlclose(tcti_handle);
       }
       break;
