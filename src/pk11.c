@@ -33,6 +33,10 @@
 #include <stdlib.h>
 #include <endian.h>
 
+#include <syslog.h>
+#include <unistd.h>
+#include <sys/types.h>
+
 #define SLOT_ID 0x1234
 
 #ifndef PATH_MAX
@@ -411,6 +415,12 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
     return CKR_GENERAL_ERROR;
   log_init(pk11_config.log_file, pk11_config.log_level);
   print_log(VERBOSE, "C_Initialize");
+
+  setlogmask (LOG_UPTO (LOG_NOTICE));
+  openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+  syslog (LOG_NOTICE, "Program started by User %d", getuid ());
+  closelog ();
+
   if (session_init(&main_session, &pk11_config, true, true) < 0) {
     print_log(VERBOSE, "C_Initialize: ERROR!");
     return CKR_GENERAL_ERROR;
