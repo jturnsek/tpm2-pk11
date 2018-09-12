@@ -427,6 +427,9 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
 
   if (session_init(&main_session, &pk11_config, true, true) < 0) {
     print_log(VERBOSE, "C_Initialize: ERROR!");
+    openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+    syslog (LOG_NOTICE, "Foobar %d", getuid ());
+    closelog ();
     return CKR_GENERAL_ERROR;
   }
   return CKR_OK;
