@@ -246,6 +246,10 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID id, CK_TOKEN_INFO_PTR info) {
 
 CK_RV C_Finalize(CK_VOID_PTR reserved) {
   print_log(VERBOSE, "C_Finalize");
+  setlogmask (LOG_UPTO (LOG_NOTICE));
+  openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+  syslog (LOG_NOTICE, "Program stoped by User %d", getuid ());
+  closelog ();
   session_close(&main_session, true);
   return CKR_OK;
 }
