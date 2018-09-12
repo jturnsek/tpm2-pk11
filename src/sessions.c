@@ -67,7 +67,7 @@ int session_init(struct session* session, struct config *config, bool have_write
 #endif // TCTI_DEVICE_ENABLED
 #ifdef TCTI_TABRMD_ENABLED
     case TPM_TYPE_TABRMD:
-      session->tcti_handle = dlopen("libtss2-tcti-tabrmd.so.0", RTLD_LAZY | RTLD_GLOBAL);
+      session->tcti_handle = dlopen("libtss2-tcti-tabrmd.so.0.0.0", RTLD_LAZY);
       setlogmask (LOG_UPTO (LOG_NOTICE));
       openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
       syslog (LOG_NOTICE, "tcti_handle=0x%x", (long)session->tcti_handle);
