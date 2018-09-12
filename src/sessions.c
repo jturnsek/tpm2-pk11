@@ -34,19 +34,16 @@
 
 unsigned int open_sessions;
 pObjectList objects;
-void *tcti_handle;
-TSS2_TCTI_CONTEXT *tcti_ctx;
 
-int main_session_init(struct session* session, struct config *config, bool have_write) {
+int session_init(struct session* session, struct config *config, bool have_write, bool is_main) {
   memset(session, 0, sizeof(struct session));
 
   session->have_write = have_write;
 
   size_t size = 0;
+  TSS2_TCTI_CONTEXT *tcti_ctx = NULL;
   TSS2_RC rc;
   TSS2_RC (*init)(TSS2_TCTI_CONTEXT *, size_t *, const char *conf);
-
-  tcti_ctx = NULL;
 
 #ifdef TCTI_DEVICE_ENABLED
   char* device_conf;
@@ -70,26 +67,26 @@ int main_session_init(struct session* session, struct config *config, bool have_
 #endif // TCTI_DEVICE_ENABLED
 #ifdef TCTI_TABRMD_ENABLED
     case TPM_TYPE_TABRMD:
-      tcti_handle = dlopen("libtss2-tcti-tabrmd.so.0", RTLD_LAZY);
+      session->tcti_handle = dlopen("libtss2-tcti-tabrmd.so.0", RTLD_LAZY);
       setlogmask (LOG_UPTO (LOG_NOTICE));
       openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-      syslog (LOG_NOTICE, "tcti_handle=0x%x", (long)tcti_handle);
+      syslog (LOG_NOTICE, "tcti_handle=0x%x", (long)session->tcti_handle);
       closelog ();
-      if (!tcti_handle) {
+      if (!session->tcti_handle) {
         goto cleanup;
       }
-      init = dlsym(tcti_handle, "Tss2_Tcti_Tabrmd_Init");
+      init = dlsym(session->tcti_handle, "Tss2_Tcti_Tabrmd_Init");
       setlogmask (LOG_UPTO (LOG_NOTICE));
       openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
       syslog (LOG_NOTICE, "init=0x%x", (long)init);
       closelog ();
       if (!init) {
-        dlclose(tcti_handle);
+        dlclose(session->tcti_handle);
         goto cleanup; 
       }
       rc = init(NULL, &size, NULL);
       if (rc != TSS2_RC_SUCCESS) {
-        dlclose(tcti_handle);
+        dlclose(session->tcti_handle);
       } 
       break;
 #endif // TCTI_TABRMD_ENABLED
@@ -140,7 +137,7 @@ int main_session_init(struct session* session, struct config *config, bool have_
         openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
         syslog (LOG_NOTICE, "rc=0x%x", (long)rc);
         closelog ();
-        dlclose(tcti_handle);
+        dlclose(session->tcti_handle);
       }
       break;
 #endif // TCTI_TABRMD_ENABLED
@@ -161,9 +158,11 @@ int main_session_init(struct session* session, struct config *config, bool have_
   
   rc = Tss2_Sys_Initialize(session->context, size, tcti_ctx, &abi_version);
 
-  objects = object_load_list(session->context, config);
-  if (!objects) {
-    goto cleanup;
+  if (is_main) {
+    objects = object_load_list(session->context, config);
+    if (!objects) {
+      goto cleanup;
+    }
   }
 
   session->objects = objects;
@@ -181,63 +180,19 @@ int main_session_init(struct session* session, struct config *config, bool have_
   return -1;
 }
 
-void main_session_close(struct session* session) {
+void session_close(struct session* session, bool is_main) {
   if (session->password) {
     free(session->password);
   }
 
-  object_free_list(session->objects);
-  objects = NULL;
-
-  Tss2_Sys_Finalize(session->context);
-  open_sessions--;
-  free(session->context);
-
-  if (tcti_ctx != NULL) {
-    free(tcti_ctx);
+  if (session->tcti_handle) {
+    dlclose(session->tcti_handle);
   }
 
-  if (tcti_handle != NULL) {
-    dlclose(tcti_handle);
-  }
-}
-
-int session_init(struct session* session, struct config *config, bool have_write) {
-  memset(session, 0, sizeof(struct session));
-
-  session->have_write = have_write;
-
-  size_t size = 0;
-  TSS2_RC rc;
-
-  size = Tss2_Sys_GetContextSize(0);
-  session->context = (TSS2_SYS_CONTEXT*) calloc(1, size);
-  if (session->context == NULL)
-    goto cleanup;
-
-  TSS2_ABI_VERSION abi_version = TSS2_ABI_VERSION_CURRENT;
-  
-  rc = Tss2_Sys_Initialize(session->context, size, tcti_ctx, &abi_version);
-
-  session->objects = objects;
-  open_sessions++;
-   
-  return 0;
-
-  cleanup:
-  if (session->context != NULL)
-    free(session->context);
-
-  return -1;
-
-}
-
-void session_close(struct session* session) {
-  if (session->password) {
-    free(session->password);
+  if (is_main) {
+    object_free_list(session->objects);
   }
 
   Tss2_Sys_Finalize(session->context);
   open_sessions--;
-  free(session->context);
 }

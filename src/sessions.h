@@ -50,14 +50,13 @@ struct session {
   pObject current_object;
   CK_MECHANISM_TYPE mechanism;
   char *password;
+  void *tcti_handle;
 };
 
 extern unsigned int open_sessions;
 extern pObjectList objects;
 
-int main_session_init(struct session* session, struct config *config, bool have_write);
-void main_session_close(struct session* session);
-int session_init(struct session* session, struct config *config, bool have_write);
-void session_close(struct session* session);
+int session_init(struct session* session, struct config *config, bool have_write, bool is_main);
+void session_close(struct session* session, bool is_main);
 
 #endif /** SESSIONS_H_ */
