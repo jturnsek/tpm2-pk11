@@ -290,7 +290,10 @@ CK_RV C_Finalize(CK_VOID_PTR reserved) {
     Tss2_Tcti_Finalize(main_session.tcti_ctx);
     free(main_session.tcti_ctx);  
   }
-  dlclose(main_session.tcti_handle);
+  
+  if (main_session.tcti_handle) {
+    dlclose(main_session.tcti_handle);
+  }
 
   is_initialised = false;
 
