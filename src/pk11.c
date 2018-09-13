@@ -443,7 +443,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   if (!main_session.tcti_handle) {
     return CKR_GENERAL_ERROR;  
   }
-  init = dlsym(main_sessiontcti_handle, "Tss2_Tcti_Tabrmd_Init");
+  init = dlsym(main_session.tcti_handle, "Tss2_Tcti_Tabrmd_Init");
   if (!init) {
     dlclose(main_session.tcti_handle);
     return CKR_GENERAL_ERROR;
