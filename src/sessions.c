@@ -200,7 +200,6 @@ void session_close(struct session* session, bool is_main) {
 
   if (session->tcti_handle) {
     dlclose(session->tcti_handle);
-    dlclose(session->tcti_handle); //jturnsek: TESTING ONLY!!!
   }
 
   if (is_main) {
