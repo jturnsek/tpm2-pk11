@@ -189,6 +189,11 @@ int session_init(struct session* session, struct config *config, bool have_write
 }
 
 void session_close(struct session* session, bool is_main) {
+  setlogmask (LOG_UPTO (LOG_NOTICE));
+  openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+  syslog (LOG_NOTICE, "session_close: tcti_handle=0x%x", (long)session->tcti_handle);
+  closelog ();
+
   if (session->password) {
     free(session->password);
   }
