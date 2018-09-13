@@ -160,7 +160,7 @@ CK_RV C_OpenSession(CK_SLOT_ID id, CK_FLAGS flags, CK_VOID_PTR application, CK_N
   if ((void*) *session == NULL)
     return CKR_GENERAL_ERROR;
 
-  int ret = session_init((struct session*) *session, &pk11_config, flags & CKF_RW_SESSION ? true : false, false);
+  int ret = session_init((struct session*) *session, &pk11_config, flags & CKF_RW_SESSION ? true : false, false, main_session.tcti_ctx);
 
   return ret != 0 ? CKR_GENERAL_ERROR : CKR_OK;
 }
