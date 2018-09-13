@@ -57,7 +57,7 @@ struct session {
 extern unsigned int open_sessions;
 extern pObjectList objects;
 
-int session_init(struct session* session, struct config *config, bool have_write, bool is_main);
+int session_init(struct session* session, struct config *config, bool have_write, bool is_main, TSS2_TCTI_CONTEXT *tcti_context);
 void session_close(struct session* session, bool is_main);
 
 #endif /** SESSIONS_H_ */

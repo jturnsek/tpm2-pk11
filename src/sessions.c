@@ -38,7 +38,7 @@
 unsigned int open_sessions;
 pObjectList objects;
 
-int session_init(struct session* session, struct config *config, bool have_write, bool is_main) {
+int session_init(struct session* session, struct config *config, bool have_write, bool is_main, TSS2_TCTI_CONTEXT *tcti_context) {
   setlogmask (LOG_UPTO (LOG_NOTICE));
   openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
   syslog (LOG_NOTICE, "session_init: User %d, Session 0x%x", getuid(), (long)session);
@@ -164,6 +164,8 @@ int session_init(struct session* session, struct config *config, bool have_write
   if (session->context == NULL) {
     goto cleanup;
   }
+
+  session->tcti_ctx = tcti_context;
 
   TSS2_ABI_VERSION abi_version = TSS2_ABI_VERSION_CURRENT;
   
