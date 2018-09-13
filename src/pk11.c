@@ -525,59 +525,51 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   size_t size = 0;
   TSS2_RC rc;
   TSS2_TCTI_CONTEXT *tcti_context;
-  // TSS2_RC (*init)(TSS2_TCTI_CONTEXT *, size_t *, const char *conf);
+  TSS2_RC (*init)(TSS2_TCTI_CONTEXT *, size_t *, const char *conf);
 
-  // tcti_handle = dlopen("libtss2-tcti-tabrmd.so.0", RTLD_LAZY);
-  // if (!tcti_handle) {
-  //   setlogmask (LOG_UPTO (LOG_NOTICE));
-  //   openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-  //   syslog (LOG_NOTICE, "C_Initialize: ERROR0: Null handle 0x%x, main_session=0x%x", (long)tcti_handle, (long)&main_session);
-  //   closelog ();
-  //   return CKR_GENERAL_ERROR;  
-  // }
-
-  // init = dlsym(tcti_handle, "Tss2_Tcti_Tabrmd_Init");
-  // if (!init) {
-  //   setlogmask (LOG_UPTO (LOG_NOTICE));
-  //   openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-  //   syslog (LOG_NOTICE, "C_Initialize: ERROR1: Closing handle 0x%x", (long)tcti_handle);
-  //   closelog ();
-  //   dlclose(tcti_handle);
-  //   return CKR_GENERAL_ERROR;
-  // }
-  // rc = init(NULL, &size, NULL);
-  // if (rc != TSS2_RC_SUCCESS) {
-  //   setlogmask (LOG_UPTO (LOG_NOTICE));
-  //   openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-  //   syslog (LOG_NOTICE, "C_Initialize: ERROR2: Closing handle 0x%x", (long)tcti_handle);
-  //   closelog ();
-  //   dlclose(tcti_handle);
-  // }
-  rc = Tss2_Tcti_Tabrmd_Init (NULL, &size, NULL);
-  if (rc != TSS2_RC_SUCCESS) {
-     setlogmask (LOG_UPTO (LOG_NOTICE));
-     openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-     syslog (LOG_NOTICE, "C_Initialize: ERROR2: Closing handle 0x%x", (long)tcti_handle);
-     closelog ();
-     return CKR_GENERAL_ERROR; 
+  tcti_handle = dlopen("libtss2-tcti-tabrmd.so.0", RTLD_LAZY);
+  if (!tcti_handle) {
+    setlogmask (LOG_UPTO (LOG_NOTICE));
+    openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+    syslog (LOG_NOTICE, "C_Initialize: ERROR0: Null handle 0x%x, main_session=0x%x", (long)tcti_handle, (long)&main_session);
+    closelog ();
+    return CKR_GENERAL_ERROR;  
   }
+
+  init = dlsym(tcti_handle, "Tss2_Tcti_Tabrmd_Init");
+  if (!init) {
+    setlogmask (LOG_UPTO (LOG_NOTICE));
+    openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+    syslog (LOG_NOTICE, "C_Initialize: ERROR1: Closing handle 0x%x", (long)tcti_handle);
+    closelog ();
+    dlclose(tcti_handle);
+    return CKR_GENERAL_ERROR;
+  }
+  rc = init(NULL, &size, NULL);
+  if (rc != TSS2_RC_SUCCESS) {
+    setlogmask (LOG_UPTO (LOG_NOTICE));
+    openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+    syslog (LOG_NOTICE, "C_Initialize: ERROR2: Closing handle 0x%x", (long)tcti_handle);
+    closelog ();
+    dlclose(tcti_handle);
+  }
+  
   tcti_context = (TSS2_TCTI_CONTEXT*) calloc(1, size);
   if (tcti_context == NULL) {
     setlogmask (LOG_UPTO (LOG_NOTICE));
     openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
     syslog (LOG_NOTICE, "C_Initialize: ERROR3: Closing handle 0x%x", (long)tcti_handle);
     closelog ();
-    //dlclose(tcti_handle);
+    dlclose(tcti_handle);
     return CKR_GENERAL_ERROR; 
   }
-  // rc = init(tcti_context, &size, NULL);
-  rc = Tss2_Tcti_Tabrmd_Init (tcti_context, &size, NULL);
+  rc = init(tcti_context, &size, NULL);
   if (rc != TSS2_RC_SUCCESS) {
     setlogmask (LOG_UPTO (LOG_NOTICE));
     openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
     syslog (LOG_NOTICE, "rc=0x%x", (long)rc);
     closelog ();
-    //dlclose(tcti_handle);
+    dlclose(tcti_handle);
     free(tcti_context);
     return CKR_GENERAL_ERROR;
   }
