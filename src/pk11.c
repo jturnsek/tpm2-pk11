@@ -252,6 +252,15 @@ CK_RV C_Finalize(CK_VOID_PTR reserved) {
   syslog (LOG_NOTICE, "C_Finalize: User %d, Session 0x%x", getuid(), (long)&main_session);
   closelog ();
   session_close(&main_session, true);
+
+#if 1
+  if (main_session.tcti_ctx) {
+    Tss2_Tcti_Finalize(main_session.tcti_ctx);
+    free(main_session.tcti_ctx);  
+  }
+  dlclose(main_session.tcti_handle);
+#endif //1
+
   return CKR_OK;
 }
 
@@ -425,6 +434,40 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
   syslog (LOG_NOTICE, "C_Initialize: User %d", getuid ());
   closelog ();
+
+#if 1
+  size_t size = 0;
+  TSS2_RC rc;
+  TSS2_RC (*init)(TSS2_TCTI_CONTEXT *, size_t *, const char *conf);
+  main_session.tcti_handle = dlopen("libtss2-tcti-tabrmd.so.0", RTLD_LAZY);
+  if (!main_session.tcti_handle) {
+    return CKR_GENERAL_ERROR;  
+  }
+  init = dlsym(main_sessiontcti_handle, "Tss2_Tcti_Tabrmd_Init");
+  if (!init) {
+    dlclose(main_session.tcti_handle);
+    return CKR_GENERAL_ERROR;
+  }
+  rc = init(NULL, &size, NULL);
+  if (rc != TSS2_RC_SUCCESS) {
+    dlclose(main_session.tcti_handle);
+  }
+  main_session.tcti_ctx = (TSS2_TCTI_CONTEXT*) calloc(1, size);
+  if (main_session.tcti_ctx == NULL) {
+    dlclose(main_session.tcti_handle);
+    return CKR_GENERAL_ERROR; 
+  }
+  rc = init(main_session.tcti_ctx, &size, NULL);
+  if (rc != TSS2_RC_SUCCESS) {
+    setlogmask (LOG_UPTO (LOG_NOTICE));
+    openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+    syslog (LOG_NOTICE, "rc=0x%x", (long)rc);
+    closelog ();
+    dlclose(main_session.tcti_handle);
+    free(main_session.tcti_ctx);
+    return CKR_GENERAL_ERROR;
+  }
+#endif //1
 
   if (session_init(&main_session, &pk11_config, true, true) < 0) {
     print_log(VERBOSE, "C_Initialize: ERROR!");

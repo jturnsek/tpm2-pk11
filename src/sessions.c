@@ -49,10 +49,10 @@ int session_init(struct session* session, struct config *config, bool have_write
   session->have_write = have_write;
 
   size_t size = 0;
-  TSS2_TCTI_CONTEXT *tcti_ctx = NULL;
   TSS2_RC rc;
+
+#if 0
   TSS2_RC (*init)(TSS2_TCTI_CONTEXT *, size_t *, const char *conf);
-  void* tcti_handle;
 #ifdef TCTI_DEVICE_ENABLED
   char* device_conf;
 #endif // TCTI_DEVICE_ENABLED
@@ -75,26 +75,26 @@ int session_init(struct session* session, struct config *config, bool have_write
 #endif // TCTI_DEVICE_ENABLED
 #ifdef TCTI_TABRMD_ENABLED
     case TPM_TYPE_TABRMD:
-      tcti_handle = dlopen("libtss2-tcti-tabrmd.so.0", RTLD_LAZY);
+      session->tcti_handle = dlopen("libtss2-tcti-tabrmd.so.0", RTLD_LAZY);
       setlogmask (LOG_UPTO (LOG_NOTICE));
       openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-      syslog (LOG_NOTICE, "tcti_handle=0x%x", (long)tcti_handle);
+      syslog (LOG_NOTICE, "tcti_handle=0x%x", (long)session->tcti_handle);
       closelog ();
-      if (!tcti_handle) {
+      if (!session->tcti_handle) {
         goto cleanup;
       }
-      init = dlsym(tcti_handle, "Tss2_Tcti_Tabrmd_Init");
+      init = dlsym(session->tcti_handle, "Tss2_Tcti_Tabrmd_Init");
       setlogmask (LOG_UPTO (LOG_NOTICE));
       openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
       syslog (LOG_NOTICE, "init=0x%x", (long)init);
       closelog ();
       if (!init) {
-        dlclose(tcti_handle);
+        dlclose(session->tcti_handle);
         goto cleanup; 
       }
       rc = init(NULL, &size, NULL);
       if (rc != TSS2_RC_SUCCESS) {
-        dlclose(tcti_handle);
+        dlclose(session->tcti_handle);
       } 
       break;
 #endif // TCTI_TABRMD_ENABLED
@@ -106,8 +106,8 @@ int session_init(struct session* session, struct config *config, bool have_write
   if (rc != TSS2_RC_SUCCESS)
     goto cleanup;
 
-  tcti_ctx = (TSS2_TCTI_CONTEXT*) calloc(1, size);
-  if (tcti_ctx == NULL)
+  session->tcti_ctx = (TSS2_TCTI_CONTEXT*) calloc(1, size);
+  if (session->tcti_ctx == NULL)
     goto cleanup;
 
 #ifdef TCTI_SOCKET_ENABLED
@@ -121,32 +121,32 @@ int session_init(struct session* session, struct config *config, bool have_write
 #ifdef TCTI_SOCKET_ENABLED
     case TPM_TYPE_SOCKET:
       socket_conf = (TCTI_SOCKET_CONF) { .hostname = config->hostname != NULL ? config->hostname : DEFAULT_HOSTNAME, .port = config->port > 0 ? config->port : DEFAULT_PORT };
-      rc = InitSocketTcti(tcti_ctx, &size, &socket_conf, 0);
+      rc = InitSocketTcti(session->tcti_ctx, &size, &socket_conf, 0);
       break;
 #endif // TCTI_SOCKET_ENABLED
 #ifdef TCTI_MSSIM_ENABLED
     case TPM_TYPE_SOCKET:
       snprintf("tcp://%s:%d", sizeof(tcti_uri), config->hostname != NULL ? config->hostname : DEFAULT_HOSTNAME, config->port > 0 ? config->port : DEFAULT_PORT);
-      rc = Tss2_Tcti_Mssim_Init(tcti_ctx, &size, (const char*) &tcti_uri);
+      rc = Tss2_Tcti_Mssim_Init(session->tcti_ctx, &size, (const char*) &tcti_uri);
       break;
 #endif // TCTI_MSSIM_ENABLED
 #ifdef TCTI_DEVICE_ENABLED
     case TPM_TYPE_DEVICE: {
       char *conf = (config->device != NULL ? config->device : DEFAULT_DEVICE);
-      rc = Tss2_Tcti_Device_Init(tcti_ctx, &size, device_conf);
+      rc = Tss2_Tcti_Device_Init(session->tcti_ctx, &size, device_conf);
       break;
     }
 #endif // TCTI_DEVICE_ENABLED
 #ifdef TCTI_TABRMD_ENABLED
     case TPM_TYPE_TABRMD:
-      rc = init(tcti_ctx, &size, NULL);
+      rc = init(session->tcti_ctx, &size, NULL);
       if (rc != TSS2_RC_SUCCESS) {
         setlogmask (LOG_UPTO (LOG_NOTICE));
         openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
         syslog (LOG_NOTICE, "rc=0x%x", (long)rc);
         closelog ();
+        dlclose(session->tcti_handle);
       }
-      dlclose(tcti_handle);
       break;
 #endif // TCTI_TABRMD_ENABLED
     default:
@@ -156,7 +156,9 @@ int session_init(struct session* session, struct config *config, bool have_write
 
   if (rc != TSS2_RC_SUCCESS)
     goto cleanup;
-  
+
+#endif //0
+
   size = Tss2_Sys_GetContextSize(0);
   session->context = (TSS2_SYS_CONTEXT*) calloc(1, size);
   if (session->context == NULL)
@@ -164,7 +166,7 @@ int session_init(struct session* session, struct config *config, bool have_write
 
   TSS2_ABI_VERSION abi_version = TSS2_ABI_VERSION_CURRENT;
   
-  rc = Tss2_Sys_Initialize(session->context, size, tcti_ctx, &abi_version);
+  rc = Tss2_Sys_Initialize(session->context, size, session->tcti_ctx, &abi_version);
 
   if (is_main) {
     objects = object_load_list(session->context, config);
@@ -179,9 +181,10 @@ int session_init(struct session* session, struct config *config, bool have_write
   return 0;
 
   cleanup:
-  if (tcti_ctx != NULL)
-    free(tcti_ctx);
-
+#if 0
+  if (session->tcti_ctx != NULL)
+    free(session->tcti_ctx);
+#endif //0
   if (session->context != NULL)
     free(session->context);
 
@@ -203,5 +206,6 @@ void session_close(struct session* session, bool is_main) {
   }
 
   Tss2_Sys_Finalize(session->context);
+  free(session->context);
   open_sessions--;
 }
