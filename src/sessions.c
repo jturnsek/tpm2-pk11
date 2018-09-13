@@ -43,7 +43,9 @@ int session_init(struct session* session, struct config *config, bool have_write
   syslog (LOG_NOTICE, "session_init: User %d, Session 0x%x", getuid(), (long)session);
   closelog ();
 
-  memset(session, 0, sizeof(struct session));
+  if (!is_main) {
+    memset(session, 0, sizeof(struct session));
+  }
 
   session->have_write = have_write;
 
