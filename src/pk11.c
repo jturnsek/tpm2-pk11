@@ -290,8 +290,12 @@ CK_RV C_Finalize(CK_VOID_PTR reserved) {
     Tss2_Tcti_Finalize(main_session.tcti_ctx);
     free(main_session.tcti_ctx);  
   }
-  
+
   if (main_session.tcti_handle) {
+    setlogmask (LOG_UPTO (LOG_NOTICE));
+    openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+    syslog (LOG_NOTICE, "C_Finalize:Closing handle 0x%x", (long)main_session.tcti_handle);
+    closelog ();
     dlclose(main_session.tcti_handle);
   }
 
@@ -525,15 +529,27 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   }
   init = dlsym(main_session.tcti_handle, "Tss2_Tcti_Tabrmd_Init");
   if (!init) {
+    setlogmask (LOG_UPTO (LOG_NOTICE));
+    openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+    syslog (LOG_NOTICE, "C_Initialize: ERROR1: Closing handle 0x%x", (long)main_session.tcti_handle);
+    closelog ();
     dlclose(main_session.tcti_handle);
     return CKR_GENERAL_ERROR;
   }
   rc = init(NULL, &size, NULL);
   if (rc != TSS2_RC_SUCCESS) {
+    setlogmask (LOG_UPTO (LOG_NOTICE));
+    openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+    syslog (LOG_NOTICE, "C_Initialize: ERROR2: Closing handle 0x%x", (long)main_session.tcti_handle);
+    closelog ();
     dlclose(main_session.tcti_handle);
   }
   tcti_context = (TSS2_TCTI_CONTEXT*) calloc(1, size);
   if (tcti_context == NULL) {
+    setlogmask (LOG_UPTO (LOG_NOTICE));
+    openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+    syslog (LOG_NOTICE, "C_Initialize: ERROR3: Closing handle 0x%x", (long)main_session.tcti_handle);
+    closelog ();
     dlclose(main_session.tcti_handle);
     return CKR_GENERAL_ERROR; 
   }
