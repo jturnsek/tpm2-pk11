@@ -46,8 +46,10 @@
 
 #define get_session(x) ((struct session*) x)
 
-static struct config pk11_config = {0};
-static struct session main_session;
+
+struct config pk11_config = {0};
+struct session main_session;
+bool is_initialised = false;
 
 static CK_RV extractObjectInformation(CK_ATTRIBUTE_PTR template,
               CK_ULONG count,
@@ -134,6 +136,9 @@ static CK_RV extractObjectInformation(CK_ATTRIBUTE_PTR template,
 
 
 CK_RV C_GetInfo(CK_INFO_PTR info) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_GetInfo");
   info->cryptokiVersion.major = CRYPTOKI_VERSION_MAJOR;
   info->cryptokiVersion.minor = CRYPTOKI_VERSION_MINOR;
@@ -145,6 +150,9 @@ CK_RV C_GetInfo(CK_INFO_PTR info) {
 }
 
 CK_RV C_GetSlotList(CK_BBOOL present, CK_SLOT_ID_PTR list, CK_ULONG_PTR count) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_GetSlotList: present = %s", present ? "true" : "false");
   if (*count && list)
     *list = SLOT_ID;
@@ -155,6 +163,9 @@ CK_RV C_GetSlotList(CK_BBOOL present, CK_SLOT_ID_PTR list, CK_ULONG_PTR count) {
 }
 
 CK_RV C_OpenSession(CK_SLOT_ID id, CK_FLAGS flags, CK_VOID_PTR application, CK_NOTIFY notify, CK_SESSION_HANDLE_PTR session) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_OpenSession: id = %d, flags = %x", id, flags);
   *session = (unsigned long) malloc(sizeof(struct session));
   if ((void*) *session == NULL)
@@ -166,6 +177,9 @@ CK_RV C_OpenSession(CK_SLOT_ID id, CK_FLAGS flags, CK_VOID_PTR application, CK_N
 }
 
 CK_RV C_CloseSession(CK_SESSION_HANDLE session_handle) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_CloseSession: session = %x", session_handle);
   session_close(get_session(session_handle), false);
   free(get_session(session_handle));
@@ -173,6 +187,9 @@ CK_RV C_CloseSession(CK_SESSION_HANDLE session_handle) {
 }
 
 CK_RV C_GetSessionInfo(CK_SESSION_HANDLE session_handle, CK_SESSION_INFO_PTR info) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_GetSessionInfo: session = %x", session_handle);
   info->slotID = 0;
   info->state = CKS_RO_USER_FUNCTIONS;
@@ -182,6 +199,9 @@ CK_RV C_GetSessionInfo(CK_SESSION_HANDLE session_handle, CK_SESSION_INFO_PTR inf
 }
 
 CK_RV C_GetSlotInfo(CK_SLOT_ID id, CK_SLOT_INFO_PTR info) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_GetSlotInfo: id = %d", id);
   TPMS_CAPABILITY_DATA fixed;
   if (tpm_info(main_session.context, TPM2_PT_FIXED, &fixed) != TPM2_RC_SUCCESS)
@@ -205,6 +225,9 @@ CK_RV C_GetSlotInfo(CK_SLOT_ID id, CK_SLOT_INFO_PTR info) {
 }
 
 CK_RV C_GetTokenInfo(CK_SLOT_ID id, CK_TOKEN_INFO_PTR info) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_GetTokenInfo: id = %d", id);
   TPMS_CAPABILITY_DATA fixed;
   if (tpm_info(main_session.context, TPM2_PT_FIXED, &fixed) != TPM2_RC_SUCCESS)
@@ -246,6 +269,15 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID id, CK_TOKEN_INFO_PTR info) {
 }
 
 CK_RV C_Finalize(CK_VOID_PTR reserved) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;  
+  } 
+
+  /* Must be set to NULL_PTR in this version of PKCS#11 */
+  if (pReserved != NULL_PTR) {
+    return CKR_ARGUMENTS_BAD;
+  }
+
   print_log(VERBOSE, "C_Finalize");
   setlogmask (LOG_UPTO (LOG_NOTICE));
   openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
@@ -254,18 +286,21 @@ CK_RV C_Finalize(CK_VOID_PTR reserved) {
   
   session_close(&main_session, true);
 
-#if 1
   if (main_session.tcti_ctx) {
     Tss2_Tcti_Finalize(main_session.tcti_ctx);
     free(main_session.tcti_ctx);  
   }
   dlclose(main_session.tcti_handle);
-#endif //1
+
+  is_initialised = false;
 
   return CKR_OK;
 }
 
 CK_RV C_FindObjectsInit(CK_SESSION_HANDLE session_handle, CK_ATTRIBUTE_PTR filters, CK_ULONG count) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_FindObjectsInit: session = %x, count = %d", session_handle, count);
   struct session *session = get_session(session_handle);
   session->find_cursor = session->objects;
@@ -275,6 +310,9 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE session_handle, CK_ATTRIBUTE_PTR filte
 }
 
 CK_RV C_FindObjects(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE_PTR object_handle, CK_ULONG max_objects, CK_ULONG_PTR found) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_FindObjects: session = %x, max = %d", session_handle, max_objects);
   TPMS_CAPABILITY_DATA persistent;
   tpm_info(get_session(session_handle)->context, TPM2_HT_PERSISTENT, &persistent);
@@ -307,6 +345,9 @@ CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE session_handle) {
 }
 
 CK_RV C_GetAttributeValue(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE object_handle, CK_ATTRIBUTE_PTR template, CK_ULONG count) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_GetAttributeValue: session = %x, object = %x, count = %d", session_handle, object_handle, count);
   pObject object = (pObject) object_handle;
 
@@ -326,6 +367,9 @@ CK_RV C_GetAttributeValue(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE obj
 }
 
 CK_RV C_SetAttributeValue(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE object_handle, CK_ATTRIBUTE_PTR template, CK_ULONG count) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_SetAttributeValue: session = %x, object = %x, count = %d", session_handle, object_handle, count);
   pObject object = (pObject) object_handle;
 
@@ -347,6 +391,9 @@ CK_RV C_SetAttributeValue(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE obj
 }
 
 CK_RV C_SignInit(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism, CK_OBJECT_HANDLE key) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_SignInit: session = %x, key = %x", session_handle, key);
   pObject object = (pObject) key;
   get_session(session_handle)->handle = object->tpm_handle;
@@ -370,6 +417,9 @@ CK_RV C_SignInit(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism, C
 }
 
 CK_RV C_Sign(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR data, CK_ULONG data_len, CK_BYTE_PTR signature, CK_ULONG_PTR signature_len) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_Sign: session = %x, len = %d", session_handle, data_len);
   struct session* session = get_session(session_handle);
   TPM2_RC rc = CKR_GENERAL_ERROR;
@@ -394,6 +444,9 @@ CK_RV C_Sign(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR data, CK_ULONG data_l
 }
 
 CK_RV C_DecryptInit(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism, CK_OBJECT_HANDLE key) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_DecryptInit: session = %x, key = %x", session_handle, key);
   pObject object = (pObject) key;
   get_session(session_handle)->handle = object->tpm_handle;
@@ -413,6 +466,9 @@ CK_RV C_DecryptInit(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism
 }
 
 CK_RV C_Decrypt(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR enc_data, CK_ULONG enc_data_len, CK_BYTE_PTR data, CK_ULONG_PTR data_len) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_Decrypt: session = %x, len = %d", session_handle, enc_data_len);
   TPM2B_PUBLIC_KEY_RSA message = { .size = TPM2_MAX_RSA_KEY_BYTES };
   struct session* session = get_session(session_handle);
@@ -424,19 +480,38 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR enc_data, CK_ULONG
 }
 
 CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
+  CK_C_INITIALIZE_ARGS_PTR args;
   char configfile_path[256];
   snprintf(configfile_path, sizeof(configfile_path), "%s/" TPM2_PK11_CONFIG_DIR "/" TPM2_PK11_CONFIG_FILE, "/etc");
-  if (config_load(configfile_path, &pk11_config) < 0)
+  
+  /* Check if PKCS#11 is already initialized */
+  if (is_initialised)
+  {
+    return CKR_CRYPTOKI_ALREADY_INITIALIZED;
+  }
+
+  /* Do we have any arguments? */
+  if (pInitArgs != NULL_PTR) {
+    args = (CK_C_INITIALIZE_ARGS_PTR)pInitArgs;
+
+    if (args->CreateMutex == NULL_PTR ||
+        args->DestroyMutex == NULL_PTR ||
+        args->LockMutex == NULL_PTR ||
+        args->UnlockMutex == NULL_PTR) {
+        return CKR_ARGUMENTS_BAD;
+      }
+  }
+
+  if (config_load(configfile_path, &pk11_config) < 0) {
     return CKR_GENERAL_ERROR;
+  }
   log_init(pk11_config.log_file, pk11_config.log_level);
   print_log(VERBOSE, "C_Initialize");
-
   setlogmask (LOG_UPTO (LOG_NOTICE));
   openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
   syslog (LOG_NOTICE, "C_Initialize: User %d", getuid ());
   closelog ();
 
-#if 1
   size_t size = 0;
   TSS2_RC rc;
   TSS2_TCTI_CONTEXT *tcti_context;
@@ -469,7 +544,6 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
     free(tcti_context);
     return CKR_GENERAL_ERROR;
   }
-#endif //1
 
   if (session_init(&main_session, &pk11_config, true, true, tcti_context) < 0) {
     print_log(VERBOSE, "C_Initialize: ERROR!");
@@ -479,11 +553,17 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
     return CKR_GENERAL_ERROR;
   }
 
+  /* Set the state to initialised */
+  is_initialised = true;
+
   return CKR_OK;
 }
 
 /* Stubs for not yet supported functions*/
 CK_RV C_GetMechanismList(CK_SLOT_ID id, CK_MECHANISM_TYPE_PTR list, CK_ULONG_PTR count) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_GetMechanismList: slot = %d", id);
   CK_ULONG nrSupportedMechanisms = 10;
 
@@ -563,6 +643,9 @@ CK_RV C_SetOperationState(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR state, C
 }
 
 CK_RV C_Login(CK_SESSION_HANDLE session_handle, CK_USER_TYPE userType, CK_UTF8CHAR_PTR pin, CK_ULONG pin_len) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_Login: session = %x", session_handle);
   struct session* session = get_session(session_handle);
   if (userType != CKU_USER)
@@ -574,6 +657,9 @@ CK_RV C_Login(CK_SESSION_HANDLE session_handle, CK_USER_TYPE userType, CK_UTF8CH
 }
 
 CK_RV C_Logout(CK_SESSION_HANDLE session_handle) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_Logout: session = %x", session_handle);
   struct session* session = get_session(session_handle);
   if (session->password) {
@@ -585,6 +671,9 @@ CK_RV C_Logout(CK_SESSION_HANDLE session_handle) {
 }
 
 CK_RV C_CreateObject(CK_SESSION_HANDLE session_handle, CK_ATTRIBUTE_PTR template, CK_ULONG count, CK_OBJECT_HANDLE_PTR object) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_CreateObject: session = %x, count = %d", session_handle, count);
   struct session* session = get_session(session_handle);
   if (session->have_write == false) {
@@ -657,6 +746,9 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE session_handle, CK_ATTRIBUTE_PTR template
 
 
 CK_RV C_CopyObject(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE object_handle, CK_ATTRIBUTE_PTR template, CK_ULONG count, CK_OBJECT_HANDLE_PTR new_object) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_CopyObject: session = %x, object = %x, count = %d", session_handle, object_handle, count);
   struct session* session = get_session(session_handle);
   pObject object = (pObject) object_handle;
@@ -678,6 +770,9 @@ CK_RV C_CopyObject(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE object_han
 }
 
 CK_RV C_DestroyObject(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE object_handle) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_DestroyObject: session = %x, object = %x", session_handle, object_handle);
   struct session* session = get_session(session_handle);
   pObject object = (pObject) object_handle;    
@@ -719,6 +814,9 @@ CK_RV C_GetObjectSize(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE object_
 }
 
 CK_RV C_EncryptInit(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism, CK_OBJECT_HANDLE object_handle) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_EncryptInit: session = %x, object = %x", session_handle, object_handle);
   pObject object = (pObject) object_handle;
   get_session(session_handle)->handle = object->tpm_handle;
@@ -738,6 +836,9 @@ CK_RV C_EncryptInit(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism
 }
 
 CK_RV C_Encrypt(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR data, CK_ULONG data_len, CK_BYTE_PTR enc_data, CK_ULONG_PTR enc_data_len) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_Encrypt: session = %x, len = %x", session_handle, data_len);
   TPM2B_PUBLIC_KEY_RSA message = { .size = TPM2_MAX_RSA_KEY_BYTES };
   struct session* session = get_session(session_handle);
@@ -815,6 +916,9 @@ CK_RV C_SignRecover(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR data, CK_ULONG
 }
 
 CK_RV C_VerifyInit(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism, CK_OBJECT_HANDLE key) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_VerifyInit: session = %x, key = %x", session_handle, key);
   pObject object = (pObject) key;
   get_session(session_handle)->handle = object->tpm_handle;
@@ -838,6 +942,9 @@ CK_RV C_VerifyInit(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism,
 }
 
 CK_RV C_Verify(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR data, CK_ULONG data_len, CK_BYTE_PTR signature, CK_ULONG signature_len) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_Verify: session = %x, len = %d", session_handle, data_len);
   struct session* session = get_session(session_handle);
   TPMT_SIGNATURE sign = {0};
@@ -908,6 +1015,9 @@ CK_RV C_GenerateKey(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism
 }
 
 CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mechanism, CK_ATTRIBUTE_PTR public_key_template, CK_ULONG public_key_attr_count, CK_ATTRIBUTE_PTR private_key_template, CK_ULONG private_key_attr_count, CK_OBJECT_HANDLE_PTR public_key, CK_OBJECT_HANDLE_PTR private_key) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_GenerateKeyPair: session = %x, public_count = %d, private_count = %d", session_handle, public_key_attr_count, private_key_attr_count);
   struct session* session = get_session(session_handle);
   TPM2_ALG_ID algorithm_type;
@@ -1006,6 +1116,9 @@ CK_RV C_SeedRandom(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR seed, CK_ULONG 
 }
 
 CK_RV C_GenerateRandom(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR random_data, CK_ULONG random_data_len) {
+  if (!is_initialised) {
+    return CKR_CRYPTOKI_NOT_INITIALIZED;
+  }
   print_log(VERBOSE, "C_GenerateRandom: session = %x, len = %d", session_handle, random_data_len);
   struct session* session = get_session(session_handle);
   TPM2B_DIGEST random_bytes;
