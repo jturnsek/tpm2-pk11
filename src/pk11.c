@@ -572,6 +572,10 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
     return CKR_GENERAL_ERROR;
   }
 
+  openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+  syslog (LOG_NOTICE, "Foobar 0x%x", (long)&main_session);
+  closelog ();
+
   /* Set the state to initialised */
   is_initialised = true;
 
