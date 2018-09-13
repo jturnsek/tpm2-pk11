@@ -161,12 +161,16 @@ int session_init(struct session* session, struct config *config, bool have_write
 
   size = Tss2_Sys_GetContextSize(0);
   session->context = (TSS2_SYS_CONTEXT*) calloc(1, size);
-  if (session->context == NULL)
+  if (session->context == NULL) {
     goto cleanup;
+  }
 
   TSS2_ABI_VERSION abi_version = TSS2_ABI_VERSION_CURRENT;
   
   rc = Tss2_Sys_Initialize(session->context, size, session->tcti_ctx, &abi_version);
+  if (rc != TSS2_RC_SUCCESS) {
+    goto cleanup;
+  }
 
   if (is_main) {
     objects = object_load_list(session->context, config);
