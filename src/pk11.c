@@ -519,7 +519,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   syslog (LOG_NOTICE, "C_Initialize: User %d", getuid ());
   closelog ();
 
-  memset(&main_session, 0, sizeof(struct session));
+  //memset(&main_session, 0, sizeof(struct session));
 
   size_t size = 0;
   TSS2_RC rc;
@@ -533,6 +533,16 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
     closelog ();
     return CKR_GENERAL_ERROR;  
   }
+
+  main_session.tcti_handle = dlopen("libtss2-tcti-tabrmd.so.0", RTLD_LAZY);
+  if (!main_session.tcti_handle) {
+    setlogmask (LOG_UPTO (LOG_NOTICE));
+    openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+    syslog (LOG_NOTICE, "C_Initialize: ERROR0: Null handle 0x%x, main_session=0x%x", (long)main_session.tcti_handle, (long)&main_session);
+    closelog ();
+    return CKR_GENERAL_ERROR;  
+  }
+
   init = dlsym(main_session.tcti_handle, "Tss2_Tcti_Tabrmd_Init");
   if (!init) {
     setlogmask (LOG_UPTO (LOG_NOTICE));
