@@ -274,7 +274,7 @@ CK_RV C_Finalize(CK_VOID_PTR reserved) {
   } 
 
   /* Must be set to NULL_PTR in this version of PKCS#11 */
-  if (pReserved != NULL_PTR) {
+  if (reserved != NULL_PTR) {
     return CKR_ARGUMENTS_BAD;
   }
 
