@@ -534,6 +534,8 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
     return CKR_GENERAL_ERROR;  
   }
 
+  dlclose(main_session.tcti_handle);
+
   main_session.tcti_handle = dlopen("libtss2-tcti-tabrmd.so.0", RTLD_LAZY);
   if (!main_session.tcti_handle) {
     setlogmask (LOG_UPTO (LOG_NOTICE));
