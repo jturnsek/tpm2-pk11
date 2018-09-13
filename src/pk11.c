@@ -519,7 +519,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   syslog (LOG_NOTICE, "C_Initialize: User %d", getuid ());
   closelog ();
 
-  //memset(&main_session, 0, sizeof(struct session));
+  memset(&main_session, 0, sizeof(struct session));
 
   size_t size = 0;
   TSS2_RC rc;
