@@ -294,7 +294,7 @@ CK_RV C_Finalize(CK_VOID_PTR reserved) {
   if (main_session.tcti_handle) {
     setlogmask (LOG_UPTO (LOG_NOTICE));
     openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-    syslog (LOG_NOTICE, "C_Finalize:Closing handle 0x%x", (long)main_session.tcti_handle);
+    syslog (LOG_NOTICE, "C_Finalize: Closing handle 0x%x, main_session=0x%x", (long)main_session.tcti_handle, (long)&main_session);
     closelog ();
     dlclose(main_session.tcti_handle);
   }
@@ -519,12 +519,18 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   syslog (LOG_NOTICE, "C_Initialize: User %d", getuid ());
   closelog ();
 
+  memset(&main_session, 0, sizeof(struct session));
+
   size_t size = 0;
   TSS2_RC rc;
   TSS2_TCTI_CONTEXT *tcti_context;
   TSS2_RC (*init)(TSS2_TCTI_CONTEXT *, size_t *, const char *conf);
   main_session.tcti_handle = dlopen("libtss2-tcti-tabrmd.so.0", RTLD_LAZY);
   if (!main_session.tcti_handle) {
+    setlogmask (LOG_UPTO (LOG_NOTICE));
+    openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+    syslog (LOG_NOTICE, "C_Initialize: ERROR0: Null handle 0x%x, main_session=0x%x", (long)main_session.tcti_handle, (long)&main_session);
+    closelog ();
     return CKR_GENERAL_ERROR;  
   }
   init = dlsym(main_session.tcti_handle, "Tss2_Tcti_Tabrmd_Init");
