@@ -50,7 +50,6 @@ struct session {
   pObject current_object;
   CK_MECHANISM_TYPE mechanism;
   char *password;
-  void *tcti_handle;
 };
 
 extern unsigned int open_sessions;

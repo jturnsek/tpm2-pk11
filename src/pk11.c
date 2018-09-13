@@ -252,7 +252,6 @@ CK_RV C_Finalize(CK_VOID_PTR reserved) {
   syslog (LOG_NOTICE, "C_Finalize: User %d, Session 0x%x", getuid(), (long)&main_session);
   closelog ();
   session_close(&main_session, true);
-  dlclose(main_session.tcti_handle); //jturnsek: TEST!!!!
   return CKR_OK;
 }
 

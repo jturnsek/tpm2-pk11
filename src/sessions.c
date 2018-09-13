@@ -52,7 +52,7 @@ int session_init(struct session* session, struct config *config, bool have_write
   TSS2_TCTI_CONTEXT *tcti_ctx = NULL;
   TSS2_RC rc;
   TSS2_RC (*init)(TSS2_TCTI_CONTEXT *, size_t *, const char *conf);
-
+  void* tcti_handle;
 #ifdef TCTI_DEVICE_ENABLED
   char* device_conf;
 #endif // TCTI_DEVICE_ENABLED
@@ -75,26 +75,26 @@ int session_init(struct session* session, struct config *config, bool have_write
 #endif // TCTI_DEVICE_ENABLED
 #ifdef TCTI_TABRMD_ENABLED
     case TPM_TYPE_TABRMD:
-      session->tcti_handle = dlopen("libtss2-tcti-tabrmd.so.0", RTLD_LAZY);
+      tcti_handle = dlopen("libtss2-tcti-tabrmd.so.0", RTLD_LAZY);
       setlogmask (LOG_UPTO (LOG_NOTICE));
       openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-      syslog (LOG_NOTICE, "tcti_handle=0x%x", (long)session->tcti_handle);
+      syslog (LOG_NOTICE, "tcti_handle=0x%x", (long)tcti_handle);
       closelog ();
-      if (!session->tcti_handle) {
+      if (!tcti_handle) {
         goto cleanup;
       }
-      init = dlsym(session->tcti_handle, "Tss2_Tcti_Tabrmd_Init");
+      init = dlsym(tcti_handle, "Tss2_Tcti_Tabrmd_Init");
       setlogmask (LOG_UPTO (LOG_NOTICE));
       openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
       syslog (LOG_NOTICE, "init=0x%x", (long)init);
       closelog ();
       if (!init) {
-        dlclose(session->tcti_handle);
+        dlclose(tcti_handle);
         goto cleanup; 
       }
       rc = init(NULL, &size, NULL);
       if (rc != TSS2_RC_SUCCESS) {
-        dlclose(session->tcti_handle);
+        dlclose(tcti_handle);
       } 
       break;
 #endif // TCTI_TABRMD_ENABLED
@@ -145,8 +145,8 @@ int session_init(struct session* session, struct config *config, bool have_write
         openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
         syslog (LOG_NOTICE, "rc=0x%x", (long)rc);
         closelog ();
-        dlclose(session->tcti_handle);
       }
+      dlclose(tcti_handle);
       break;
 #endif // TCTI_TABRMD_ENABLED
     default:
@@ -191,15 +191,11 @@ int session_init(struct session* session, struct config *config, bool have_write
 void session_close(struct session* session, bool is_main) {
   setlogmask (LOG_UPTO (LOG_NOTICE));
   openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-  syslog (LOG_NOTICE, "session_close: tcti_handle=0x%x", (long)session->tcti_handle);
+  syslog (LOG_NOTICE, "session_close: session=0x%x", (long)session);
   closelog ();
 
   if (session->password) {
     free(session->password);
-  }
-
-  if (session->tcti_handle) {
-    dlclose(session->tcti_handle);
   }
 
   if (is_main) {
