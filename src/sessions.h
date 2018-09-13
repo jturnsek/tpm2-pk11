@@ -50,7 +50,6 @@ struct session {
   pObject current_object;
   CK_MECHANISM_TYPE mechanism;
   char *password;
-  void *tcti_handle;
   TSS2_TCTI_CONTEXT *tcti_ctx;
 };
 
