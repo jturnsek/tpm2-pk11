@@ -519,7 +519,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   syslog (LOG_NOTICE, "C_Initialize: User %d", getuid ());
   closelog ();
 
-  memset(&main_session, 0, sizeof(struct session));
+  //memset(&main_session, 0, sizeof(struct session));
 
   size_t size = 0;
   TSS2_RC rc;
@@ -579,7 +579,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   }
 
   openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-  syslog (LOG_NOTICE, "Foobar 0x%x", (long)&main_session);
+  syslog (LOG_NOTICE, "Foobar: main_session=0x%x, tcti_handle=0x%x", (long)&main_session, (long)main_session.tcti_handle);
   closelog ();
 
   /* Set the state to initialised */
