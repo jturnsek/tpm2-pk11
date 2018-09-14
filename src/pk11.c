@@ -50,7 +50,6 @@
 struct config pk11_config = {0};
 struct session main_session;
 bool is_initialised = false;
-void* tcti_handle;
 
 static CK_RV extractObjectInformation(CK_ATTRIBUTE_PTR template,
               CK_ULONG count,
@@ -172,7 +171,7 @@ CK_RV C_OpenSession(CK_SLOT_ID id, CK_FLAGS flags, CK_VOID_PTR application, CK_N
   if ((void*) *session == NULL)
     return CKR_GENERAL_ERROR;
 
-  int ret = session_init((struct session*) *session, &pk11_config, flags & CKF_RW_SESSION ? true : false, false, main_session.tcti_ctx);
+  int ret = session_init((struct session*) *session, &pk11_config, flags & CKF_RW_SESSION ? true : false);
 
   return ret != 0 ? CKR_GENERAL_ERROR : CKR_OK;
 }
@@ -182,7 +181,7 @@ CK_RV C_CloseSession(CK_SESSION_HANDLE session_handle) {
     return CKR_CRYPTOKI_NOT_INITIALIZED;
   }
   print_log(VERBOSE, "C_CloseSession: session = %x", session_handle);
-  session_close(get_session(session_handle), false);
+  session_close(get_session(session_handle));
   free(get_session(session_handle));
   return CKR_OK;
 }
@@ -270,6 +269,8 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID id, CK_TOKEN_INFO_PTR info) {
 }
 
 CK_RV C_Finalize(CK_VOID_PTR reserved) {
+  TSS2_TCTI_CONTEXT *tcti_ctx;
+
   if (!is_initialised) {
     return CKR_CRYPTOKI_NOT_INITIALIZED;  
   } 
@@ -280,24 +281,25 @@ CK_RV C_Finalize(CK_VOID_PTR reserved) {
   }
 
   print_log(VERBOSE, "C_Finalize");
+
   setlogmask (LOG_UPTO (LOG_NOTICE));
   openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-  syslog (LOG_NOTICE, "C_Finalize: User %d, Session 0x%x", getuid(), (long)&main_session);
+  syslog (LOG_NOTICE, "C_Finalize: User %d", getuid());
   closelog ();
   
-  session_close(&main_session, true);
-
-  if (main_session.tcti_ctx) {
-    Tss2_Tcti_Finalize(main_session.tcti_ctx);
-    free(main_session.tcti_ctx);  
+  tcti_ctx = NULL;
+  if (Tss2_Sys_GetTctiContext(session->context, &tcti_ctx) != TSS2_RC_SUCCESS) {
+    tcti_ctx = NULL;
   }
 
-  if (tcti_handle) {
-    setlogmask (LOG_UPTO (LOG_NOTICE));
-    openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-    syslog (LOG_NOTICE, "C_Finalize: Closing handle 0x%x, main_session=0x%x", (long)tcti_handle, (long)&main_session);
-    closelog ();
-    dlclose(tcti_handle);
+  session_close(&main_session);
+
+  object_free_list(main_session.objects);
+
+  if (tcti_ctx) {
+    Tss2_Tcti_Finalize(tcti_ctx);
+    free(tcti_ctx);
+    tcti_ctx = NULL;
   }
 
   is_initialised = false;
@@ -510,84 +512,76 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
       }
   }
 
+  memset(&main_session, 0, sizeof(struct session));
+
   if (config_load(configfile_path, &pk11_config) < 0) {
     return CKR_GENERAL_ERROR;
   }
+  
   log_init(pk11_config.log_file, pk11_config.log_level);
   print_log(VERBOSE, "C_Initialize");
+  
   setlogmask (LOG_UPTO (LOG_NOTICE));
   openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-  syslog (LOG_NOTICE, "C_Initialize: User %d", getuid ());
+  syslog (LOG_NOTICE, "C_Initialize: User %d", getuid());
   closelog ();
-
-  //memset(&main_session, 0, sizeof(struct session));
 
   size_t size = 0;
   TSS2_RC rc;
-  TSS2_TCTI_CONTEXT *tcti_context;
-  TSS2_RC (*init)(TSS2_TCTI_CONTEXT *, size_t *, const char *conf);
-
-  tcti_handle = dlopen("libtss2-tcti-tabrmd.so.0", RTLD_LAZY);
-  if (!tcti_handle) {
-    setlogmask (LOG_UPTO (LOG_NOTICE));
-    openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-    syslog (LOG_NOTICE, "C_Initialize: ERROR0: Null handle 0x%x, main_session=0x%x", (long)tcti_handle, (long)&main_session);
-    closelog ();
-    return CKR_GENERAL_ERROR;  
-  }
-
-  init = dlsym(tcti_handle, "Tss2_Tcti_Tabrmd_Init");
-  if (!init) {
-    setlogmask (LOG_UPTO (LOG_NOTICE));
-    openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-    syslog (LOG_NOTICE, "C_Initialize: ERROR1: Closing handle 0x%x", (long)tcti_handle);
-    closelog ();
-    dlclose(tcti_handle);
-    return CKR_GENERAL_ERROR;
-  }
-  rc = init(NULL, &size, NULL);
+  
+  rc = Tss2_Tcti_Tabrmd_Init(NULL, &size, NULL);
   if (rc != TSS2_RC_SUCCESS) {
-    setlogmask (LOG_UPTO (LOG_NOTICE));
-    openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-    syslog (LOG_NOTICE, "C_Initialize: ERROR2: Closing handle 0x%x", (long)tcti_handle);
-    closelog ();
-    dlclose(tcti_handle);
+    return CKR_GENERAL_ERROR;
   }
   
-  tcti_context = (TSS2_TCTI_CONTEXT*) calloc(1, size);
-  if (tcti_context == NULL) {
-    setlogmask (LOG_UPTO (LOG_NOTICE));
-    openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-    syslog (LOG_NOTICE, "C_Initialize: ERROR3: Closing handle 0x%x", (long)tcti_handle);
-    closelog ();
-    dlclose(tcti_handle);
+  main_session.tcti_context = (TSS2_TCTI_CONTEXT*) calloc(1, size);
+  if (main_session.tcti_context == NULL) {
     return CKR_GENERAL_ERROR; 
   }
-  rc = init(tcti_context, &size, NULL);
+
+  rc = Tss2_Tcti_Tabrmd_Init(main_session.tcti_context, &size, NULL);
   if (rc != TSS2_RC_SUCCESS) {
     setlogmask (LOG_UPTO (LOG_NOTICE));
     openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-    syslog (LOG_NOTICE, "rc=0x%x", (long)rc);
+    syslog (LOG_NOTICE, "C_Initialize: rc=0x%x", (long)rc);
     closelog ();
-    dlclose(tcti_handle);
-    free(tcti_context);
+    free(main_session.tcti_context);
     return CKR_GENERAL_ERROR;
   }
 
-  if (session_init(&main_session, &pk11_config, true, true, tcti_context) < 0) {
-    print_log(VERBOSE, "C_Initialize: ERROR!");
-    openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-    syslog (LOG_NOTICE, "Foobar %d", getuid ());
-    closelog ();
+  main_session.have_write = true;
+  size = Tss2_Sys_GetContextSize(0);
+  main_session.context = (TSS2_SYS_CONTEXT*) calloc(1, size);
+  if (main_session.context == NULL) {
+    free(main_session.tcti_context);
     return CKR_GENERAL_ERROR;
   }
 
-  openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-  syslog (LOG_NOTICE, "Foobar: main_session=0x%x, tcti_handle=0x%x", (long)&main_session, (long)tcti_handle);
-  closelog ();
+  TSS2_ABI_VERSION abi_version = TSS2_ABI_VERSION_CURRENT;
+  
+  rc = Tss2_Sys_Initialize(main_session.context, size, main_session.tcti_context, &abi_version);
+  if (rc != TSS2_RC_SUCCESS) {
+    free(main_session.tcti_context);
+    free(main_session.context);
+    return CKR_GENERAL_ERROR;
+  }
+
+  main_session.objects = object_load_list(main_session.context, &pk11_config);
+  if (!main_session.objects) {
+    free(main_session.tcti_context);
+    free(main_session.context);
+    return CKR_GENERAL_ERROR;
+  }
+
+  open_sessions++;
 
   /* Set the state to initialised */
   is_initialised = true;
+
+  setlogmask (LOG_UPTO (LOG_NOTICE));
+  openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+  syslog (LOG_NOTICE, "C_Initialize: OK");
+  closelog ();
 
   return CKR_OK;
 }

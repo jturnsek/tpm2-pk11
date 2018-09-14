@@ -34,21 +34,15 @@
 #define DEFAULT_HOSTNAME "127.0.0.1"
 #define DEFAULT_PORT 2323
 
-unsigned int open_sessions;
-pObjectList objects;
+unsigned int open_sessions = 0;
+extern struct session main_session;
 
-int session_init(struct session* session, struct config *config, bool have_write, bool is_main, TSS2_TCTI_CONTEXT *tcti_context) {
-  setlogmask (LOG_UPTO (LOG_NOTICE));
-  openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-  syslog (LOG_NOTICE, "session_init: User %d, Session 0x%x", getuid(), (long)session);
-  closelog ();
-
-  memset(session, 0, sizeof(struct session));
-
-  session->have_write = have_write;
-
+int session_init(struct session* session, struct config *config, bool have_write) {
   size_t size = 0;
   TSS2_RC rc;
+
+  memset(session, 0, sizeof(struct session));
+  session->have_write = have_write;
 
   size = Tss2_Sys_GetContextSize(0);
   session->context = (TSS2_SYS_CONTEXT*) calloc(1, size);
@@ -56,46 +50,27 @@ int session_init(struct session* session, struct config *config, bool have_write
     goto cleanup;
   }
 
-  session->tcti_ctx = tcti_context;
-
   TSS2_ABI_VERSION abi_version = TSS2_ABI_VERSION_CURRENT;
   
-  rc = Tss2_Sys_Initialize(session->context, size, session->tcti_ctx, &abi_version);
+  rc = Tss2_Sys_Initialize(session->context, size, main_session.tcti_context, &abi_version);
   if (rc != TSS2_RC_SUCCESS) {
     goto cleanup;
   }
 
-  if (is_main) {
-    objects = object_load_list(session->context, config);
-    if (!objects) {
-      goto cleanup;
-    }
-  }
-
-  session->objects = objects;
+  session->objects = main_session.objects;
   open_sessions++;
-   
   return 0;
 
-  cleanup:
+cleanup:
   if (session->context != NULL)
     free(session->context);
 
   return -1;
 }
 
-void session_close(struct session* session, bool is_main) {
-  setlogmask (LOG_UPTO (LOG_NOTICE));
-  openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-  syslog (LOG_NOTICE, "session_close: session=0x%x", (long)session);
-  closelog ();
-
+void session_close(struct session* session) {
   if (session->password) {
     free(session->password);
-  }
-
-  if (is_main) {
-    object_free_list(session->objects);
   }
 
   Tss2_Sys_Finalize(session->context);

@@ -41,6 +41,7 @@
 
 struct session {
 	TSS2_SYS_CONTEXT *context;
+  TSS2_TCTI_CONTEXT *tcti_context;
 	pObjectList objects;
 	bool have_write;
   TPMI_DH_OBJECT handle;
@@ -50,13 +51,11 @@ struct session {
   pObject current_object;
   CK_MECHANISM_TYPE mechanism;
   char *password;
-  TSS2_TCTI_CONTEXT *tcti_ctx;
 };
 
 extern unsigned int open_sessions;
-extern pObjectList objects;
 
-int session_init(struct session* session, struct config *config, bool have_write, bool is_main, TSS2_TCTI_CONTEXT *tcti_context);
-void session_close(struct session* session, bool is_main);
+int session_init(struct session* session, struct config *config, bool have_write);
+void session_close(struct session* session);
 
 #endif /** SESSIONS_H_ */
