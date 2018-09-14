@@ -292,13 +292,13 @@ CK_RV C_Finalize(CK_VOID_PTR reserved) {
     free(main_session.tcti_ctx);  
   }
 
-  // if (tcti_handle) {
-  //   setlogmask (LOG_UPTO (LOG_NOTICE));
-  //   openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-  //   syslog (LOG_NOTICE, "C_Finalize: Closing handle 0x%x, main_session=0x%x", (long)tcti_handle, (long)&main_session);
-  //   closelog ();
-  //   dlclose(tcti_handle);
-  // }
+  if (tcti_handle) {
+    setlogmask (LOG_UPTO (LOG_NOTICE));
+    openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+    syslog (LOG_NOTICE, "C_Finalize: Closing handle 0x%x, main_session=0x%x", (long)tcti_handle, (long)&main_session);
+    closelog ();
+    dlclose(tcti_handle);
+  }
 
   is_initialised = false;
 
