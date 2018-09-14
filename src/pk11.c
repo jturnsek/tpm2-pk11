@@ -288,7 +288,7 @@ CK_RV C_Finalize(CK_VOID_PTR reserved) {
   closelog ();
   
   tcti_ctx = NULL;
-  if (Tss2_Sys_GetTctiContext(session->context, &tcti_ctx) != TSS2_RC_SUCCESS) {
+  if (Tss2_Sys_GetTctiContext(main_session.context, &tcti_ctx) != TSS2_RC_SUCCESS) {
     tcti_ctx = NULL;
   }
 
