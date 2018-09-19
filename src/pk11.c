@@ -54,7 +54,7 @@ static void *handle;
 static const TSS2_TCTI_INFO *info;
 TSS2_TCTI_CONTEXT *tcti = NULL;
 
-//#define DISABLE_DLCLOSE
+#define DISABLE_DLCLOSE
 
 #define TSS2_TCTI_SO_FORMAT "libtss2-tcti-%s.so.0"
 
