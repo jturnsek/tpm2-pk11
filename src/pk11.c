@@ -56,6 +56,8 @@ TSS2_TCTI_CONTEXT *tcti = NULL;
 
 #define DISABLE_DLCLOSE
 
+#define TSS2_TCTI_SO_FORMAT "libtss2-tcti-%s.so.0"
+
 void tpm2_tcti_ldr_unload(void) {
   if (handle) {
 #ifndef DISABLE_DLCLOSE
