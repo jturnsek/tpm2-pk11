@@ -41,7 +41,6 @@
 
 struct session {
 	TSS2_SYS_CONTEXT *context;
-  TSS2_TCTI_CONTEXT *tcti_context;
 	pObjectList objects;
 	bool have_write;
   TPMI_DH_OBJECT handle;

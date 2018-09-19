@@ -50,6 +50,102 @@
 struct config pk11_config = {0};
 struct session main_session;
 bool is_initialised = false;
+static void *handle;
+static const TSS2_TCTI_INFO *info;
+TSS2_TCTI_CONTEXT *tcti = NULL;
+
+#define DISABLE_DLCLOSE
+
+void tpm2_tcti_ldr_unload(void) {
+  if (handle) {
+#ifndef DISABLE_DLCLOSE
+    dlclose(handle);
+#endif
+    handle = NULL;
+    info = NULL;
+  }
+}
+
+const TSS2_TCTI_INFO *tpm2_tcti_ldr_getinfo(void) {
+  return info;
+}
+
+static void* tpm2_tcti_ldr_dlopen(const char *name) {
+  char path[PATH_MAX];
+  size_t size = snprintf(path, sizeof(path), TSS2_TCTI_SO_FORMAT, name);
+  if (size >= sizeof(path)) {
+    return NULL;
+  }
+
+  return dlopen(path, RTLD_LAZY);
+}
+
+bool tpm2_tcti_ldr_is_tcti_present(const char *name) {
+  void *handle = tpm2_tcti_ldr_dlopen(name);
+  if (handle) {
+    dlclose(handle);
+  }
+
+  return handle != NULL;
+}
+
+TSS2_TCTI_CONTEXT *tpm2_tcti_ldr_load(const char *path) {
+  TSS2_TCTI_CONTEXT *tcti_ctx = NULL;
+
+  if (handle) {
+    print_log(DEBUG, "Attempting to load multiple tcti's simultaneously is not supported!");
+    return NULL;
+  }
+
+  /*
+  * Try what they gave us, if it doesn't load up, try
+  * libtss2-tcti-xxx.so replacing xxx with what they gave us.
+  */
+  handle = dlopen (path, RTLD_LAZY);
+  if (!handle) {
+
+    handle = tpm2_tcti_ldr_dlopen(path);
+    if (!handle) {
+      print_log(DEBUG, "Could not dlopen library: \"%s\"", path);
+      return NULL;
+    }
+  }
+
+  TSS2_TCTI_INFO_FUNC infofn = (TSS2_TCTI_INFO_FUNC)dlsym(handle, TSS2_TCTI_INFO_SYMBOL);
+  if (!infofn) {
+    print_log(DEBUG, "Symbol \"%s\"not found in library: \"%s\"", TSS2_TCTI_INFO_SYMBOL, path);
+    goto err;
+  }
+
+  info = infofn();
+
+  TSS2_TCTI_INIT_FUNC init = info->init;
+
+  size_t size;
+  TSS2_RC rc = init(NULL, &size, NULL);
+  if (rc != TPM2_RC_SUCCESS) {
+    print_log(DEBUG, "tcti init setup routine failed for library: \"%s\"", path);
+    goto err;
+  }
+
+  tcti_ctx = (TSS2_TCTI_CONTEXT*) calloc(1, size);
+  if (tcti_ctx == NULL) {
+    goto err;
+  }
+
+  rc = init(tcti_ctx, &size, NULL);
+  if (rc != TPM2_RC_SUCCESS) {
+    print_log(DEBUG, "tcti init allocation routine failed for library: \"%s\"", path);
+    goto err;
+  }
+
+  return tcti_ctx;
+
+err:
+  free(tcti_ctx);
+  dlclose(handle);
+  return NULL;
+}
 
 static CK_RV extractObjectInformation(CK_ATTRIBUTE_PTR template,
               CK_ULONG count,
@@ -302,6 +398,8 @@ CK_RV C_Finalize(CK_VOID_PTR reserved) {
     tcti_ctx = NULL;
   }
 
+  tpm2_tcti_ldr_unload();
+
   is_initialised = false;
 
   return CKR_OK;
@@ -491,6 +589,8 @@ CK_RV C_Decrypt(CK_SESSION_HANDLE session_handle, CK_BYTE_PTR enc_data, CK_ULONG
 
 CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   CK_C_INITIALIZE_ARGS_PTR args;
+  size_t size = 0;
+  TSS2_RC rc;
   char configfile_path[256];
   snprintf(configfile_path, sizeof(configfile_path), "%s/" TPM2_PK11_CONFIG_DIR "/" TPM2_PK11_CONFIG_FILE, "/etc");
   
@@ -526,49 +626,29 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   syslog (LOG_NOTICE, "C_Initialize: User %d", getuid());
   closelog ();
 
-  size_t size = 0;
-  TSS2_RC rc;
-  
-  rc = Tss2_Tcti_Tabrmd_Init(NULL, &size, NULL);
-  if (rc != TSS2_RC_SUCCESS) {
-    return CKR_GENERAL_ERROR;
-  }
-  
-  main_session.tcti_context = (TSS2_TCTI_CONTEXT*) calloc(1, size);
-  if (main_session.tcti_context == NULL) {
+  tcti = tpm2_tcti_ldr_load("tabrmd");
+  if (!tcti) {
+    print_log(VERBOSE, "C_Initialize: Failed!"); 
     return CKR_GENERAL_ERROR; 
-  }
-
-  rc = Tss2_Tcti_Tabrmd_Init(main_session.tcti_context, &size, NULL);
-  if (rc != TSS2_RC_SUCCESS) {
-    setlogmask (LOG_UPTO (LOG_NOTICE));
-    openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-    syslog (LOG_NOTICE, "C_Initialize: rc=0x%x", (long)rc);
-    closelog ();
-    free(main_session.tcti_context);
-    return CKR_GENERAL_ERROR;
   }
 
   main_session.have_write = true;
   size = Tss2_Sys_GetContextSize(0);
   main_session.context = (TSS2_SYS_CONTEXT*) calloc(1, size);
   if (main_session.context == NULL) {
-    free(main_session.tcti_context);
     return CKR_GENERAL_ERROR;
   }
 
   TSS2_ABI_VERSION abi_version = TSS2_ABI_VERSION_CURRENT;
   
-  rc = Tss2_Sys_Initialize(main_session.context, size, main_session.tcti_context, &abi_version);
+  rc = Tss2_Sys_Initialize(main_session.context, size, tcti, &abi_version);
   if (rc != TSS2_RC_SUCCESS) {
-    free(main_session.tcti_context);
     free(main_session.context);
     return CKR_GENERAL_ERROR;
   }
 
   main_session.objects = object_load_list(main_session.context, &pk11_config);
   if (!main_session.objects) {
-    free(main_session.tcti_context);
     free(main_session.context);
     return CKR_GENERAL_ERROR;
   }

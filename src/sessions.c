@@ -36,6 +36,7 @@
 
 unsigned int open_sessions = 0;
 extern struct session main_session;
+extern TSS2_TCTI_CONTEXT *tcti;
 
 int session_init(struct session* session, struct config *config, bool have_write) {
   size_t size = 0;
@@ -52,7 +53,7 @@ int session_init(struct session* session, struct config *config, bool have_write
 
   TSS2_ABI_VERSION abi_version = TSS2_ABI_VERSION_CURRENT;
   
-  rc = Tss2_Sys_Initialize(session->context, size, main_session.tcti_context, &abi_version);
+  rc = Tss2_Sys_Initialize(session->context, size, tcti, &abi_version);
   if (rc != TSS2_RC_SUCCESS) {
     goto cleanup;
   }
