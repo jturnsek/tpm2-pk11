@@ -303,8 +303,6 @@ CK_RV C_Finalize(CK_VOID_PTR reserved) {
     tcti_ctx = NULL;
   }
 
-  tpm2_tcti_ldr_unload();
-
   is_initialised = false;
 
   return CKR_OK;
