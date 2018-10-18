@@ -27,15 +27,7 @@
 #include <stdbool.h>
 #include <tss2/tss2_sys.h>
 #include <tss2/tss2_tcti.h>
-#ifdef TCTI_DEVICE_ENABLED
 #include <tss2/tss2_tcti_device.h>
-#endif
-#ifdef TCTI_MSSIM_ENABLED
-#include <tss2/tss2_tcti_mssim.h>
-#endif
-#ifdef TCTI_TABRMD_ENABLED
-#include <tss2/tss2-tcti-tabrmd.h>
-#endif
 #include <p11-kit/pkcs11.h>
 
 

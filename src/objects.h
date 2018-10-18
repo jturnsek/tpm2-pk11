@@ -28,8 +28,6 @@
 #include <tss2/tss2_sys.h>
 #include <tss2/tss2_tcti.h>
 #include <tss2/tss2_tcti_device.h>
-#include <tss2/tss2_tcti_mssim.h>
-#include <tss2/tss2-tcti-tabrmd.h>
 
 #define NELEMS(x) (sizeof(x) / sizeof((x)[0]))
 
