@@ -494,7 +494,6 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   CK_C_INITIALIZE_ARGS_PTR args;
   size_t size = 0;
   TSS2_RC rc;
-  const char *cfg = "/dev/tpmrm0";
   char configfile_path[256];
   snprintf(configfile_path, sizeof(configfile_path), "%s/" TPM2_PK11_CONFIG_DIR "/" TPM2_PK11_CONFIG_FILE, "/etc");
   
@@ -530,7 +529,6 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   syslog (LOG_NOTICE, "C_Initialize: User %d", getuid());
   closelog ();
 
-  //tcti = tpm2_tcti_ldr_load("tabrmd");
   rc = Tss2_Tcti_Device_Init(NULL, &size, NULL);
   if (rc != TSS2_RC_SUCCESS) {
     print_log(VERBOSE, "C_Initialize: Tss2_Tcti_Device_Init failed!"); 
@@ -539,7 +537,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
 
   tcti = (TSS2_TCTI_CONTEXT*) calloc(1, size);
   if (tcti) {
-    rc = Tss2_Tcti_Device_Init(tcti, &size, cfg);
+    rc = Tss2_Tcti_Device_Init(tcti, &size, pk11_config.device);
     if (rc != TSS2_RC_SUCCESS) {
       print_log(VERBOSE, "C_Initialize: Unable to initialize device tcti context!");
       free(tcti);

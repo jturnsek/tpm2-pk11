@@ -1,9 +1,3 @@
-# Type can be device/socket/tabrmd
-type tabrmd
-# Hostname to connect when using socket
-hostname localhost
-# Port number of TPM socket to connect to
-port 2321
 # Device to use as TPM
 device /dev/tpm0
 log-level 0

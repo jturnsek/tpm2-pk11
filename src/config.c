@@ -45,17 +45,12 @@ int config_load(char* filename, struct config *config) {
   while (getline(&line, &len, fd) != -1) {
     char *key = NULL, *value = NULL;
     if (sscanf(line, "%ms %m[^\n]", &key, &value) == 2) {
-      if (strcmp(key, "hostname") == 0) {
-        config->hostname = value;
-        value = NULL;
-      } else if (strcmp(key, "device") == 0) {
+      if (strcmp(key, "device") == 0) {
         config->device = value;
         value = NULL;
       } else if (strcmp(key, "data") == 0) {
         config->data = value;
         value = NULL;
-      } else if (strcmp(key, "port") == 0)
-        config->port = atoi(value);
       else if (strcmp(key, "login-required") == 0)
         config->login_required = strcasecmp(value, "true") == 0;
       else if (strcmp(key, "log-level") == 0)
@@ -63,14 +58,6 @@ int config_load(char* filename, struct config *config) {
       else if (strcmp(key, "log") == 0) {
         config->log_file = value;
         value = NULL;
-      }
-      else if (strcmp(key, "type") == 0) {
-        if (strcmp(value, "socket") == 0)
-          config->type = TPM_TYPE_SOCKET;
-        else if (strcmp(value, "device") == 0)
-          config->type = TPM_TYPE_DEVICE;
-        else if (strcmp(value, "tabrmd") == 0)
-          config->type = TPM_TYPE_TABRMD;
       }
     }
     if (key != NULL)
