@@ -48,9 +48,11 @@ int config_load(char* filename, struct config *config) {
       if (strcmp(key, "device") == 0) {
         config->device = value;
         value = NULL;
-      } else if (strcmp(key, "data") == 0) {
+      } 
+      else if (strcmp(key, "data") == 0) {
         config->data = value;
         value = NULL;
+      }
       else if (strcmp(key, "login-required") == 0)
         config->login_required = strcasecmp(value, "true") == 0;
       else if (strcmp(key, "log-level") == 0)
