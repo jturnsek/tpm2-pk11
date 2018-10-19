@@ -33,11 +33,6 @@
 #include <stdlib.h>
 #include <endian.h>
 
-#include <dlfcn.h>
-#include <syslog.h>
-#include <unistd.h>
-#include <sys/types.h>
-
 #define SLOT_ID 0x1234
 
 #ifndef PATH_MAX
@@ -282,11 +277,6 @@ CK_RV C_Finalize(CK_VOID_PTR reserved) {
   }
 
   print_log(VERBOSE, "C_Finalize");
-
-  setlogmask (LOG_UPTO (LOG_NOTICE));
-  openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-  syslog (LOG_NOTICE, "C_Finalize: User %d", getuid());
-  closelog ();
   
   tcti_ctx = NULL;
   if (Tss2_Sys_GetTctiContext(main_session.context, &tcti_ctx) != TSS2_RC_SUCCESS) {
@@ -523,11 +513,6 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   
   log_init(pk11_config.log_file, pk11_config.log_level);
   print_log(VERBOSE, "C_Initialize");
-  
-  setlogmask (LOG_UPTO (LOG_NOTICE));
-  openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-  syslog (LOG_NOTICE, "C_Initialize: User %d", getuid());
-  closelog ();
 
   rc = Tss2_Tcti_Device_Init(NULL, &size, NULL);
   if (rc != TSS2_RC_SUCCESS) {
@@ -571,11 +556,6 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
 
   /* Set the state to initialised */
   is_initialised = true;
-
-  setlogmask (LOG_UPTO (LOG_NOTICE));
-  openlog ("tpm2-pk11", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-  syslog (LOG_NOTICE, "C_Initialize: OK");
-  closelog ();
 
   return CKR_OK;
 }

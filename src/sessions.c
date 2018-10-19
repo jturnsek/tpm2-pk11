@@ -25,12 +25,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <syslog.h>
-#include <unistd.h>
-#include <sys/types.h>
-
-
-#define DEFAULT_DEVICE "/dev/tpm0"
+#define DEFAULT_DEVICE "/dev/tpmrm0"
 #define DEFAULT_HOSTNAME "127.0.0.1"
 #define DEFAULT_PORT 2323
 
