@@ -13,6 +13,9 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <errno.h>
 
 #define DB_HEADER_SIZE ((sizeof(uint64_t) * 3) + 4)
 
@@ -49,7 +52,13 @@ int DB_open(
 		}
 	}
 
+	if (flock(fileno(db->f), LOCK_EX) == -1) {
+		fclose(db->f);
+		return DB_ERROR_IO;		
+	}
+
 	if (fseeko(db->f, 0, SEEK_END)) {
+		flock(fileno(db->f), LOCK_UN);
 		fclose(db->f);
 		return DB_ERROR_IO;
 	}
@@ -57,71 +66,86 @@ int DB_open(
 		/* write header if not already present */
 		if ((hash_table_size) && (key_size) && (value_size)) {
 			if (fseeko(db->f, 0, SEEK_SET)) { 
+				flock(fileno(db->f), LOCK_UN);
 				fclose(db->f); 
 				return DB_ERROR_IO; 
 			}
 			tmp2[0] = 'K'; tmp2[1] = 'd'; tmp2[2] = 'B'; tmp2[3] = DB_VERSION;
 			if (fwrite(tmp2, 4, 1, db->f) != 1) { 
+				flock(fileno(db->f), LOCK_UN);
 				fclose(db->f); 
 				return DB_ERROR_IO; 
 			}
 			tmp = hash_table_size;
 			if (fwrite(&tmp, sizeof(uint64_t), 1, db->f) != 1) { 
+				flock(fileno(db->f), LOCK_UN);
 				fclose(db->f); 
 				return DB_ERROR_IO; 
 			}
 			tmp = key_size;
 			if (fwrite(&tmp, sizeof(uint64_t), 1, db->f) != 1) { 
+				flock(fileno(db->f), LOCK_UN);
 				fclose(db->f); 
 				return DB_ERROR_IO; 
 			}
 			tmp = value_size;
 			if (fwrite(&tmp, sizeof(uint64_t), 1, db->f) != 1) { 
+				flock(fileno(db->f), LOCK_UN);
 				fclose(db->f); 
 				return DB_ERROR_IO; 
 			}
 			fflush(db->f);
 		} 
 		else {
+			flock(fileno(db->f), LOCK_UN);
 			fclose(db->f);
 			return DB_ERROR_INVALID_PARAMETERS;
 		}
 	} 
 	else {
 		if (fseeko(db->f, 0, SEEK_SET)) { 
+			flock(fileno(db->f), LOCK_UN);
 			fclose(db->f); 
 			return DB_ERROR_IO; 
 		}
 		if (fread(tmp2, 4, 1, db->f) != 1) { 
+			flock(fileno(db->f), LOCK_UN);
 			fclose(db->f); 
 			return DB_ERROR_IO; 
 		}
 		if ((tmp2[0] != 'K') || (tmp2[1] != 'd') || (tmp2[2] != 'B') || (tmp2[3] != DB_VERSION)) {
+			flock(fileno(db->f), LOCK_UN);
 			fclose(db->f);
 			return DB_ERROR_CORRUPT_DBFILE;
 		}
 		if (fread(&tmp, sizeof(uint64_t), 1, db->f) != 1) { 
+			flock(fileno(db->f), LOCK_UN);
 			fclose(db->f); 
 			return DB_ERROR_IO; 
 		}
 		if (!tmp) {
+			flock(fileno(db->f), LOCK_UN);
 			fclose(db->f);
 			return DB_ERROR_CORRUPT_DBFILE;
 		}
 		hash_table_size = (unsigned long)tmp;
 		if (fread(&tmp, sizeof(uint64_t), 1, db->f) != 1) { 
+			flock(fileno(db->f), LOCK_UN);
 			fclose(db->f); 
 			return DB_ERROR_IO; 
 		}
 		if (!tmp) {
+			flock(fileno(db->f), LOCK_UN);
 			fclose(db->f);
 			return DB_ERROR_CORRUPT_DBFILE;
 		}
 		key_size = (unsigned long)tmp;
 		if (fread(&tmp, sizeof(uint64_t), 1, db->f) != 1) { 
+			flock(fileno(db->f), LOCK_UN);
 			fclose(db->f); 
 			return DB_ERROR_IO; }
 		if (!tmp) {
+			flock(fileno(db->f), LOCK_UN);
 			fclose(db->f);
 			return DB_ERROR_CORRUPT_DBFILE;
 		}
@@ -135,6 +159,7 @@ int DB_open(
 
 	httmp = malloc(db->hash_table_size_bytes);
 	if (!httmp) {
+		flock(fileno(db->f), LOCK_UN);
 		fclose(db->f);
 		return DB_ERROR_MALLOC;
 	}
@@ -143,6 +168,7 @@ int DB_open(
 	while (fread(httmp, db->hash_table_size_bytes, 1, db->f) == 1) {
 		hash_tables_rea = realloc(db->hash_tables, db->hash_table_size_bytes * (db->num_hash_tables + 1));
 		if (!hash_tables_rea) {
+			flock(fileno(db->f), LOCK_UN);
 			DB_close(db);
 			free(httmp);
 			return DB_ERROR_MALLOC;
@@ -153,6 +179,7 @@ int DB_open(
 		++db->num_hash_tables;
 		if (httmp[db->hash_table_size]) {
 			if (fseeko(db->f, httmp[db->hash_table_size], SEEK_SET)) {
+				flock(fileno(db->f), LOCK_UN);
 				DB_close(db);
 				free(httmp);
 				return DB_ERROR_IO;
@@ -162,6 +189,8 @@ int DB_open(
 			break;
 	}
 	free(httmp);
+
+	flock(fileno(db->f), LOCK_UN);
 
 	return 0;
 }
@@ -185,14 +214,22 @@ int DB_get(DB *db,const void *key,void *vbuf)
 	uint64_t *cur_hash_table;
 	long n;
 
+	if (flock(fileno(db->f), LOCK_EX) == -1) {
+		return DB_ERROR_IO;		
+	}
+
 	cur_hash_table = db->hash_tables;
 	for(i = 0; i < db->num_hash_tables; ++i) {
 		offset = cur_hash_table[hash];
 		if (offset) {
-			if (fseeko(db->f, offset, SEEK_SET))
+			if (fseeko(db->f, offset, SEEK_SET)) {
+				flock(fileno(db->f), LOCK_UN);
 				return DB_ERROR_IO;
-			if (fread(&tmp[0], 1, 1, db->f) != 1) 
+			}
+			if (fread(&tmp[0], 1, 1, db->f) != 1) { 
+				flock(fileno(db->f), LOCK_UN);
 				return DB_ERROR_IO;
+			}
 			kptr = (const uint8_t *)key;
 			klen = db->key_size;
 			while (klen) {
@@ -203,25 +240,36 @@ int DB_get(DB *db,const void *key,void *vbuf)
 					kptr += n;
 					klen -= (unsigned long)n;
 				} 
-				else 
+				else {
+					flock(fileno(db->f), LOCK_UN);
 					return 1; /* not found */
+				}
 			}
 
 			if (tmp[0] == 0) {
 				/* deleted entry */
+				flock(fileno(db->f), LOCK_UN);
 				return 1; /* not found */
 			}
 
-			if (fread(vbuf, db->value_size, 1, db->f) == 1)
+			if (fread(vbuf, db->value_size, 1, db->f) == 1) {
+				flock(fileno(db->f), LOCK_UN);
 				return 0; /* success */
-			else 
+			}
+			else {
+				flock(fileno(db->f), LOCK_UN);
 				return DB_ERROR_IO;
+			}
 		} 
-		else 
+		else {
+			flock(fileno(db->f), LOCK_UN);
 			return 1; /* not found */
+		}
 get_no_match_next_hash_table:
 		cur_hash_table += db->hash_table_size + 1;
 	}
+
+	flock(fileno(db->f), LOCK_UN);
 
 	return 1; /* not found */
 }
@@ -239,18 +287,26 @@ static int _db_put(DB *db,const void *key,const void *value, bool delete)
 	uint64_t *hash_tables_rea;
 	long n;
 
+	if (flock(fileno(db->f), LOCK_EX) == -1) {
+		return DB_ERROR_IO;		
+	}
+
 	lasthtoffset = htoffset = DB_HEADER_SIZE;
 	cur_hash_table = db->hash_tables;
 	for(i = 0; i < db->num_hash_tables; ++i) {
 		offset = cur_hash_table[hash];
 		if (offset) {
 			/* rewrite if already exists */
-			if (fseeko(db->f, offset, SEEK_SET))
+			if (fseeko(db->f, offset, SEEK_SET)) {
+				flock(fileno(db->f), LOCK_UN);
 				return DB_ERROR_IO;
+			}
 			kptr = (const uint8_t *)key;
 			klen = db->key_size;
-			if (fread(&tmp[0], 1, 1, db->f) != 1) 
+			if (fread(&tmp[0], 1, 1, db->f) != 1) { 
+				flock(fileno(db->f), LOCK_UN);
 				return DB_ERROR_IO;
+			}
 			while (tmp[0] && klen) {
 				n = (long)fread(&tmp[1], 1, (klen > (sizeof(tmp) - 1)) ? (sizeof(tmp) - 1) : klen, db->f);
 				if (n > 0) {
@@ -262,24 +318,35 @@ static int _db_put(DB *db,const void *key,const void *value, bool delete)
 			}
 
 			if (delete) {
-				if (fseeko(db->f, offset, SEEK_SET))
+				if (fseeko(db->f, offset, SEEK_SET)) {
+					flock(fileno(db->f), LOCK_UN);
 					return DB_ERROR_IO;
+				}
 				tmp[0] = 0;
-				if (fwrite(&tmp[0], 1, 1, db->f) != 1)
+				if (fwrite(&tmp[0], 1, 1, db->f) != 1) {
+					flock(fileno(db->f), LOCK_UN);
 					return DB_ERROR_IO;
+				}
 				fflush(db->f);
+				flock(fileno(db->f), LOCK_UN);
 				return 0; /* success */
 			}
 			else {
 				if (tmp[0] == 0) {
 					/* deleted entry found */
-					if (fseeko(db->f, offset, SEEK_SET))
+					if (fseeko(db->f, offset, SEEK_SET)) {
+						flock(fileno(db->f), LOCK_UN);
 						return DB_ERROR_IO;
+					}
 					tmp[0] = 1;
-					if (fwrite(&tmp[0], 1, 1, db->f) != 1)
+					if (fwrite(&tmp[0], 1, 1, db->f) != 1) {
+						flock(fileno(db->f), LOCK_UN);
 						return DB_ERROR_IO;
-					if (fwrite(key, db->key_size, 1, db->f) != 1)
+					}
+					if (fwrite(key, db->key_size, 1, db->f) != 1) {
+						flock(fileno(db->f), LOCK_UN);
 						return DB_ERROR_IO;
+					}
 				}
 				else {
 					/* C99 spec demands seek after fread(), required for Windows */
@@ -287,37 +354,54 @@ static int _db_put(DB *db,const void *key,const void *value, bool delete)
 				}
 				if (fwrite(value, db->value_size, 1, db->f) == 1) {
 					fflush(db->f);
+					flock(fileno(db->f), LOCK_UN);
 					return 0; /* success */
 				} 
-				else 
+				else {
+					flock(fileno(db->f), LOCK_UN);
 					return DB_ERROR_IO;
+				}
 			}
 		} 
 		else {
 			if (delete) {
 				/* entry not present */
+				flock(fileno(db->f), LOCK_UN);
 				return DB_ERROR_IO;	
 			}
 			/* add if an empty hash table slot is discovered */
-			if (fseeko(db->f, 0, SEEK_END))
+			if (fseeko(db->f, 0, SEEK_END)) {
+				flock(fileno(db->f), LOCK_UN);
 				return DB_ERROR_IO;
+			}
 			endoffset = ftello(db->f);
 			
 			tmp[0] = 1;
-			if (fwrite(&tmp[0], 1, 1, db->f) != 1)
+			if (fwrite(&tmp[0], 1, 1, db->f) != 1) {
+				flock(fileno(db->f), LOCK_UN);
 				return DB_ERROR_IO;
-			if (fwrite(key, db->key_size, 1, db->f) != 1)
+			}
+			if (fwrite(key, db->key_size, 1, db->f) != 1) {
+				flock(fileno(db->f), LOCK_UN);
 				return DB_ERROR_IO;
-			if (fwrite(value, db->value_size, 1, db->f) != 1)
+			}
+			if (fwrite(value, db->value_size, 1, db->f) != 1) {
+				flock(fileno(db->f), LOCK_UN);
 				return DB_ERROR_IO;
+			}
 
-			if (fseeko(db->f, htoffset + (sizeof(uint64_t) * hash), SEEK_SET))
+			if (fseeko(db->f, htoffset + (sizeof(uint64_t) * hash), SEEK_SET)) {
+				flock(fileno(db->f), LOCK_UN);
 				return DB_ERROR_IO;
-			if (fwrite(&endoffset, sizeof(uint64_t), 1, db->f) != 1)
+			}
+			if (fwrite(&endoffset, sizeof(uint64_t), 1, db->f) != 1) {
+				flock(fileno(db->f), LOCK_UN);
 				return DB_ERROR_IO;
+			}
 			cur_hash_table[hash] = endoffset;
 
 			fflush(db->f);
+			flock(fileno(db->f), LOCK_UN);
 			return 0; /* success */
 		}
 put_no_match_next_hash_table:
@@ -328,44 +412,64 @@ put_no_match_next_hash_table:
 
 	if (delete) {
 		/* entry not present */
+		flock(fileno(db->f), LOCK_UN);
 		return DB_ERROR_IO;	
 	}
 	/* if no existing slots, add a new page of hash table entries */
-	if (fseeko(db->f, 0, SEEK_END))
+	if (fseeko(db->f, 0, SEEK_END)) {
+		flock(fileno(db->f), LOCK_UN);
 		return DB_ERROR_IO;
+	}
 	endoffset = ftello(db->f);
 
 	hash_tables_rea = realloc(db->hash_tables, db->hash_table_size_bytes * (db->num_hash_tables + 1));
-	if (!hash_tables_rea)
+	if (!hash_tables_rea) {
+		flock(fileno(db->f), LOCK_UN);
 		return DB_ERROR_MALLOC;
+	}
 	db->hash_tables = hash_tables_rea;
 	cur_hash_table = &(db->hash_tables[(db->hash_table_size + 1) * db->num_hash_tables]);
 	memset(cur_hash_table, 0, db->hash_table_size_bytes);
 
 	cur_hash_table[hash] = endoffset + db->hash_table_size_bytes; /* where new entry will go */
 
-	if (fwrite(cur_hash_table, db->hash_table_size_bytes, 1, db->f) != 1)
+	if (fwrite(cur_hash_table, db->hash_table_size_bytes, 1, db->f) != 1) {
+		flock(fileno(db->f), LOCK_UN);
 		return DB_ERROR_IO;
+	}
 	
 	tmp[0] = 1;
-	if (fwrite(&tmp[0], 1, 1, db->f) != 1)
+	if (fwrite(&tmp[0], 1, 1, db->f) != 1) {
+		flock(fileno(db->f), LOCK_UN);
 		return DB_ERROR_IO;
-	if (fwrite(key, db->key_size, 1, db->f) != 1)
+	}
+	if (fwrite(key, db->key_size, 1, db->f) != 1) {
+		flock(fileno(db->f), LOCK_UN);
 		return DB_ERROR_IO;
-	if (fwrite(value, db->value_size, 1, db->f) != 1)
+	}
+	if (fwrite(value, db->value_size, 1, db->f) != 1) {
+		flock(fileno(db->f), LOCK_UN);
 		return DB_ERROR_IO;
+	}
 
 	if (db->num_hash_tables) {
-		if (fseeko(db->f, lasthtoffset + (sizeof(uint64_t) * db->hash_table_size), SEEK_SET))
+		if (fseeko(db->f, lasthtoffset + (sizeof(uint64_t) * db->hash_table_size), SEEK_SET)) {
+			flock(fileno(db->f), LOCK_UN);
 			return DB_ERROR_IO;
-		if (fwrite(&endoffset, sizeof(uint64_t), 1, db->f) != 1)
+		}
+		if (fwrite(&endoffset, sizeof(uint64_t), 1, db->f) != 1) {
+			flock(fileno(db->f), LOCK_UN);
 			return DB_ERROR_IO;
+		}
 		db->hash_tables[((db->hash_table_size + 1) * (db->num_hash_tables - 1)) + db->hash_table_size] = endoffset;
 	}
 
 	++db->num_hash_tables;
 
 	fflush(db->f);
+
+	flock(fileno(db->f), LOCK_UN);
+
 	return 0; /* success */
 }
 
@@ -391,33 +495,50 @@ int DB_iterator_next(DB_ITERATOR *dbi, void *kbuf, void *vbuf)
 	uint64_t offset;
 	uint8_t tmp;
 
+	if (flock(fileno(db->f), LOCK_EX) == -1) {
+		return DB_ERROR_IO;		
+	}
+
 	while (1) {
 		if ((dbi->h_no < dbi->db->num_hash_tables) && (dbi->h_idx < dbi->db->hash_table_size)) {
 			while (!(offset = dbi->db->hash_tables[((dbi->db->hash_table_size + 1) * dbi->h_no) + dbi->h_idx])) {
 				if (++dbi->h_idx >= dbi->db->hash_table_size) {
 					dbi->h_idx = 0;
-					if (++dbi->h_no >= dbi->db->num_hash_tables)
+					if (++dbi->h_no >= dbi->db->num_hash_tables) {
+						flock(fileno(db->f), LOCK_UN);
 						return 0;
+					}
 				}
 			}
-			if (fseeko(dbi->db->f, offset, SEEK_SET))
+			if (fseeko(dbi->db->f, offset, SEEK_SET)) {
+				flock(fileno(db->f), LOCK_UN);
 				return DB_ERROR_IO;
-			if (fread(&tmp, 1, 1, dbi->db->f) != 1)
+			}
+			if (fread(&tmp, 1, 1, dbi->db->f) != 1) {
+				flock(fileno(db->f), LOCK_UN);
 				return DB_ERROR_IO;
-			if (fread(kbuf, dbi->db->key_size, 1, dbi->db->f) != 1)
+			}
+			if (fread(kbuf, dbi->db->key_size, 1, dbi->db->f) != 1) {
+				flock(fileno(db->f), LOCK_UN);
 				return DB_ERROR_IO;
-			if (fread(vbuf, dbi->db->value_size, 1, dbi->db->f) != 1)
+			}
+			if (fread(vbuf, dbi->db->value_size, 1, dbi->db->f) != 1) {
+				flock(fileno(db->f), LOCK_UN);
 				return DB_ERROR_IO;
+			}
 			if (++dbi->h_idx >= dbi->db->hash_table_size) {
 				dbi->h_idx = 0;
 				++dbi->h_no;
 			}
 			if (!tmp)
 				continue;
+			flock(fileno(db->f), LOCK_UN);
 			return 1;
 		}
 		break;
 	}
+
+	flock(fileno(db->f), LOCK_UN);
 
 	return 0;
 }
