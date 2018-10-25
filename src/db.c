@@ -495,7 +495,7 @@ int DB_iterator_next(DB_ITERATOR *dbi, void *kbuf, void *vbuf)
 	uint64_t offset;
 	uint8_t tmp;
 
-	if (flock(fileno(db->f), LOCK_EX) == -1) {
+	if (flock(fileno(dbi->db->f), LOCK_EX) == -1) {
 		return DB_ERROR_IO;		
 	}
 
@@ -505,25 +505,25 @@ int DB_iterator_next(DB_ITERATOR *dbi, void *kbuf, void *vbuf)
 				if (++dbi->h_idx >= dbi->db->hash_table_size) {
 					dbi->h_idx = 0;
 					if (++dbi->h_no >= dbi->db->num_hash_tables) {
-						flock(fileno(db->f), LOCK_UN);
+						flock(fileno(dbi->db->f), LOCK_UN);
 						return 0;
 					}
 				}
 			}
 			if (fseeko(dbi->db->f, offset, SEEK_SET)) {
-				flock(fileno(db->f), LOCK_UN);
+				flock(fileno(dbi->db->f), LOCK_UN);
 				return DB_ERROR_IO;
 			}
 			if (fread(&tmp, 1, 1, dbi->db->f) != 1) {
-				flock(fileno(db->f), LOCK_UN);
+				flock(fileno(dbi->db->f), LOCK_UN);
 				return DB_ERROR_IO;
 			}
 			if (fread(kbuf, dbi->db->key_size, 1, dbi->db->f) != 1) {
-				flock(fileno(db->f), LOCK_UN);
+				flock(fileno(dbi->db->f), LOCK_UN);
 				return DB_ERROR_IO;
 			}
 			if (fread(vbuf, dbi->db->value_size, 1, dbi->db->f) != 1) {
-				flock(fileno(db->f), LOCK_UN);
+				flock(fileno(dbi->db->f), LOCK_UN);
 				return DB_ERROR_IO;
 			}
 			if (++dbi->h_idx >= dbi->db->hash_table_size) {
@@ -532,13 +532,13 @@ int DB_iterator_next(DB_ITERATOR *dbi, void *kbuf, void *vbuf)
 			}
 			if (!tmp)
 				continue;
-			flock(fileno(db->f), LOCK_UN);
+			flock(fileno(dbi->db->f), LOCK_UN);
 			return 1;
 		}
 		break;
 	}
 
-	flock(fileno(db->f), LOCK_UN);
+	flock(fileno(dbi->db->f), LOCK_UN);
 
 	return 0;
 }
