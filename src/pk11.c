@@ -241,6 +241,8 @@ CK_RV C_GetTokenInfo(CK_SLOT_ID id, CK_TOKEN_INFO_PTR info) {
   info->flags = CKF_TOKEN_INITIALIZED | CKF_WRITE_PROTECTED;
   if (pk11_config.login_required)
     info->flags |= CKF_LOGIN_REQUIRED;
+  else
+    info->flags |= CKF_USER_PIN_INITIALIZED;
 
   TPMS_TAGGED_PROPERTY* max_sessions = tpm_info_get(props.tpmProperty, props.count, TPM2_PT_ACTIVE_SESSIONS_MAX);
   info->ulMaxSessionCount = max_sessions ? max_sessions->value : CK_EFFECTIVELY_INFINITE;
