@@ -296,7 +296,7 @@ pObject object_generate_pair(TSS2_SYS_CONTEXT *ctx, TPM2_ALG_ID algorithm, pObje
     free(userdata);
     return NULL;
   }
-
+  print_log(DEBUG, "object_generate_pair: ctx=0x%x, list=0x%x, handle=0x%x", ctx, list, handle);
   TPM2_RC rc = tpm_generate_key_pair(ctx, handle, algorithm, &userdata->tpm_key, &userdata->name);
   if (rc != TPM2_RC_SUCCESS) {
     print_log(DEBUG, "object_generate_pair: ERROR - tpm key generation failed!");
