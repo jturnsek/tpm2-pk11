@@ -17,8 +17,8 @@
  * License along with this library; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301  USA
  */
-#pragma GCC push_options
-#pragma GCC optimize ("O0")
+//#pragma GCC push_options
+//#pragma GCC optimize ("O0")
 
 #include "objects.h"
 #include "certificate.h"
@@ -727,4 +727,4 @@ pObject object_copy(pObject object)
 
   return newobject;
 }
-#pragma GCC pop_options
+//#pragma GCC pop_options
