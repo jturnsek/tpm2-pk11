@@ -798,7 +798,6 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE object_
 
     if (!object->is_copy && object->userdata) {
       free(object->userdata);
-      object->userdata = NULL;
     }  
   }
   else {
