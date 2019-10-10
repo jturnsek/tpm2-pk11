@@ -288,6 +288,7 @@ CK_RV C_Finalize(CK_VOID_PTR reserved) {
   session_close(&main_session);
 
   object_free_list(main_session.objects);
+  main_session.objects = NULL;
 
   if (tcti_ctx) {
     Tss2_Tcti_Finalize(tcti_ctx);
