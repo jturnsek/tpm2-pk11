@@ -306,6 +306,7 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE session_handle, CK_ATTRIBUTE_PTR filte
   }
   print_log(VERBOSE, "C_FindObjectsInit: session = %x, count = %d", session_handle, count);
   struct session *session = get_session(session_handle);
+  print_log(DEBUG, "C_FindObjectsInit: first object = %x, next = %x", session->objects.object, session->objects.next);
   session->find_cursor = session->objects;
   session->filters = filters;
   session->num_filters = count;
@@ -779,7 +780,8 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE object_
   print_log(VERBOSE, "C_DestroyObject: session = %x, object = %x", session_handle, object_handle);
   struct session* session = get_session(session_handle);
   pObject object = (pObject) object_handle;    
-
+  print_log(DEBUG, "C_DestroyObject: userdata = %x, entries = %x, num_entries = %d, opposite = 0x%x, is_certificate = 0x%x, is_copy = 0x%x", 
+    object->userdata, object->entries, object->num_entries, object->opposite, object->is_certificate, object->is_copy);
   if (session->have_write == false) {
     return CKR_SESSION_READ_ONLY;
   }
