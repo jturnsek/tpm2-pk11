@@ -469,11 +469,12 @@ void object_free_list(pObjectList list)
 pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
 {
   pObjectList list = malloc(sizeof(ObjectList));
-  list->object = NULL;
-  list->next = NULL;
 
   if (list == NULL)
     goto error;
+
+  list->object = NULL;
+  list->next = NULL;
   
   TPMS_CAPABILITY_DATA persistent;
   TPM2_RC rc = tpm_info(ctx, TPM2_HT_PERSISTENT, &persistent);
@@ -646,6 +647,7 @@ pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
     goto error;
   }
 
+  print_log(VERBOSE, "object_load_list: list = %x", list);
   return list;
 
 error:
