@@ -36,7 +36,7 @@ struct session {
 	pObjectList *objects;
 	bool have_write;
   TPMI_DH_OBJECT handle;
-  pObjectList find_cursor;
+  pObjectList *find_cursor;
   CK_ATTRIBUTE_PTR filters;
   size_t num_filters;
   pObject current_object;
