@@ -309,9 +309,11 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE session_handle, CK_ATTRIBUTE_PTR filte
   }
   print_log(VERBOSE, "C_FindObjectsInit: session = %x, count = %d", session_handle, count);
   struct session *session = get_session(session_handle);
+  print_log(DEBUG, "C_FindObjectsInit: *session->objects = %x", *(session->objects));
   session->find_cursor = session->objects;
   session->filters = filters;
   session->num_filters = count;
+  print_log(DEBUG, "C_FindObjectsInit: *session->objects = %x", *(session->objects));
   return CKR_OK;
 }
 
@@ -323,6 +325,7 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE_PTR objec
   TPMS_CAPABILITY_DATA persistent;
   tpm_info(get_session(session_handle)->context, TPM2_HT_PERSISTENT, &persistent);
   struct session* session = get_session(session_handle);
+  print_log(DEBUG, "C_FindObjects: *session->objects = %x", *(session->objects));
   *found = 0;
   while (*(session->find_cursor) != NULL && *found < max_objects) {
     pObject object = (*(session->find_cursor))->object;
@@ -341,7 +344,7 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE_PTR objec
     }
     *(session->find_cursor) = (*(session->find_cursor))->next;
   }   
-
+  print_log(DEBUG, "C_FindObjects: *session->objects = %x", *(session->objects));
   return CKR_OK;
 }
 
