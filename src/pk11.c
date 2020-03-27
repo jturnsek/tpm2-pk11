@@ -310,7 +310,7 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE session_handle, CK_ATTRIBUTE_PTR filte
   print_log(VERBOSE, "C_FindObjectsInit: session = %x, count = %d", session_handle, count);
   struct session *session = get_session(session_handle);
   print_log(DEBUG, "C_FindObjectsInit: *session->objects = %x", *(session->objects));
-  session->find_cursor = session->objects;
+  session->find_cursor = *(session->objects);
   session->filters = filters;
   session->num_filters = count;
   print_log(DEBUG, "C_FindObjectsInit: *session->objects = %x", *(session->objects));
@@ -327,8 +327,8 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE_PTR objec
   struct session* session = get_session(session_handle);
   print_log(DEBUG, "C_FindObjects: *session->objects = %x", *(session->objects));
   *found = 0;
-  while (*(session->find_cursor) != NULL && *found < max_objects) {
-    pObject object = (*(session->find_cursor))->object;
+  while (session->find_cursor != NULL && *found < max_objects) {
+    pObject object = session->find_cursor->object;
     bool filtered = false;
     for (int j = 0; j < session->num_filters; j++) {
       size_t size = 0;
@@ -339,10 +339,10 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE_PTR objec
       }
     }
     if (!filtered) {
-      object_handle[*found] = (CK_OBJECT_HANDLE) (*(session->find_cursor))->object;
+      object_handle[*found] = (CK_OBJECT_HANDLE) session->find_cursor->object;
       (*found)++;
     }
-    *(session->find_cursor) = (*(session->find_cursor))->next;
+    session->find_cursor = session->find_cursor->next;
   }   
   print_log(DEBUG, "C_FindObjects: *session->objects = %x", *(session->objects));
   return CKR_OK;
