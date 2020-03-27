@@ -54,7 +54,6 @@ int session_init(struct session* session, struct config *config, bool have_write
   }
 
   session->objects = main_session.objects;
-  print_log(DEBUG, "session_init: session->objects = %x, *session->objects = %x", session->objects, *(session->objects));
   open_sessions++;
   return 0;
 
