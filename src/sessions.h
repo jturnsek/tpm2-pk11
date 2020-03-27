@@ -33,7 +33,7 @@
 
 struct session {
 	TSS2_SYS_CONTEXT *context;
-	pObjectList objects;
+	pObjectList *objects;
 	bool have_write;
   TPMI_DH_OBJECT handle;
   pObjectList find_cursor;

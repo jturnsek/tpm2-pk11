@@ -44,6 +44,7 @@
 
 struct config pk11_config = {0};
 struct session main_session;
+pObjectList main_list;
 bool is_initialised = false;
 TSS2_TCTI_CONTEXT *tcti = NULL;
 
@@ -286,8 +287,10 @@ CK_RV C_Finalize(CK_VOID_PTR reserved) {
   }
 
   session_close(&main_session);
+  object_free_list(*main_session.objects);
 
-  //object_free_list(main_session.objects);
+  memset(&main_session, 0, sizeof(main_session));
+  main_list = NULL;
 
   if (tcti_ctx) {
     Tss2_Tcti_Finalize(tcti_ctx);
@@ -306,7 +309,6 @@ CK_RV C_FindObjectsInit(CK_SESSION_HANDLE session_handle, CK_ATTRIBUTE_PTR filte
   }
   print_log(VERBOSE, "C_FindObjectsInit: session = %x, count = %d", session_handle, count);
   struct session *session = get_session(session_handle);
-  print_log(DEBUG, "C_FindObjectsInit: first object = %x, next = %x", session->objects->object, session->objects->next);
   session->find_cursor = session->objects;
   session->filters = filters;
   session->num_filters = count;
@@ -322,8 +324,8 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE_PTR objec
   tpm_info(get_session(session_handle)->context, TPM2_HT_PERSISTENT, &persistent);
   struct session* session = get_session(session_handle);
   *found = 0;
-  while (session->find_cursor != NULL && *found < max_objects) {
-    pObject object = session->find_cursor->object;
+  while (*(session->find_cursor) != NULL && *found < max_objects) {
+    pObject object = (*(session->find_cursor))->object;
     bool filtered = false;
     for (int j = 0; j < session->num_filters; j++) {
       size_t size = 0;
@@ -334,10 +336,10 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE_PTR objec
       }
     }
     if (!filtered) {
-      object_handle[*found] = (CK_OBJECT_HANDLE) session->find_cursor->object;
+      object_handle[*found] = (CK_OBJECT_HANDLE) (*(session->find_cursor))->object;
       (*found)++;
     }
-    session->find_cursor = session->find_cursor->next;
+    *(session->find_cursor) = (*(session->find_cursor))->next;
   }   
 
   return CKR_OK;
@@ -509,6 +511,7 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
   }
 
   memset(&main_session, 0, sizeof(struct session));
+  main_list = NULL;
 
   if (config_load(configfile_path, &pk11_config) < 0) {
     return CKR_GENERAL_ERROR;
@@ -549,11 +552,13 @@ CK_RV C_Initialize(CK_VOID_PTR pInitArgs) {
     return CKR_GENERAL_ERROR;
   }
 
-  main_session.objects = object_load_list(main_session.context, &pk11_config);
-  if (!main_session.objects) {
+  main_list = object_load_list(main_session.context, &pk11_config);
+  if (!main_list) {
     free(main_session.context);
     return CKR_GENERAL_ERROR;
   }
+
+  main_session.objects = &main_list;
 
   open_sessions++;
 
@@ -733,7 +738,7 @@ CK_RV C_CreateObject(CK_SESSION_HANDLE session_handle, CK_ATTRIBUTE_PTR template
   }
 
   if (id && value) {
-    pObject newobject = certificate_create(session->objects, &pk11_config, id, id_len, label, label_len, value, value_len);
+    pObject newobject = certificate_create(*(session->objects), &pk11_config, id, id_len, label, label_len, value, value_len);
     if (!newobject) {
       print_log(VERBOSE, "C_CreateObject: ERROR - Cannot create object");
       return CKR_GENERAL_ERROR;  
@@ -766,7 +771,7 @@ CK_RV C_CopyObject(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE object_han
   }
 
   //Add object to list
-  object_add(session->objects, newobject);
+  object_add(*(session->objects), newobject);
 
   *new_object = (CK_OBJECT_HANDLE)newobject;
 
@@ -780,8 +785,6 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE object_
   print_log(VERBOSE, "C_DestroyObject: session = %x, object = %x", session_handle, object_handle);
   struct session* session = get_session(session_handle);
   pObject object = (pObject) object_handle;    
-  print_log(DEBUG, "C_DestroyObject: userdata = %x, entries = %x, num_entries = %d, opposite = 0x%x, is_certificate = %x, is_copy = %x", 
-    object->userdata, object->entries, object->num_entries, object->opposite, object->is_certificate, object->is_copy);
   if (session->have_write == false) {
     return CKR_SESSION_READ_ONLY;
   }
@@ -806,7 +809,7 @@ CK_RV C_DestroyObject(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE object_
     return CKR_GENERAL_ERROR;  
   }
 
-  object_remove(&session->objects, object);
+  object_remove(session->objects, object);
 
   free(object);
 
@@ -1085,14 +1088,14 @@ CK_RV C_GenerateKeyPair(CK_SESSION_HANDLE session_handle, CK_MECHANISM_PTR mecha
   if (mechanism->mechanism == CKM_EC_KEY_PAIR_GEN && keyType != CKK_EC)
     return CKR_TEMPLATE_INCONSISTENT;
 
-  pObject object = object_generate_pair(session->context, algorithm_type, session->objects, &pk11_config);
+  pObject object = object_generate_pair(session->context, algorithm_type, *(session->objects), &pk11_config);
   if (object == NULL) {
     return CKR_FUNCTION_FAILED; 
   }
   //Add object to list
-  object_add(session->objects, object);
+  object_add(*(session->objects), object);
   *public_key = (CK_OBJECT_HANDLE)object;
-  object_add(session->objects, object->opposite);
+  object_add(*(session->objects), object->opposite);
   *private_key = (CK_OBJECT_HANDLE)object->opposite;
 
   print_log(VERBOSE, "C_GenerateKeyPair: Finished OK");
