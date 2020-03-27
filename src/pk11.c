@@ -346,7 +346,8 @@ CK_RV C_FindObjects(CK_SESSION_HANDLE session_handle, CK_OBJECT_HANDLE_PTR objec
 }
 
 CK_RV C_FindObjectsFinal(CK_SESSION_HANDLE session_handle) {
-  print_log(VERBOSE, "C_FindObjectsFinal: session = %x", session_handle);
+  struct session* session = get_session(session_handle);
+  print_log(VERBOSE, "C_FindObjectsFinal: session = %x, *session->objects = %x", session, *(session->objects));
   return CKR_OK;
 }
 

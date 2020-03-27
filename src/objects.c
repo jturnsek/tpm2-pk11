@@ -469,7 +469,7 @@ void object_free_list(pObjectList list)
 pObjectList object_load_list(TSS2_SYS_CONTEXT *ctx, struct config *config)
 {
   pObjectList list = malloc(sizeof(ObjectList));
-
+  print_log(VERBOSE, "object_load_list: list = %x", list);
   if (list == NULL)
     goto error;
 
